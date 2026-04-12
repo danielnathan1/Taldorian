@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://cty6btt5gyfg6"]
+
+[ext_resource type="Script" uid="uid://b35sveqhshcjj" path="res://src/ui/test_mechanics.gd" id="1_script"]
+
+[node name="TestMechanics" type="Control" unique_id=881430532]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=207337595]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Title" type="Label" parent="VBox" unique_id=1583651979]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Teste de mecânicas"
+
+[node name="PhaseRow" type="Label" parent="VBox" unique_id=552512262]
+layout_mode = 2
+
+[node name="Status" type="Label" parent="VBox" unique_id=291680797]
+layout_mode = 2
+size_flags_vertical = 0
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="VBox" unique_id=1206366121]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Content" type="VBoxContainer" parent="VBox/Scroll" unique_id=1391275432]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

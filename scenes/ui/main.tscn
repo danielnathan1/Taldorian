@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://c11w1tu8dmhux"]
+
+[ext_resource type="PackedScene" uid="uid://cka7o0h0s3thi" path="res://scenes/ui/board/Board.tscn" id="1_0ay0p"]
+[ext_resource type="PackedScene" uid="uid://cxptqhtusi0fb" path="res://scenes/ui/lobby/LobbyScreen.tscn" id="1_2p1s2"]
+
+[node name="Main" type="Node2D" unique_id=2136108459]
+
+[node name="LobbyScreen" parent="." unique_id=116870145 instance=ExtResource("1_2p1s2")]
+
+[node name="Board" parent="." unique_id=1850961150 instance=ExtResource("1_0ay0p")]
+visible = false

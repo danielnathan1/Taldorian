@@ -1,0 +1,130 @@
+[gd_scene format=3 uid="uid://cka7o0h0s3thi"]
+
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="1_chlxx"]
+[ext_resource type="Script" uid="uid://c4n574cssen15" path="res://scenes/ui/board/board.gd" id="1_nnamr"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="2_81vmo"]
+[ext_resource type="Texture2D" uid="uid://c4ktix8agiiyy" path="res://assets/inital-grid.png" id="4_fclkg"]
+
+[node name="Board" type="Node2D" unique_id=1850961150]
+script = ExtResource("1_nnamr")
+
+[node name="TableLayout" type="VBoxContainer" parent="." unique_id=1369365827]
+offset_right = 1920.0
+offset_bottom = 1079.0
+
+[node name="Sprite2D" type="Sprite2D" parent="TableLayout" unique_id=61686576]
+position = Vector2(962.49994, 536.50006)
+scale = Vector2(1.248047, 1.0576172)
+texture = ExtResource("4_fclkg")
+
+[node name="OpponentArea" type="VBoxContainer" parent="TableLayout" unique_id=1548684649]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OpponentHand" type="HBoxContainer" parent="TableLayout/OpponentArea" unique_id=595842784]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="OpponentHeroes" parent="TableLayout/OpponentArea" unique_id=126813738 instance=ExtResource("1_chlxx")]
+layout_mode = 2
+size_flags_vertical = 10
+
+[node name="CombatZone" type="HBoxContainer" parent="TableLayout" unique_id=2014552813]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OpponentCombatSlot" type="Panel" parent="TableLayout/CombatZone" unique_id=28627732]
+layout_mode = 2
+
+[node name="VSLabel" type="Label" parent="TableLayout/CombatZone" unique_id=262956311]
+layout_mode = 2
+
+[node name="PlayerCombatSlot" type="Panel" parent="TableLayout/CombatZone" unique_id=244994832]
+layout_mode = 2
+
+[node name="PlayerArea" type="VBoxContainer" parent="TableLayout" unique_id=1722802589]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 2
+
+[node name="PlayerHeroes" type="HBoxContainer" parent="TableLayout/PlayerArea" unique_id=446949177]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+theme_override_constants/separation = 8
+
+[node name="HeroSlotOne" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=255158991 instance=ExtResource("1_chlxx")]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="HeroSlotTwo" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=959968196 instance=ExtResource("1_chlxx")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="HeroSlotThree" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=68406754 instance=ExtResource("1_chlxx")]
+visible = false
+layout_mode = 2
+
+[node name="PlayerHand" type="HBoxContainer" parent="TableLayout/PlayerArea" unique_id=2036485913]
+layout_mode = 2
+
+[node name="CardView" parent="TableLayout/PlayerArea/PlayerHand" unique_id=1256995890 instance=ExtResource("2_81vmo")]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 0
+
+[node name="PhaseOverlay" type="CanvasLayer" parent="." unique_id=279148423]
+layer = 2
+
+[node name="MulliganScreen" type="Control" parent="PhaseOverlay" unique_id=638175288]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1923.0
+offset_bottom = 1076.0
+
+[node name="TitleLabel" type="Label" parent="PhaseOverlay/MulliganScreen" unique_id=1025511493]
+layout_mode = 0
+offset_left = 919.0
+offset_top = 8.0
+offset_right = 1077.0
+offset_bottom = 36.0
+text = "Mulligan Phase"
+horizontal_alignment = 1
+
+[node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/MulliganScreen" unique_id=891401675]
+layout_mode = 0
+offset_top = 357.0
+offset_right = 1921.0
+offset_bottom = 700.0
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/MulliganScreen" unique_id=823203846]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 778.0
+offset_right = 1084.0
+offset_bottom = 865.0
+text = "Escolher"
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=139328610]
+visible = false
+
+[node name="PhaseLabel" type="Label" parent="UI" unique_id=1973228869]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1880.0
+offset_bottom = -1057.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ActionButton" type="Button" parent="UI" unique_id=341072845]
+offset_right = 8.0
+offset_bottom = 8.0
+
+[node name="LogPanel" type="Panel" parent="UI" unique_id=1478812253]
+offset_left = -193.0
+offset_top = 537.0
+offset_right = -110.0
+offset_bottom = 654.0
