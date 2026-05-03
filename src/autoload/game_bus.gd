@@ -35,3 +35,9 @@ signal state_synced
 # Preview de carta/herói
 signal card_hovered(data: Dictionary)
 signal card_hover_ended
+
+# Mundo aberto
+signal world_player_joined(peer_id: int, data: Dictionary)
+signal world_player_left(peer_id: int)
+signal world_state_synced(players: Dictionary)
+signal world_chat_received(peer_id: int, message: String)

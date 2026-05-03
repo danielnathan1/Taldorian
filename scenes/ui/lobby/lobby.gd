@@ -2,6 +2,7 @@ extends Control
 
 const PORT        := 7000
 const BOARD_SCENE := "res://scenes/ui/board/Board.tscn"
+const WORLD_SCENE := "res://scenes/world/world_root.tscn"
 
 # ── Node references ────────────────────────────────────────────────────────────
 @onready var address_input   : LineEdit       = %AddressInput
@@ -25,8 +26,10 @@ const C_PARCHMENT   := Color(0.929, 0.875, 0.784, 1.0)
 const C_PARCHMENT_D := Color(0.722, 0.659, 0.549, 1.0)
 const C_PANEL_BG    := Color(0.063, 0.082, 0.149, 0.90)
 
-var _toast_tween : Tween
-var _music       : AudioStreamPlayer
+var _toast_tween    : Tween
+var _music          : AudioStreamPlayer
+var _is_world_mode  : bool = false
+var _world_button   : Button
 
 func _ready() -> void:
 	# Garante full-screen independente de como o parent (Node2D) posiciona este Control
@@ -41,6 +44,7 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
+	_add_world_button()
 	_start_music()
 
 
@@ -202,7 +206,10 @@ func _on_address_submitted(_text: String) -> void:
 # ── Callbacks de rede ──────────────────────────────────────────────────────────
 func _on_peer_connected(_id: int) -> void:
 	await get_tree().process_frame
-	_start_game.rpc()
+	if _is_world_mode:
+		_start_world.rpc()
+	else:
+		_start_game.rpc()
 
 func _on_peer_disconnected(_id: int) -> void:
 	_set_buttons_enabled(true)
@@ -217,6 +224,46 @@ func _on_connection_failed() -> void:
 	_show_toast("✦  Falha ao conectar — verifique o IP")
 
 
+# ── Mundo aberto ───────────────────────────────────────────────────────────────
+func _add_world_button() -> void:
+	var button_row := $CenterContainer/MainVBox/LobbyPanel/PanelMargin/PanelVBox/ButtonRow
+	if button_row == null:
+		return
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 14)
+	var world_row := HBoxContainer.new()
+	world_row.add_theme_constant_override("separation", 14)
+	_world_button = Button.new()
+	_world_button.text = "⊕  Explorar Mundo (Host)"
+	_world_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_world_button.add_theme_font_override("font", %JoinButton.get_theme_font("font"))
+	var ws := _make_button_style(Color(0.04, 0.09, 0.12), Color(0.3, 0.6, 0.5), 0.55)
+	var ws_h := _make_button_style(Color(0.06, 0.12, 0.16), Color(0.4, 0.8, 0.65), 0.85)
+	var ws_p := _make_button_style(Color(0.03, 0.07, 0.10), Color(0.3, 0.6, 0.5), 1.0)
+	_world_button.add_theme_stylebox_override("normal",  ws)
+	_world_button.add_theme_stylebox_override("hover",   ws_h)
+	_world_button.add_theme_stylebox_override("pressed", ws_p)
+	_world_button.add_theme_color_override("font_color",         Color(0.5, 0.85, 0.7))
+	_world_button.add_theme_color_override("font_hover_color",   Color(0.65, 1.0, 0.85))
+	_world_button.add_theme_color_override("font_pressed_color", Color(0.45, 0.75, 0.6))
+	_world_button.pressed.connect(_on_world_host_pressed)
+	world_row.add_child(_world_button)
+	var panel_vbox := button_row.get_parent()
+	panel_vbox.add_child(spacer)
+	panel_vbox.add_child(world_row)
+
+func _on_world_host_pressed() -> void:
+	var peer := ENetMultiplayerPeer.new()
+	var err  := peer.create_server(PORT)
+	if err != OK:
+		_show_toast("✦  Erro ao criar sala: %d" % err)
+		return
+	multiplayer.multiplayer_peer = peer
+	NetworkState.local_player_index = 0
+	_is_world_mode = true
+	_set_buttons_enabled(false)
+	_show_toast("✦  Mundo criado… aguardando jogador")
+
 # ── Início de partida ──────────────────────────────────────────────────────────
 func _start_music() -> void:
 	var stream := load("res://audio/theme/lobby_theme.mp3") as AudioStreamMP3
@@ -230,6 +277,11 @@ func _start_music() -> void:
 func _start_game() -> void:
 	_music.stop()
 	get_tree().change_scene_to_file(BOARD_SCENE)
+
+@rpc("authority", "call_local", "reliable")
+func _start_world() -> void:
+	_music.stop()
+	get_tree().change_scene_to_file(WORLD_SCENE)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

@@ -5,6 +5,9 @@ extends Node
 ## Usado pela UI pra saber qual lado da tela controlar.
 var local_player_index: int = 0
 
+## Nome do jogador local — exibido no mundo e acima do personagem.
+var player_name: String = "Jogador"
+
 ## Retorna true se esta instância é o servidor.
 func is_server() -> bool:
 	return multiplayer.is_server()

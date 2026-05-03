@@ -1,0 +1,42 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/world/player/player_character.gd" id="1_pc"]
+
+[sub_resource type="RectangleShape2D" id="Shape_pc"]
+size = Vector2(12, 12)
+
+[node name="PlayerCharacter" type="CharacterBody2D"]
+script = ExtResource("1_pc")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape_pc")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+
+[node name="NameLabel" type="Label" parent="."]
+position = Vector2(-40, -26)
+custom_minimum_size = Vector2(80, 14)
+theme_override_font_sizes/font_size = 9
+
+[node name="ChatBubble" type="Control" parent="."]
+visible = false
+position = Vector2(-48, -44)
+custom_minimum_size = Vector2(96, 18)
+
+[node name="BG" type="ColorRect" parent="ChatBubble"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.05, 0.05, 0.05, 0.75)
+
+[node name="Label" type="Label" parent="ChatBubble"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_contents = true

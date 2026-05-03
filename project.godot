@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 GameBus="*res://src/autoload/game_bus.gd"
 NetworkState="*uid://tn8f3we8cliq"
 GameState="*uid://dtqbfrlqlcsia"
+WorldState="*res://src/world/world_state.gd"
 
 [display]
 

@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/world/ui/hud_world.gd" id="1_hud"]
+
+[node name="HudWorld" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="EscHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -28.0
+offset_right = 300.0
+offset_bottom = -8.0
+theme_override_colors/font_color = Color(0.8, 0.75, 0.65, 0.55)
+theme_override_font_sizes/font_size = 12
+text = "ESC — Voltar ao Lobby   ·   Enter — Chat"
+
+[node name="ChatToggle" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 4
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -40.0
+offset_right = -8.0
+offset_bottom = -8.0
+theme_override_font_sizes/font_size = 12
+text = "Chat"
+
+[node name="ChatPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -340.0
+offset_top = -260.0
+offset_right = -8.0
+offset_bottom = -48.0
+
+[node name="VBox" type="VBoxContainer" parent="ChatPanel"]
+layout_mode = 2
+
+[node name="ChatLog" type="RichTextLabel" parent="ChatPanel/VBox"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+theme_override_font_sizes/normal_font_size = 12
+
+[node name="ChatInput" type="LineEdit" parent="ChatPanel/VBox"]
+layout_mode = 2
+placeholder_text = "Mensagem… (Enter para enviar)"
+theme_override_font_sizes/font_size = 12
