@@ -22,7 +22,12 @@ static func matches_chain(chain: Array[String], required: Array[String]) -> bool
 	if required.size() > chain.size():
 		return false
 	for i in chain.size() - required.size() + 1:
-		if chain.slice(i, i + required.size()) == required:
+		var matched := true
+		for j in required.size():
+			if chain[i + j] != required[j]:
+				matched = false
+				break
+		if matched:
 			return true
 	return false
 

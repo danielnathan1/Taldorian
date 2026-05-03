@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://s4qbculee5f"]
+
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="1_herosl"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="2_cardvw"]
+[ext_resource type="Script" path="res://scenes/ui/card_preview/card_preview.gd" id="3_prvscr"]
+
+[node name="PreviewLayer" type="CanvasLayer" unique_id=75620574]
+layer = 5
+
+[node name="CardPreview" type="Control" parent="." unique_id=27581977]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1443.0
+offset_top = 174.0
+offset_right = 1885.0
+offset_bottom = 913.0
+script = ExtResource("3_prvscr")
+metadata/_edit_use_anchors_ = true
+
+[node name="HeroSlot" parent="CardPreview" instance=ExtResource("1_herosl") unique_id=11111001]
+visible = false
+scale = Vector2(2, 2)
+
+[node name="CardView" parent="CardPreview" instance=ExtResource("2_cardvw") unique_id=11111002]
+visible = false
+scale = Vector2(2, 2)

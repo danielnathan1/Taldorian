@@ -23,8 +23,15 @@ signal skill_activated(hero: Hero, skill_name: String)
 # Combate — dano recebido pelo herói ativo de cada índice (mútuo)
 signal combat_resolved(damage_to_player_0_hero: int, damage_to_player_1_hero: int)
 
+# Janela de reação aberta — UI do jogador deve exibir opção de reagir
+signal reaction_window_opened(player_index: int)
+
 # Fim de jogo
 signal game_over(winner_index: int)
 
-# src/autoloads/game_bus.gd
-signal state_synced   # ← adiciona essa linha
+# Rede
+signal state_synced
+
+# Preview de carta/herói
+signal card_hovered(data: Dictionary)
+signal card_hover_ended

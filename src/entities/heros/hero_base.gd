@@ -12,27 +12,27 @@ var state: State = State.ACTIVE
 var symbols_required: Array[String] = []
 
 func take_damage(amount: int) -> void:
-    current_hp = max(0, current_hp - amount)
-    if current_hp == 0:
-        state = State.DEFEATED
+	current_hp = max(0, current_hp - amount)
+	if current_hp == 0:
+		state = State.DEFEATED
 
 func is_alive() -> bool:
-    return state != State.DEFEATED
+	return state != State.DEFEATED
 
 func exhaust() -> void:
-    if state == State.ACTIVE:
-        state = State.EXHAUSTED
+	if state == State.ACTIVE:
+		state = State.EXHAUSTED
 
 func refresh() -> void:
-    if state == State.EXHAUSTED:
-        state = State.ACTIVE
+	if state == State.EXHAUSTED:
+		state = State.ACTIVE
 
 # "virtual" no GDScript — subclasse deve fazer override
 func on_skill_activated(context: BattleContext) -> void:
-    push_error("HeroBase.on_skill_activated() não implementado em " + hero_name)
+	push_error("HeroBase.on_skill_activated() não implementado em " + hero_name)
 
 func on_turn_start(context: BattleContext) -> void:
-    pass  # opcional — subclasse faz override se quiser
+	pass  # opcional — subclasse faz override se quiser
 
 func on_damage_taken(amount: int, context: BattleContext) -> int:
-    return amount  # subclasse pode modificar (ex: Tank reduz dano
+	return amount  # subclasse pode modificar (ex: Tank reduz dano

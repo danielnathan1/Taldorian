@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://pick_symbol_scene"]
+
+[ext_resource type="Script" path="res://scenes/ui/board/pick_symbol/pick_symbol.gd" id="1_psym"]
+
+[node name="PickSymbol" type="Control" unique_id=2011223344]
+visible = false
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+script = ExtResource("1_psym")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=2011223345]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 480.0
+offset_top = 340.0
+offset_right = -480.0
+offset_bottom = -340.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="VBoxContainer" unique_id=2011223346]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Escolha 2 elementos"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=2011223347]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="SelectionRow" type="HBoxContainer" parent="VBoxContainer" unique_id=2011223349]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="Confirm" type="Button" parent="VBoxContainer" unique_id=2011223348]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(200, 50)
+text = "Confirmar"
+disabled = true

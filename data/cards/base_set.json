@@ -1,0 +1,216 @@
+{
+  "deck": [
+	{
+	  "name": "Golpe Bruto",
+	  "timing": "ACTION",
+	  "attack_value": 3,
+	  "defense_value": 0,
+	  "symbols": ["fogo"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "golpe_bruto"
+	},
+	{
+	  "name": "Perfeito Equilíbrio",
+	  "timing": "ACTION",
+	  "attack_value": 2,
+	  "defense_value": 2,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "perfeito_equilibrio"
+	},
+	{
+	  "name": "All in",
+	  "timing": "ACTION",
+	  "attack_value": 5,
+	  "defense_value": -6,
+	  "symbols": ["fogo"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "all_in",
+	  "effects": [
+		{ "id": "all_in" }
+	  ]
+	},
+	{
+	  "name": "Golpe Furtivo",
+	  "timing": "ACTION",
+	  "attack_value": 3,
+	  "defense_value": -2,
+	  "symbols": ["ar"],
+	  "stealth": true,
+	  "copies": 3,
+	  "art_key": "ataque_furtivo"
+	},
+	{
+	  "name": "Quebrando a Banca",
+	  "timing": "ACTION",
+	  "attack_value": 1,
+	  "defense_value": 0,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "quebrando_a_banca",
+	  "effects": [
+		{ "id": "destroy_arsenal_on_damage" }
+	  ]
+	},
+	{
+	  "name": "Planos Futuros",
+	  "timing": "ACTION",
+	  "attack_value": -2,
+	  "defense_value": -2,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "planos_futuro",
+	  "effects": [
+		{ "id": "tutor_action" }
+	  ]
+	},
+	{
+	  "name": "Defesa Oculta",
+	  "timing": "ACTION",
+	  "attack_value": 0,
+	  "defense_value": 2,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "defesa_oculta",
+	  "effects": [
+		{ "id": "bonus_defense_from_arsenal" }
+	  ]
+	},
+	{
+	  "name": "Golpe Surpresa",
+	  "timing": "ACTION",
+	  "attack_value": 4,
+	  "defense_value": -2,
+	  "symbols": ["ar"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "golpe_surpresa",
+	  "effects": [
+		{ "id": "surprise_strike" }
+	  ]
+	},
+	{
+	  "name": "Escalada Brutal",
+	  "timing": "ACTION",
+	  "attack_value": 2,
+	  "defense_value": -2,
+	  "symbols": ["fogo"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "escalada_brutal",
+	  "effects": [
+		{ "id": "escalating_attack" }
+	  ]
+	},
+	{
+	  "name": "Coração da Fornalha",
+	  "timing": "ACTION",
+	  "attack_value": 1,
+	  "defense_value": 0,
+	  "symbols": ["fogo"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "coracao_da_fornalha",
+	  "effects": [
+		{ "id": "fogo_chain_attack" }
+	  ]
+	},
+	{
+	  "name": "Contra Ataque",
+	  "timing": "REACTION",
+	  "attack_value": 0,
+	  "defense_value": 1,
+	  "symbols": ["ar"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "contra_ataque",
+	  "effects": [
+		{ "id": "counter_attack_on_full_block" }
+	  ]
+	},
+	{
+	  "name": "Finta",
+	  "timing": "REACTION",
+	  "attack_value": 2,
+	  "defense_value": -1,
+	  "symbols": ["ar"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "finta",
+	  "effects": [
+		{ "id": "weaken_next_defense" }
+	  ]
+	},
+	{
+	  "name": "Manipulando Elementos",
+	  "timing": "REACTION",
+	  "attack_value": 0,
+	  "defense_value": 0,
+	  "symbols": [],
+	  "stealth": false,
+	  "copies": 1,
+	  "art_key": "manipulando_elementos",
+	  "effects": [
+		{ "id": "pick_symbols", "count": 2 }
+	  ]
+	},
+	{
+	  "name": "Descarte Estratégico",
+	  "timing": "BONUS_ACTION",
+	  "attack_value": 0,
+	  "defense_value": -1,
+	  "symbols": ["ar"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "descarte_estrategico",
+	  "effects": [
+		{ "id": "draw_discard", "discard": 2, "draw": 1 }
+	  ]
+	},
+	{
+	  "name": "Ajuste Fino",
+	  "timing": "BONUS_ACTION",
+	  "attack_value": 0,
+	  "defense_value": 0,
+	  "symbols": ["ar"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "ajuste_fino",
+	  "effects": [
+		{ "id": "draw_then_put_bottom" }
+	  ]
+	},
+	{
+	  "name": "Reciclagem",
+	  "timing": "BONUS_ACTION",
+	  "attack_value": 0,
+	  "defense_value": 1,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 3,
+	  "art_key": "reciclagem",
+	  "effects": [
+		{ "id": "recycle_graveyard_draw" }
+	  ]
+	},
+	{
+	  "name": "Ai é Putaria",
+	  "timing": "ACTION",
+	  "attack_value": 0,
+	  "defense_value": -4,
+	  "symbols": ["terra"],
+	  "stealth": false,
+	  "copies": 2,
+	  "art_key": "ai_e_putaria",
+	  "effects": [
+		{ "id": "redraw_both_hands" }
+	  ]
+	}
+  ]
+}

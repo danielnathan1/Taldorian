@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://rp2u4ignbd1d"
+path="res://.godot/imported/Festa na Taverna (1).mp3-cea760672707d803b20d91dd680f0417.mp3str"
+
+[deps]
+
+source_file="res://audio/theme/Festa na Taverna (1).mp3"
+dest_files=["res://.godot/imported/Festa na Taverna (1).mp3-cea760672707d803b20d91dd680f0417.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

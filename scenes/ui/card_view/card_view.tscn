@@ -2,17 +2,51 @@
 
 [ext_resource type="Script" uid="uid://dvw3acighgrvu" path="res://scenes/ui/card_view/card_view.gd" id="1_82ftr"]
 
-[node name="CardView" type="PanelContainer" unique_id=1256995890]
+[node name="CardView" type="Control" unique_id=1754183775]
+custom_minimum_size = Vector2(160, 240)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 160.0
+offset_bottom = 240.0
+size_flags_horizontal = 4
+size_flags_vertical = 8
 script = ExtResource("1_82ftr")
 
+[node name="Art" type="TextureRect" parent="." unique_id=487949840]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Back" type="TextureRect" parent="." unique_id=487949841]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 5
+stretch_mode = 5
+visible = false
+
 [node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=980379256]
-layout_mode = 2
+visible = false
+layout_mode = 0
+offset_right = 160.0
+offset_bottom = 240.0
 
 [node name="TypeLabel" type="Label" parent="VBoxContainer" unique_id=335753521]
+visible = false
 layout_mode = 2
 
 [node name="ValueLabel" type="Label" parent="VBoxContainer" unique_id=1705841940]
+visible = false
 layout_mode = 2
 
 [node name="SymbolsLabel" type="Label" parent="VBoxContainer" unique_id=157813279]
+visible = false
 layout_mode = 2

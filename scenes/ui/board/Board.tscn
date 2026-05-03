@@ -1,88 +1,360 @@
-[gd_scene format=3 uid="uid://cka7o0h0s3thi"]
+[gd_scene format=3 uid="uid://k1ryonaawbtc"]
 
-[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="1_chlxx"]
 [ext_resource type="Script" uid="uid://c4n574cssen15" path="res://scenes/ui/board/board.gd" id="1_nnamr"]
 [ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="2_81vmo"]
+[ext_resource type="Texture2D" uid="uid://cwjcplybuebe0" path="res://assets/playmats/default_playmat.png" id="3_gs8k1"]
 [ext_resource type="Texture2D" uid="uid://c4ktix8agiiyy" path="res://assets/inital-grid.png" id="4_fclkg"]
+[ext_resource type="PackedScene" uid="uid://b55jyo8int1dk" path="res://scenes/ui/board/combat_status/CombatStatus.tscn" id="5_kwhwr"]
+[ext_resource type="Script" uid="uid://b7ugtons6qv3b" path="res://scenes/ui/board/mulligan_screen.gd" id="5_mulligan"]
+[ext_resource type="Script" uid="uid://bue4oy1b4ls1n" path="res://scenes/ui/board/hero_pick_screen.gd" id="6_hero_pick"]
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="6_qj5ve"]
+[ext_resource type="Script" uid="uid://b6ik5ahhaav2m" path="res://scenes/ui/board/card_preview.gd" id="8_i3ara"]
+[ext_resource type="Script" uid="uid://ch5wxk8pek60m" path="res://scenes/ui/board/arsenal_screen.gd" id="9_arsenal"]
 
 [node name="Board" type="Node2D" unique_id=1850961150]
 script = ExtResource("1_nnamr")
 
-[node name="TableLayout" type="VBoxContainer" parent="." unique_id=1369365827]
+[node name="TableLayout" type="Control" parent="." unique_id=874465357]
+layout_mode = 3
+anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 1079.0
+metadata/_edit_lock_ = true
 
 [node name="Sprite2D" type="Sprite2D" parent="TableLayout" unique_id=61686576]
+visible = false
 position = Vector2(962.49994, 536.50006)
 scale = Vector2(1.248047, 1.0576172)
 texture = ExtResource("4_fclkg")
 
-[node name="OpponentArea" type="VBoxContainer" parent="TableLayout" unique_id=1548684649]
-layout_mode = 2
+[node name="OpponentArea" type="Control" parent="TableLayout" unique_id=1928216780]
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 540.0
 size_flags_vertical = 3
 
-[node name="OpponentHand" type="HBoxContainer" parent="TableLayout/OpponentArea" unique_id=595842784]
-layout_mode = 2
+[node name="Playmat" type="TextureRect" parent="TableLayout/OpponentArea" unique_id=938198293]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_gs8k1")
+flip_h = true
+flip_v = true
+
+[node name="CombatStatus" parent="TableLayout/OpponentArea" unique_id=1947318371 instance=ExtResource("5_kwhwr")]
+layout_mode = 0
+offset_left = 1650.0
+offset_top = 300.0
+offset_right = 1761.0
+offset_bottom = 456.0
+
+[node name="ActiveHero" parent="TableLayout/OpponentArea" unique_id=126813738 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 1514.0
+offset_top = 281.0
+offset_right = 1674.0
+offset_bottom = 521.0
+
+[node name="ChainCards" type="Control" parent="TableLayout/OpponentArea" unique_id=152159261]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 414.0
+offset_top = 10.0
+offset_right = -416.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CardsPlayed" type="HBoxContainer" parent="TableLayout/OpponentArea/ChainCards" unique_id=2084263514]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OpponentHeroes" type="Control" parent="TableLayout/OpponentArea" unique_id=289238060]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+mouse_filter = 2
+
+[node name="Hero" parent="TableLayout/OpponentArea/OpponentHeroes" unique_id=2034392779 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 1200.0
+offset_top = 31.0
+offset_right = 1360.0
+offset_bottom = 271.0
+
+[node name="Hero2" parent="TableLayout/OpponentArea/OpponentHeroes" unique_id=1974647647 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 880.0
+offset_top = 30.0
+offset_right = 1040.0
+offset_bottom = 270.0
+
+[node name="Hero3" parent="TableLayout/OpponentArea/OpponentHeroes" unique_id=1542524069 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 561.0
+offset_top = 30.0
+offset_right = 721.0
+offset_bottom = 270.0
+
+[node name="Deck" type="TextureRect" parent="TableLayout/OpponentArea" unique_id=1492863687]
+layout_mode = 0
+offset_left = 1739.0
+offset_top = 31.0
+offset_right = 1899.0
+offset_bottom = 271.0
+expand_mode = 5
+stretch_mode = 4
+
+[node name="Arsenal" type="TextureRect" parent="TableLayout/OpponentArea" unique_id=311410088]
+layout_mode = 0
+offset_left = 253.0
+offset_top = 158.0
+offset_right = 413.0
+offset_bottom = 398.0
+expand_mode = 5
+stretch_mode = 4
+
+[node name="Graveyard" type="Control" parent="TableLayout/OpponentArea" unique_id=611306257]
+layout_mode = 1
+anchor_left = 0.90900004
+anchor_top = 0.035
+anchor_right = 0.99200004
+anchor_bottom = 0.48000002
+offset_left = -30.28003
+offset_top = 11.1
+offset_right = -29.640137
+offset_bottom = 10.799988
+
+[node name="GraveyardTop" type="TextureRect" parent="TableLayout/OpponentArea/Graveyard" unique_id=816310725]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -10.119
+anchor_top = 1.5370001
+anchor_right = -10.119
+anchor_bottom = 1.5370001
+offset_left = -79.95996
+offset_top = -119.880005
+offset_right = 80.04004
+offset_bottom = 120.119995
+expand_mode = 5
+stretch_mode = 5
+
+[node name="OpponentHand" type="HBoxContainer" parent="TableLayout" unique_id=595842784]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_bottom = 240.0
+grow_horizontal = 2
 size_flags_horizontal = 4
 
-[node name="OpponentHeroes" parent="TableLayout/OpponentArea" unique_id=126813738 instance=ExtResource("1_chlxx")]
-layout_mode = 2
-size_flags_vertical = 10
-
-[node name="CombatZone" type="HBoxContainer" parent="TableLayout" unique_id=2014552813]
-layout_mode = 2
+[node name="CombatZone" type="Control" parent="TableLayout" unique_id=151449746]
+visible = false
+anchors_preset = 0
+offset_top = 361.0
+offset_right = 1920.0
+offset_bottom = 718.0
 size_flags_vertical = 3
 
 [node name="OpponentCombatSlot" type="Panel" parent="TableLayout/CombatZone" unique_id=28627732]
-layout_mode = 2
+visible = false
+layout_mode = 0
+offset_bottom = 357.0
 
 [node name="VSLabel" type="Label" parent="TableLayout/CombatZone" unique_id=262956311]
-layout_mode = 2
+visible = false
+layout_mode = 0
+offset_left = 4.0
+offset_top = 167.0
+offset_right = 5.0
+offset_bottom = 190.0
 
 [node name="PlayerCombatSlot" type="Panel" parent="TableLayout/CombatZone" unique_id=244994832]
-layout_mode = 2
+visible = false
+layout_mode = 0
+offset_left = 9.0
+offset_right = 9.0
+offset_bottom = 357.0
 
-[node name="PlayerArea" type="VBoxContainer" parent="TableLayout" unique_id=1722802589]
-layout_mode = 2
+[node name="PlayerArea" type="Control" parent="TableLayout" unique_id=1497376166]
+anchors_preset = 0
+offset_top = 540.0
+offset_right = 1920.0
+offset_bottom = 1080.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
-alignment = 2
 
-[node name="PlayerHeroes" type="HBoxContainer" parent="TableLayout/PlayerArea" unique_id=446949177]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 10
-theme_override_constants/separation = 8
+[node name="Playmat" type="TextureRect" parent="TableLayout/PlayerArea" unique_id=1550718496]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_gs8k1")
 
-[node name="HeroSlotOne" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=255158991 instance=ExtResource("1_chlxx")]
-layout_mode = 2
-size_flags_vertical = 4
+[node name="CombatStatus" parent="TableLayout/PlayerArea" unique_id=1501314848 instance=ExtResource("5_kwhwr")]
+layout_mode = 0
+offset_left = 154.0
+offset_top = 39.0
+offset_right = 265.0
+offset_bottom = 195.0
 
-[node name="HeroSlotTwo" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=959968196 instance=ExtResource("1_chlxx")]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 8
+[node name="ActiveHero" parent="TableLayout/PlayerArea" unique_id=482976825 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 246.0
+offset_top = 19.0
+offset_right = 406.0
+offset_bottom = 259.0
 
-[node name="HeroSlotThree" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=68406754 instance=ExtResource("1_chlxx")]
-visible = false
-layout_mode = 2
+[node name="Arsenal" type="TextureRect" parent="TableLayout/PlayerArea" unique_id=34619480]
+layout_mode = 0
+offset_left = 1506.0
+offset_top = 144.0
+offset_right = 1666.0
+offset_bottom = 384.0
+expand_mode = 5
+stretch_mode = 4
+
+[node name="ChainCards" type="Control" parent="TableLayout/PlayerArea" unique_id=1154385570]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 414.0
+offset_top = -270.0
+offset_right = -416.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CardsPlayed" type="HBoxContainer" parent="TableLayout/PlayerArea/ChainCards" unique_id=459895289]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayerHeroes" type="Control" parent="TableLayout/PlayerArea" unique_id=1803179315]
+anchors_preset = 0
+offset_right = 1917.0
+offset_bottom = 544.0
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="HeroSlot" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=1622201595 instance=ExtResource("6_qj5ve")]
+layout_mode = 1
+offset_left = 560.0
+offset_top = 269.0
+offset_right = 720.0
+offset_bottom = 509.0
+
+[node name="HeroSlot2" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=1589571983 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 880.0
+offset_top = 270.0
+offset_right = 1040.0
+offset_bottom = 510.0
+
+[node name="HeroSlot3" parent="TableLayout/PlayerArea/PlayerHeroes" unique_id=1430332035 instance=ExtResource("6_qj5ve")]
+layout_mode = 0
+offset_left = 1199.0
+offset_top = 270.0
+offset_right = 1359.0
+offset_bottom = 510.0
 
 [node name="PlayerHand" type="HBoxContainer" parent="TableLayout/PlayerArea" unique_id=2036485913]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.78900003
+anchor_right = 0.5
+anchor_bottom = 0.78900003
+offset_left = -960.0
+offset_top = -90.06003
+offset_right = 962.0
+offset_bottom = 89.93997
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 20
+alignment = 1
 
 [node name="CardView" parent="TableLayout/PlayerArea/PlayerHand" unique_id=1256995890 instance=ExtResource("2_81vmo")]
 layout_mode = 2
 size_flags_horizontal = 6
 size_flags_vertical = 0
 
+[node name="Deck" type="TextureRect" parent="TableLayout/PlayerArea" unique_id=252949603]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 269.0
+offset_right = 181.0
+offset_bottom = 509.0
+expand_mode = 5
+stretch_mode = 4
+
+[node name="Graveyard" type="Control" parent="TableLayout/PlayerArea" unique_id=1002221841]
+layout_mode = 1
+anchor_left = 0.95100003
+anchor_top = 0.257
+anchor_right = 0.95100003
+anchor_bottom = 0.257
+offset_left = -80.920044
+offset_top = -119.78
+offset_right = 79.079956
+offset_bottom = 120.22
+
+[node name="GraveyardTop" type="TextureRect" parent="TableLayout/PlayerArea/Graveyard" unique_id=886775089]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 5
+stretch_mode = 5
+
 [node name="PhaseOverlay" type="CanvasLayer" parent="." unique_id=279148423]
 layer = 2
 
+[node name="DimOverlay" type="ColorRect" parent="PhaseOverlay" unique_id=900000099]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.65)
+
 [node name="MulliganScreen" type="Control" parent="PhaseOverlay" unique_id=638175288]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 1923.0
-offset_bottom = 1076.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 8
+script = ExtResource("5_mulligan")
+metadata/_edit_lock_ = true
 
 [node name="TitleLabel" type="Label" parent="PhaseOverlay/MulliganScreen" unique_id=1025511493]
 layout_mode = 0
@@ -94,10 +366,18 @@ text = "Mulligan Phase"
 horizontal_alignment = 1
 
 [node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/MulliganScreen" unique_id=891401675]
-layout_mode = 0
-offset_top = 357.0
-offset_right = 1921.0
-offset_bottom = 700.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 270.0
+offset_top = 415.0
+offset_right = -250.0
+offset_bottom = -415.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
 
 [node name="BtnConfirmar" type="Button" parent="PhaseOverlay/MulliganScreen" unique_id=823203846]
 layout_mode = 0
@@ -106,6 +386,108 @@ offset_top = 778.0
 offset_right = 1084.0
 offset_bottom = 865.0
 text = "Escolher"
+
+[node name="HeroPickScreen" type="Control" parent="PhaseOverlay" unique_id=700000001]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 8
+script = ExtResource("6_hero_pick")
+metadata/_edit_lock_ = true
+
+[node name="WaitingLabel" type="Label" parent="PhaseOverlay/HeroPickScreen" unique_id=700000002]
+layout_mode = 0
+offset_left = 710.0
+offset_top = 490.0
+offset_right = 1210.0
+offset_bottom = 590.0
+text = "Aguardando oponente escolher herói..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HeroesRow" type="HBoxContainer" parent="PhaseOverlay/HeroPickScreen" unique_id=700000003]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 349.0
+offset_top = 313.0
+offset_right = -273.0
+offset_bottom = -331.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/HeroPickScreen" unique_id=700000004]
+layout_mode = 0
+offset_left = 760.0
+offset_top = 920.0
+offset_right = 1160.0
+offset_bottom = 1000.0
+text = "Confirmar Herói"
+
+[node name="ArsenalScreen" type="Control" parent="PhaseOverlay" unique_id=800000001]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("9_arsenal")
+
+[node name="TitleLabel" type="Label" parent="PhaseOverlay/ArsenalScreen" unique_id=800000002]
+layout_mode = 0
+offset_left = 660.0
+offset_top = 8.0
+offset_right = 1260.0
+offset_bottom = 36.0
+text = "Arsenal — escolha uma carta para guardar (opcional)"
+horizontal_alignment = 1
+
+[node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/ArsenalScreen" unique_id=800000003]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 270.0
+offset_top = 415.0
+offset_right = -250.0
+offset_bottom = -415.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="WaitingLabel" type="Label" parent="PhaseOverlay/ArsenalScreen" unique_id=800000004]
+layout_mode = 0
+offset_left = 710.0
+offset_top = 490.0
+offset_right = 1210.0
+offset_bottom = 590.0
+text = "Aguardando oponente..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/ArsenalScreen" unique_id=800000005]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 778.0
+offset_right = 1084.0
+offset_bottom = 838.0
+text = "Guardar Carta"
+
+[node name="BtnPular" type="Button" parent="PhaseOverlay/ArsenalScreen" unique_id=800000006]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 848.0
+offset_right = 1084.0
+offset_bottom = 908.0
+text = "Não Guardar"
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=139328610]
 visible = false
@@ -128,3 +510,39 @@ offset_left = -193.0
 offset_top = 537.0
 offset_right = -110.0
 offset_bottom = 654.0
+
+[node name="PassButton" type="Button" parent="." unique_id=1060357029]
+offset_left = 1800.0
+offset_top = 502.0
+offset_right = 1904.0
+offset_bottom = 553.0
+text = "Pass"
+
+[node name="PreviewLayer" type="CanvasLayer" parent="." unique_id=876031863]
+layer = 3
+
+[node name="CardPreview" type="Control" parent="PreviewLayer" unique_id=1735764326]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1489.0
+offset_top = 174.0
+offset_right = 1885.0
+offset_bottom = 913.0
+mouse_filter = 2
+script = ExtResource("8_i3ara")
+metadata/_edit_use_anchors_ = true
+metadata/_edit_lock_ = true
+
+[node name="HeroSlot" parent="PreviewLayer/CardPreview" unique_id=22220001 instance=ExtResource("6_qj5ve")]
+visible = false
+layout_mode = 0
+scale = Vector2(2, 2)
+mouse_filter = 2
+
+[node name="CardView" parent="PreviewLayer/CardPreview" unique_id=22220002 instance=ExtResource("2_81vmo")]
+visible = false
+layout_mode = 0
+scale = Vector2(2, 2)
+mouse_filter = 2
+
+[connection signal="pressed" from="PhaseOverlay/HeroPickScreen/BtnConfirmar" to="." method="_on_btn_confirmar_pressed"]
