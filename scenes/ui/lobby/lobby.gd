@@ -1,14 +1,15 @@
 extends Control
 
-const PORT        := 7000
-const BOARD_SCENE := "res://scenes/ui/board/Board.tscn"
-const WORLD_SCENE := "res://scenes/world/world_root.tscn"
+const PORT              := 7000
+const BOARD_SCENE       := "res://scenes/ui/board/Board.tscn"
+const WORLD_CONNECT_SCENE := "res://scenes/world/world_connect.tscn"
 
 # ── Node references ────────────────────────────────────────────────────────────
 @onready var address_input   : LineEdit       = %AddressInput
 @onready var join_button     : Button         = %JoinButton
 @onready var host_button     : Button         = %HostButton
 @onready var help_button     : Button         = %HelpButton
+@onready var world_button    : Button         = %WorldButton
 @onready var status_label    : Label          = %StatusLabel
 @onready var toast_label     : Label          = %ToastLabel
 @onready var help_dialog     : Control        = %HelpDialog
@@ -26,13 +27,10 @@ const C_PARCHMENT   := Color(0.929, 0.875, 0.784, 1.0)
 const C_PARCHMENT_D := Color(0.722, 0.659, 0.549, 1.0)
 const C_PANEL_BG    := Color(0.063, 0.082, 0.149, 0.90)
 
-var _toast_tween    : Tween
-var _music          : AudioStreamPlayer
-var _is_world_mode  : bool = false
-var _world_button   : Button
+var _toast_tween : Tween
+var _music       : AudioStreamPlayer
 
 func _ready() -> void:
-	# Garante full-screen independente de como o parent (Node2D) posiciona este Control
 	position = Vector2.ZERO
 	size     = get_viewport_rect().size
 	address_input.text = "127.0.0.1"
@@ -44,7 +42,6 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
-	_add_world_button()
 	_start_music()
 
 
@@ -91,6 +88,16 @@ func _apply_styles() -> void:
 	help_button.add_theme_stylebox_override("pressed", help_normal)
 	help_button.add_theme_color_override("font_color",       C_GOLD_DIM)
 	help_button.add_theme_color_override("font_hover_color", C_GOLD_GLOW)
+
+	var world_normal := _make_button_style(Color(0.04, 0.10, 0.08), Color(0.3, 0.65, 0.45), 0.5)
+	var world_hover  := _make_button_style(Color(0.06, 0.14, 0.11), Color(0.4, 0.85, 0.60), 0.85)
+	var world_press  := _make_button_style(Color(0.03, 0.08, 0.06), Color(0.3, 0.65, 0.45), 1.0)
+	world_button.add_theme_stylebox_override("normal",  world_normal)
+	world_button.add_theme_stylebox_override("hover",   world_hover)
+	world_button.add_theme_stylebox_override("pressed", world_press)
+	world_button.add_theme_color_override("font_color",         Color(0.45, 0.80, 0.60))
+	world_button.add_theme_color_override("font_hover_color",   Color(0.60, 1.00, 0.78))
+	world_button.add_theme_color_override("font_pressed_color", Color(0.40, 0.70, 0.55))
 
 	var input_normal := StyleBoxFlat.new()
 	input_normal.bg_color = Color(0.031, 0.043, 0.110, 0.75)
@@ -161,6 +168,7 @@ func _connect_signals() -> void:
 	join_button.pressed.connect(_on_join_pressed)
 	host_button.pressed.connect(_on_host_pressed)
 	help_button.pressed.connect(_on_help_pressed)
+	world_button.pressed.connect(_on_world_pressed)
 	address_input.text_submitted.connect(_on_address_submitted)
 	%HelpCloseButton.pressed.connect(func(): help_dialog.hide())
 	%HelpDialog.get_node("DimBG").gui_input.connect(func(event):
@@ -202,14 +210,14 @@ func _on_help_pressed() -> void:
 func _on_address_submitted(_text: String) -> void:
 	_on_join_pressed()
 
+func _on_world_pressed() -> void:
+	get_tree().change_scene_to_file(WORLD_CONNECT_SCENE)
+
 
 # ── Callbacks de rede ──────────────────────────────────────────────────────────
 func _on_peer_connected(_id: int) -> void:
 	await get_tree().process_frame
-	if _is_world_mode:
-		_start_world.rpc()
-	else:
-		_start_game.rpc()
+	_start_game.rpc()
 
 func _on_peer_disconnected(_id: int) -> void:
 	_set_buttons_enabled(true)
@@ -223,46 +231,6 @@ func _on_connection_failed() -> void:
 	_set_buttons_enabled(true)
 	_show_toast("✦  Falha ao conectar — verifique o IP")
 
-
-# ── Mundo aberto ───────────────────────────────────────────────────────────────
-func _add_world_button() -> void:
-	var button_row := $CenterContainer/MainVBox/LobbyPanel/PanelMargin/PanelVBox/ButtonRow
-	if button_row == null:
-		return
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 14)
-	var world_row := HBoxContainer.new()
-	world_row.add_theme_constant_override("separation", 14)
-	_world_button = Button.new()
-	_world_button.text = "⊕  Explorar Mundo (Host)"
-	_world_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_world_button.add_theme_font_override("font", %JoinButton.get_theme_font("font"))
-	var ws := _make_button_style(Color(0.04, 0.09, 0.12), Color(0.3, 0.6, 0.5), 0.55)
-	var ws_h := _make_button_style(Color(0.06, 0.12, 0.16), Color(0.4, 0.8, 0.65), 0.85)
-	var ws_p := _make_button_style(Color(0.03, 0.07, 0.10), Color(0.3, 0.6, 0.5), 1.0)
-	_world_button.add_theme_stylebox_override("normal",  ws)
-	_world_button.add_theme_stylebox_override("hover",   ws_h)
-	_world_button.add_theme_stylebox_override("pressed", ws_p)
-	_world_button.add_theme_color_override("font_color",         Color(0.5, 0.85, 0.7))
-	_world_button.add_theme_color_override("font_hover_color",   Color(0.65, 1.0, 0.85))
-	_world_button.add_theme_color_override("font_pressed_color", Color(0.45, 0.75, 0.6))
-	_world_button.pressed.connect(_on_world_host_pressed)
-	world_row.add_child(_world_button)
-	var panel_vbox := button_row.get_parent()
-	panel_vbox.add_child(spacer)
-	panel_vbox.add_child(world_row)
-
-func _on_world_host_pressed() -> void:
-	var peer := ENetMultiplayerPeer.new()
-	var err  := peer.create_server(PORT)
-	if err != OK:
-		_show_toast("✦  Erro ao criar sala: %d" % err)
-		return
-	multiplayer.multiplayer_peer = peer
-	NetworkState.local_player_index = 0
-	_is_world_mode = true
-	_set_buttons_enabled(false)
-	_show_toast("✦  Mundo criado… aguardando jogador")
 
 # ── Início de partida ──────────────────────────────────────────────────────────
 func _start_music() -> void:
@@ -278,16 +246,11 @@ func _start_game() -> void:
 	_music.stop()
 	get_tree().change_scene_to_file(BOARD_SCENE)
 
-@rpc("authority", "call_local", "reliable")
-func _start_world() -> void:
-	_music.stop()
-	get_tree().change_scene_to_file(WORLD_SCENE)
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 func _set_buttons_enabled(value: bool) -> void:
-	host_button.disabled  = not value
-	join_button.disabled  = not value
+	host_button.disabled   = not value
+	join_button.disabled   = not value
 	address_input.editable = value
 
 func _show_toast(msg: String) -> void:
