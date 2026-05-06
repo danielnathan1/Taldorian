@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir \"C:\\\\Users\\\\danie\\\\Documents\\\\taldorian\\\\scenes\\\\ui\\\\board\\\\\" /B)"
+      "Bash(dir \"C:\\\\Users\\\\danie\\\\Documents\\\\taldorian\\\\scenes\\\\ui\\\\board\\\\\" /B)",
+      "Bash(rm -rf scenes/ui/board)",
+      "Bash(rm -rf scenes/ui/board_new)",
+      "Bash(rm -f scenes/ui/boardv2/*.tmp)",
+      "Bash(sed -i 's|# scenes/ui/board/discart_card/discart_card.gd|# scenes/ui/boardv2/discart_card/discart_card.gd|' scenes/ui/boardv2/discart_card/discart_card.gd)",
+      "Bash(sed -i 's|# scenes/ui/board/pick_card/pick_card.gd|# scenes/ui/boardv2/pick_card/pick_card.gd|' scenes/ui/boardv2/pick_card/pick_card.gd)",
+      "Bash(sed -i 's|# scenes/ui/board/pick_symbol/pick_symbol.gd|# scenes/ui/boardv2/pick_symbol/pick_symbol.gd|' scenes/ui/boardv2/pick_symbol/pick_symbol.gd)",
+      "Bash(grep -rn \"scenes/ui/board[^v]\" scenes/ src/ --include=\"*.gd\" --include=\"*.tscn\")",
+      "Bash(grep -rn \"scenes/ui/board_new\" scenes/ src/ --include=\"*.gd\" --include=\"*.tscn\")",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://butectimtg0se\" path=|\\\\[ext_resource type=\"Script\" path=|' scenes/ui/boardv2/center_bar.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://cfwr46gf2p6tn\" path=|\\\\[ext_resource type=\"Script\" path=|' scenes/ui/boardv2/half_board.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://75vmkahtom04\" path=|\\\\[ext_resource type=\"Script\" path=|' scenes/ui/boardv2/pick_card/PickCard.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://dq7n8bpk3rv5s\" path=|\\\\[ext_resource type=\"Script\" path=|' scenes/ui/boardv2/combat_resolve/combat_resolve.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://d3stpbn4jvhos\" path=|\\\\[ext_resource type=\"Script\" path=|' scenes/ui/boardv2/game_result/game_result.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" uid=\"uid://b6ik5ahhaav2m\" path=\"res://scenes/ui/board/card_preview.gd\" id=\"card_preview_gd\"\\\\]|\\\\[ext_resource type=\"Script\" path=\"res://scenes/ui/boardv2/card_preview.gd\" id=\"card_preview_gd\"\\\\]|' scenes/ui/boardv2/board.tscn)",
+      "Bash(sed -i 's|\\\\[ext_resource type=\"Script\" path=\"res://scenes/ui/board/card_preview.gd\" id=\"card_preview_gd\"\\\\]|\\\\[ext_resource type=\"Script\" path=\"res://scenes/ui/boardv2/card_preview.gd\" id=\"card_preview_gd\"\\\\]|' scenes/ui/boardv2/board.tscn)"
     ]
   }
 }

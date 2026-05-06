@@ -53,7 +53,7 @@ func start_match() -> void:
 	# Forçar cartas ANTES do draw inicial — assim draw_up_to completa até o cap
 	# sem estourar o limite e sem causar descartes extras no mulligan.
 	#_debug_force_card_to_hand(players[0], "Planos Futuros")
-	_debug_force_card_to_hand(players[0], "Planos Futuros")
+	#_debug_force_card_to_hand(players[0], "Planos Futuros")
 	for p in players:
 		p.draw_up_to(Player.HAND_CAP_START)
 	_opening_mulligan_done = [false, false]
@@ -129,9 +129,6 @@ func submit_opening_mulligan(player_idx: int, idx_a: int, idx_b: int) -> bool:
 	var c_b: Card = pl.hand[idx_b]
 	pl.send_cards_to_bottom([c_a, c_b])
 	_opening_mulligan_done[player_idx] = true
-	print("chegou aqui")
-	print("Player:")
-	print(player_idx)
 	print(_opening_mulligan_done)
 	if _opening_mulligan_done[0] and _opening_mulligan_done[1]:
 		turn.current_player_index = 0
@@ -535,6 +532,9 @@ func _both_hands_empty() -> bool:
 	return players[0].hand.is_empty() and players[1].hand.is_empty()
 
 func _resolve_round_combat() -> void:
+	var preview := _build_combat_preview()
+	if not preview.is_empty():
+		_rpc_notify_combat_preview.rpc(preview)
 	CombatResolver.resolve_round(players[0], players[1])
 	# Cartas NÃO vão ao cemitério aqui — apenas round_cards é limpo para o
 	# próximo combate começar do zero. O cemitério só recebe as cartas na END.
@@ -648,7 +648,7 @@ static func _make_player(index: int, pname: String) -> Player:
 		HeroHakai.new(),
 	]
 	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
-	p.playmat_key = 'gostosa'
+	p.playmat_key = 'default'
 	return p
 
 static func _make_player2(index: int, pname: String) -> Player:
@@ -661,7 +661,7 @@ static func _make_player2(index: int, pname: String) -> Player:
 		HeroPoppy.new(),
 	]
 	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
-	p.playmat_key = 'p2'
+	p.playmat_key = 'default'
 	return p
 
 func _make_effect_ctx(player_idx: int, card: Card, from_arsenal: bool = false) -> CardEffectContext:
@@ -676,7 +676,50 @@ static func _make_hero() -> Hero:
 	var h := HeroPoppy.new()
 	return h
 
-	# ── camada de rede ───────────────────────────────────────
+func _build_combat_preview() -> Dictionary:
+	var p0 := players[0]
+	var p1 := players[1]
+	var h0 := p0.active_hero
+	var h1 := p1.active_hero
+	if h0 == null or h1 == null:
+		return {}
+
+	var atk0 := h0.base_attack
+	for card in p0.round_cards:
+		atk0 += card.attack_value
+	atk0 += p0.pending_bonus_attack + p0.passive_attack_bonus
+
+	var def0 := h0.base_defense
+	for card in p0.round_cards:
+		def0 += card.defense_value
+	def0 -= p0.next_defense_penalty
+	def0 += p0.pending_bonus_defense
+
+	var atk1 := h1.base_attack
+	for card in p1.round_cards:
+		atk1 += card.attack_value
+	atk1 += p1.pending_bonus_attack + p1.passive_attack_bonus
+
+	var def1 := h1.base_defense
+	for card in p1.round_cards:
+		def1 += card.defense_value
+	def1 -= p1.next_defense_penalty
+	def1 += p1.pending_bonus_defense
+
+	return {
+		"hero_0_idx":  p0.heroes.find(h0),
+		"hero_1_idx":  p1.heroes.find(h1),
+		"atk_0": atk0, "def_0": def0,
+		"atk_1": atk1, "def_1": def1,
+		"dmg_to_0": maxi(0, atk1 - def0),
+		"dmg_to_1": maxi(0, atk0 - def1),
+	}
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_notify_combat_preview(data: Dictionary) -> void:
+	GameBus.combat_preview_ready.emit(data)
+
+# ── camada de rede ───────────────────────────────────────
 # Clientes chamam esses métodos — nunca a lógica diretamente.
 
 ## Empurra o estado atual do servidor para todos os peers.

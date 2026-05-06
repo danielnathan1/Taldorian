@@ -1,42 +1,53 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://cpo65f0amcosy"]
 
-[ext_resource type="Script" path="res://scenes/world/player/player_character.gd" id="1_pc"]
+[ext_resource type="Script" uid="uid://dbwjfkaa61jb0" path="res://scenes/world/player/player_character.gd" id="1_pc"]
 
 [sub_resource type="RectangleShape2D" id="Shape_pc"]
 size = Vector2(12, 12)
 
-[node name="PlayerCharacter" type="CharacterBody2D"]
+[node name="PlayerCharacter" type="CharacterBody2D" unique_id=672507457]
 script = ExtResource("1_pc")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=111728992]
 shape = SubResource("Shape_pc")
 
-[node name="Camera2D" type="Camera2D" parent="."]
-zoom = Vector2(3, 3)
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1046106332]
 
-[node name="NameLabel" type="Label" parent="."]
-position = Vector2(-40, -26)
+[node name="NameLabel" type="Label" parent="." unique_id=1635719687]
 custom_minimum_size = Vector2(80, 14)
+offset_left = -40.0
+offset_top = -38.0
+offset_right = -40.0
+offset_bottom = -38.0
 theme_override_font_sizes/font_size = 9
 
-[node name="ChatBubble" type="Control" parent="."]
+[node name="ChatBubble" type="Control" parent="." unique_id=2036577970]
 visible = false
-position = Vector2(-48, -44)
 custom_minimum_size = Vector2(96, 18)
+layout_mode = 3
+anchors_preset = 0
+offset_left = -48.0
+offset_top = -44.0
+offset_right = -48.0
+offset_bottom = -44.0
 
-[node name="BG" type="ColorRect" parent="ChatBubble"]
+[node name="BG" type="ColorRect" parent="ChatBubble" unique_id=2047784912]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.05, 0.05, 0.05, 0.75)
 
-[node name="Label" type="Label" parent="ChatBubble"]
+[node name="Label" type="Label" parent="ChatBubble" unique_id=1748910656]
+clip_contents = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_font_sizes/font_size = 8
 horizontal_alignment = 1
 vertical_alignment = 1
-clip_contents = true

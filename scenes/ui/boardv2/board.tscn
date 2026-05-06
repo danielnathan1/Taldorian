@@ -1,0 +1,265 @@
+[gd_scene format=3 uid="uid://vdnsusr3gptq"]
+
+[ext_resource type="Script" uid="uid://50ub0dlmirhw" path="res://scenes/ui/boardv2/arsenal_screen.gd" id="arsenal_gd"]
+[ext_resource type="Script" uid="uid://cekkw3xukhifl" path="res://scenes/ui/boardv2/board.gd" id="board_gd"]
+[ext_resource type="Script" path="res://scenes/ui/boardv2/card_preview.gd" id="card_preview_gd"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="card_view_scene"]
+[ext_resource type="PackedScene" path="res://scenes/ui/boardv2/center_bar.tscn" id="center_bar_scene"]
+[ext_resource type="PackedScene" uid="uid://b55jyo8int1dk" path="res://scenes/ui/boardv2/combat_status/CombatStatus.tscn" id="combat_status_scene"]
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="font_black"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="font_regular"]
+[ext_resource type="PackedScene" path="res://scenes/ui/boardv2/half_board.tscn" id="half_board_scene"]
+[ext_resource type="Script" uid="uid://b33saudlbck66" path="res://scenes/ui/boardv2/hero_pick_screen.gd" id="hero_pick_gd"]
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="hero_slot_scene"]
+[ext_resource type="Script" uid="uid://ducph4m1khg6l" path="res://scenes/ui/boardv2/mulligan_screen.gd" id="mulligan_gd"]
+[ext_resource type="PackedScene" path="res://scenes/ui/boardv2/player_hand.tscn" id="player_hand_scene"]
+
+[node name="Board" type="Control" unique_id=197083175]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("board_gd")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1680462452]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+
+[node name="OpponentHalf" parent="VBox" unique_id=669388638 instance=ExtResource("half_board_scene")]
+clip_children = 1
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+player_side = "opponent"
+
+[node name="CenterBar" parent="VBox" unique_id=583293067 instance=ExtResource("center_bar_scene")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="PlayerHalf" parent="VBox" unique_id=1634544125 instance=ExtResource("half_board_scene")]
+clip_children = 1
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerHand" parent="VBox/PlayerHalf" unique_id=1617488310 instance=ExtResource("player_hand_scene")]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -180.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="PlayerCombatStatus" parent="." unique_id=1352120205 instance=ExtResource("combat_status_scene")]
+layout_mode = 0
+offset_left = 154.0
+offset_top = 645.0
+offset_right = 265.0
+offset_bottom = 801.0
+
+[node name="OpponentCombatStatus" parent="." unique_id=563316338 instance=ExtResource("combat_status_scene")]
+layout_mode = 0
+offset_left = 1650.0
+offset_top = 200.0
+offset_right = 1761.0
+offset_bottom = 356.0
+
+[node name="PhaseOverlay" type="CanvasLayer" parent="." unique_id=258570625]
+layer = 2
+
+[node name="DimOverlay" type="ColorRect" parent="PhaseOverlay" unique_id=198740945]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.65)
+
+[node name="MulliganScreen" type="Control" parent="PhaseOverlay" unique_id=876975964]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("mulligan_gd")
+
+[node name="TitleLabel" type="Label" parent="PhaseOverlay/MulliganScreen" unique_id=910401981]
+layout_mode = 0
+offset_left = 919.0
+offset_top = 8.0
+offset_right = 1077.0
+offset_bottom = 36.0
+theme_override_fonts/font = ExtResource("font_black")
+text = "Mulligan Phase"
+horizontal_alignment = 1
+
+[node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/MulliganScreen" unique_id=1822881535]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 270.0
+offset_top = 415.0
+offset_right = -250.0
+offset_bottom = -415.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/MulliganScreen" unique_id=1973463073]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 778.0
+offset_right = 1084.0
+offset_bottom = 865.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Escolher"
+
+[node name="HeroPickScreen" type="Control" parent="PhaseOverlay" unique_id=910053627]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("hero_pick_gd")
+
+[node name="WaitingLabel" type="Label" parent="PhaseOverlay/HeroPickScreen" unique_id=1389260473]
+layout_mode = 0
+offset_left = 710.0
+offset_top = 490.0
+offset_right = 1210.0
+offset_bottom = 590.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Aguardando oponente escolher herói..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HeroesRow" type="HBoxContainer" parent="PhaseOverlay/HeroPickScreen" unique_id=86620570]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 349.0
+offset_top = 313.0
+offset_right = -273.0
+offset_bottom = -331.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/HeroPickScreen" unique_id=449747338]
+layout_mode = 0
+offset_left = 760.0
+offset_top = 920.0
+offset_right = 1160.0
+offset_bottom = 1000.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Confirmar Herói"
+
+[node name="ArsenalScreen" type="Control" parent="PhaseOverlay" unique_id=449590602]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("arsenal_gd")
+
+[node name="TitleLabel" type="Label" parent="PhaseOverlay/ArsenalScreen" unique_id=437855760]
+layout_mode = 0
+offset_left = 660.0
+offset_top = 8.0
+offset_right = 1260.0
+offset_bottom = 36.0
+theme_override_fonts/font = ExtResource("font_black")
+text = "Arsenal — escolha uma carta para guardar (opcional)"
+horizontal_alignment = 1
+
+[node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/ArsenalScreen" unique_id=566800123]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 270.0
+offset_top = 415.0
+offset_right = -250.0
+offset_bottom = -415.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="WaitingLabel" type="Label" parent="PhaseOverlay/ArsenalScreen" unique_id=1229804039]
+layout_mode = 0
+offset_left = 710.0
+offset_top = 490.0
+offset_right = 1210.0
+offset_bottom = 590.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Aguardando oponente..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BtnConfirmar" type="Button" parent="PhaseOverlay/ArsenalScreen" unique_id=881046259]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 778.0
+offset_right = 1084.0
+offset_bottom = 838.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Guardar Carta"
+
+[node name="BtnPular" type="Button" parent="PhaseOverlay/ArsenalScreen" unique_id=588689817]
+layout_mode = 0
+offset_left = 797.0
+offset_top = 848.0
+offset_right = 1084.0
+offset_bottom = 908.0
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Não Guardar"
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=62124483]
+
+[node name="PreviewLayer" type="CanvasLayer" parent="." unique_id=1872294530]
+layer = 3
+
+[node name="CardPreview" type="Control" parent="PreviewLayer" unique_id=677426479]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1489.0
+offset_top = 174.0
+offset_right = 1885.0
+offset_bottom = 913.0
+mouse_filter = 2
+script = ExtResource("card_preview_gd")
+
+[node name="HeroSlot" parent="PreviewLayer/CardPreview" unique_id=1250405745 instance=ExtResource("hero_slot_scene")]
+visible = false
+layout_mode = 0
+scale = Vector2(2, 2)
+mouse_filter = 2
+
+[node name="CardView" parent="PreviewLayer/CardPreview" unique_id=768631564 instance=ExtResource("card_view_scene")]
+visible = false
+layout_mode = 0
+scale = Vector2(2, 2)
+mouse_filter = 2

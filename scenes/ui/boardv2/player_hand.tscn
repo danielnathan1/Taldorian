@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bx0e06i8kgerc"]
+
+[ext_resource type="Script" uid="uid://bv2playerhandgd" path="res://scenes/ui/boardv2/player_hand.gd" id="player_hand_gd"]
+
+[node name="PlayerHand" type="Control"]
+clip_contents = false
+script = ExtResource("player_hand_gd")

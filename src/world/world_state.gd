@@ -10,6 +10,10 @@ var _players: Dictionary = {}
 
 # ── Ativação ───────────────────────────────────────────────────────────────────
 
+func reset() -> void:
+	_active  = false
+	_players = {}
+
 func activate() -> void:
 	if _active:
 		return
@@ -20,7 +24,7 @@ func activate() -> void:
 		var id := multiplayer.get_unique_id()
 		_players[id] = {
 			"tile": Vector2i(5, 5),
-			"map": "floresta_inicial",
+			"map": "taldorian_city",
 			"player_name": NetworkState.player_name
 		}
 		_sync_world.rpc(_players.duplicate(true))
@@ -67,7 +71,7 @@ func _rpc_enter_world(player_name: String) -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
 	_players[sender_id] = {
 		"tile": Vector2i(5, 5),
-		"map": "floresta_inicial",
+		"map": "taldorian_city",
 		"player_name": player_name.left(32)
 	}
 	_sync_world.rpc(_players.duplicate(true))

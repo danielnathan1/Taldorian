@@ -1,0 +1,151 @@
+[gd_scene format=3 uid="uid://d0akithpmcdb8"]
+
+[ext_resource type="Script" path="res://scenes/ui/boardv2/turn_transaction/turn_transition.gd" id="1_script"]
+[ext_resource type="Shader" uid="uid://8l36yrtmhsgw" path="res://scenes/ui/boardv2/turn_transaction/shaders/banner_bg.gdshader" id="2_bg"]
+[ext_resource type="Shader" uid="uid://5aix1prlsg7a" path="res://scenes/ui/boardv2/turn_transaction/shaders/banner_line.gdshader" id="3_line"]
+[ext_resource type="Shader" uid="uid://cr1fjyeff2d5u" path="res://scenes/ui/boardv2/turn_transaction/shaders/banner_edge.gdshader" id="4_edge"]
+
+[sub_resource type="ShaderMaterial" id="SM_bg"]
+shader = ExtResource("2_bg")
+shader_parameter/stripe_color = Color(0.063, 0.082, 0.188, 0.92)
+
+[sub_resource type="ShaderMaterial" id="SM_border_top"]
+shader = ExtResource("3_line")
+shader_parameter/line_color = Color(0.91, 0.76, 0.337, 1)
+
+[sub_resource type="ShaderMaterial" id="SM_border_bottom"]
+shader = ExtResource("3_line")
+shader_parameter/line_color = Color(0.91, 0.76, 0.337, 1)
+
+[sub_resource type="ShaderMaterial" id="SM_edge_left"]
+shader = ExtResource("4_edge")
+shader_parameter/flip = false
+shader_parameter/bg_color = Color(0.027, 0.031, 0.059, 1)
+
+[sub_resource type="ShaderMaterial" id="SM_edge_right"]
+shader = ExtResource("4_edge")
+shader_parameter/flip = true
+shader_parameter/bg_color = Color(0.027, 0.031, 0.059, 1)
+
+[node name="TurnTransition" type="Control" unique_id=224428079]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="BannerTrack" type="Control" parent="." unique_id=1882813374]
+unique_name_in_owner = true
+anchors_preset = 0
+offset_left = -1920.0
+offset_top = 504.0
+offset_bottom = 576.0
+mouse_filter = 2
+
+[node name="BannerBG" type="ColorRect" parent="BannerTrack" unique_id=84929564]
+unique_name_in_owner = true
+material = SubResource("SM_bg")
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 72.0
+mouse_filter = 2
+
+[node name="BorderTop" type="ColorRect" parent="BannerTrack" unique_id=2076525046]
+unique_name_in_owner = true
+material = SubResource("SM_border_top")
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 2.0
+mouse_filter = 2
+
+[node name="BorderBottom" type="ColorRect" parent="BannerTrack" unique_id=1715626932]
+unique_name_in_owner = true
+material = SubResource("SM_border_bottom")
+layout_mode = 0
+offset_top = 70.0
+offset_right = 1920.0
+offset_bottom = 72.0
+mouse_filter = 2
+
+[node name="ContentCenter" type="CenterContainer" parent="BannerTrack" unique_id=637672525]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 72.0
+mouse_filter = 2
+
+[node name="ContentRow" type="HBoxContainer" parent="BannerTrack/ContentCenter" unique_id=725250522]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 16
+
+[node name="RuneLeft" type="Label" parent="BannerTrack/ContentCenter/ContentRow" unique_id=577777268]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 0.5)
+theme_override_font_sizes/font_size = 16
+text = "✦"
+vertical_alignment = 1
+
+[node name="DiamondLeft" type="ColorRect" parent="BannerTrack/ContentCenter/ContentRow" unique_id=1300364772]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(10, 10)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.91, 0.76, 0.337, 1)
+
+[node name="MainLabel" type="Label" parent="BannerTrack/ContentCenter/ContentRow" unique_id=456218500]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.76, 0.337, 1)
+theme_override_font_sizes/font_size = 36
+text = "Seu Turno"
+vertical_alignment = 1
+uppercase = true
+
+[node name="DiamondRight" type="ColorRect" parent="BannerTrack/ContentCenter/ContentRow" unique_id=1304957463]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(10, 10)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.91, 0.76, 0.337, 1)
+
+[node name="SubLabel" type="Label" parent="BannerTrack/ContentCenter/ContentRow" unique_id=647147933]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 0.75)
+theme_override_font_sizes/font_size = 18
+text = "Fase de Ação"
+vertical_alignment = 1
+
+[node name="RuneRight" type="Label" parent="BannerTrack/ContentCenter/ContentRow" unique_id=1780265563]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 0.5)
+theme_override_font_sizes/font_size = 16
+text = "✦"
+vertical_alignment = 1
+
+[node name="EdgeLeft" type="ColorRect" parent="BannerTrack" unique_id=630983509]
+unique_name_in_owner = true
+z_index = 2
+material = SubResource("SM_edge_left")
+layout_mode = 0
+offset_right = 270.0
+offset_bottom = 72.0
+mouse_filter = 2
+
+[node name="EdgeRight" type="ColorRect" parent="BannerTrack" unique_id=267531232]
+unique_name_in_owner = true
+z_index = 2
+material = SubResource("SM_edge_right")
+layout_mode = 0
+offset_left = 1650.0
+offset_right = 1920.0
+offset_bottom = 72.0
+mouse_filter = 2

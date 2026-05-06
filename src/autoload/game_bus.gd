@@ -22,6 +22,8 @@ signal skill_activated(hero: Hero, skill_name: String)
 
 # Combate — dano recebido pelo herói ativo de cada índice (mútuo)
 signal combat_resolved(damage_to_player_0_hero: int, damage_to_player_1_hero: int)
+# Preview de combate — dispara antes do dano ser aplicado, com os valores calculados
+signal combat_preview_ready(data: Dictionary)
 
 # Janela de reação aberta — UI do jogador deve exibir opção de reagir
 signal reaction_window_opened(player_index: int)

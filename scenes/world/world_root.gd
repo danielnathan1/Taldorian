@@ -19,7 +19,7 @@ func _ready() -> void:
 	GameBus.world_chat_received.connect(_on_world_chat_received)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	hud.set_local_player(local_player)
-	_load_map("floresta_inicial")
+	_load_map("taldorian_city")
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -78,5 +78,6 @@ func _despawn_remote_player(peer_id: int) -> void:
 # ── Navegação ──────────────────────────────────────────────────────────────────
 
 func _return_to_lobby() -> void:
+	WorldState.reset()
 	multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file(LOBBY_SCENE)

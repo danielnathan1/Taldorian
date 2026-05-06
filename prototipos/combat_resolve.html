@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taldorian TCG — Combat Resolve</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1008;
+    font-family: 'Georgia', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: #f0e6d0;
+  }
+
+  .bg {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(120,40,10,.35) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(20,40,80,.35) 0%, transparent 60%),
+      linear-gradient(180deg, #0d0906 0%, #1a1008 40%, #0d0906 100%);
+    z-index: 0;
+  }
+
+  /* ─── Outer layout ─── */
+  .combat-stage {
+    position: relative; z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .phase-title {
+    font-size: 1.05rem;
+    letter-spacing: .4em;
+    text-transform: uppercase;
+    color: #c8a96e;
+    opacity: 0;
+    transform: translateY(-12px);
+    animation: fadeDown .5s ease .1s forwards;
+    margin-bottom: 22px;
+    text-shadow: 0 0 20px rgba(200,169,110,.6);
+  }
+
+  /* ─── Main row: stats left | heroes right ─── */
+  .main-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 28px;
+  }
+
+  /* ─── Left stats panel ─── */
+  .left-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    opacity: 0;
+    animation: fadeIn .5s ease .7s forwards;
+    min-width: 180px;
+  }
+
+  .hero-stat-block {
+    background: rgba(0,0,0,.5);
+    border: 1px solid rgba(200,169,110,.2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stat-block-name {
+    font-size: .7rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: #c8a96e;
+    border-bottom: 1px solid rgba(200,169,110,.2);
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+  }
+
+  .stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: .82rem;
+  }
+
+  .stat-row-label {
+    color: #a08850;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .stat-row-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  .val-atk { color: #e74c3c; }
+  .val-def { color: #4a90e2; }
+  .val-dmg { color: #f39c12; font-size: 1.25rem; }
+
+  .divider { height: 1px; background: rgba(200,169,110,.15); }
+
+  /* ─── Heroes area ─── */
+  .heroes-area {
+    display: flex;
+    align-items: flex-start;
+    gap: 32px;
+    position: relative;
+  }
+
+  /* ─── Hero column ─── */
+  .hero-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+  }
+
+  .hero-col.left  { animation: slideInLeft  .6s cubic-bezier(.22,.68,0,1.2) .3s forwards; }
+  .hero-col.right { animation: slideInRight .6s cubic-bezier(.22,.68,0,1.2) .3s forwards; }
+
+  /* ─── Hero card ─── */
+  .hero-card {
+    width: 200px;
+    background: linear-gradient(160deg, #2e2010 0%, #1c140a 100%);
+    border: 2px solid #6b4e1e;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,.7), inset 0 1px 0 rgba(200,169,110,.2);
+    position: relative;
+  }
+
+  .hero-art {
+    width: 100%; height: 150px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, #2a1e0e 0%, #1a1208 100%);
+    font-size: 80px;
+  }
+
+  .hero-name-bar {
+    background: linear-gradient(90deg, transparent, rgba(200,169,110,.15), transparent);
+    border-top: 1px solid rgba(200,169,110,.3);
+    border-bottom: 1px solid rgba(200,169,110,.3);
+    text-align: center;
+    padding: 4px 8px;
+    font-size: .95rem;
+    font-weight: bold;
+    color: #e8d4a0;
+    letter-spacing: .05em;
+  }
+
+  .symbols-row {
+    display: flex; gap: 4px;
+    justify-content: center;
+    padding: 4px 8px 5px;
+  }
+
+  .symbol-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,.2);
+    font-size: .55rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .sym-ar    { background: radial-gradient(circle,#7ec8e3,#4a90e2); }
+  .sym-fogo  { background: radial-gradient(circle,#f39c12,#c0392b); }
+  .sym-terra { background: radial-gradient(circle,#8b6914,#5a4010); border-color: rgba(200,150,80,.4); }
+  .sym-dark  { background: radial-gradient(circle,#6c3483,#2c1654); }
+
+  .hero-base-stats {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    font-size: .75rem;
+    color: #a08850;
+  }
+
+  /* ─── HP bar ─── */
+  .hp-wrap { width: 200px; }
+
+  .hp-label-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+    font-size: .8rem; color: #c8a96e;
+  }
+
+  .hp-heart { color: #e84040; font-size: 1rem; }
+
+  .hp-bar-bg {
+    height: 14px;
+    background: rgba(0,0,0,.5);
+    border-radius: 7px;
+    border: 1px solid rgba(100,60,20,.6);
+    overflow: hidden;
+  }
+
+  .hp-bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    transition: width 1s cubic-bezier(.4,0,.2,1), background .5s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hp-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 6px; right: 6px; height: 4px;
+    background: rgba(255,255,255,.25);
+    border-radius: 2px;
+  }
+
+  .hp-num {
+    text-align: center;
+    font-size: .85rem;
+    font-weight: bold;
+    color: #f0e0c0;
+    margin-top: 3px;
+    letter-spacing: .05em;
+  }
+
+  .hp-num.damaged {
+    color: #ff6060;
+    animation: pulse .35s ease;
+  }
+
+  /* ─── VS center ─── */
+  .vs-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 60px;
+  }
+
+  .vs-label {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #c8a96e;
+    text-shadow: 0 0 20px rgba(200,169,110,.5);
+    opacity: 0;
+    animation: fadeIn .4s ease .6s forwards;
+  }
+
+  /* ─── Damage floats (one per hero) ─── */
+  .damage-float {
+    position: absolute;
+    font-size: 2.4rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,.9);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    white-space: nowrap;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .damage-float.show { animation: floatUp 1.3s ease forwards; }
+  .damage-float.dmg-red  { color: #ff4444; text-shadow: 0 0 20px rgba(255,68,68,.8), 2px 2px 4px rgba(0,0,0,.9); }
+  .damage-float.dmg-grey { color: #aaa; }
+
+  /* ─── Card animations ─── */
+  .hero-card.shake { animation: shake .4s ease; }
+  .hero-card.hit   { animation: hitFlash .5s ease; }
+
+  /* ─── Arrow pulse between heroes ─── */
+  .attack-arrow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.5rem;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 8;
+    transition: none;
+  }
+
+  .attack-arrow.show-left  { animation: arrowLeft  .35s ease forwards; }
+  .attack-arrow.show-right { animation: arrowRight .35s ease forwards; }
+
+  /* ─── Bottom ─── */
+  .bottom-area {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    animation: fadeIn .5s ease .9s forwards;
+  }
+
+  .result-label {
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: .08em;
+    color: #c8a96e;
+    text-shadow: 0 0 20px rgba(200,169,110,.5);
+    min-height: 1.8rem;
+    text-align: center;
+  }
+
+  .btn-row { display: flex; gap: 12px; }
+
+  .btn {
+    padding: 9px 36px;
+    background: linear-gradient(180deg,#8b5e20,#5a3a0e);
+    border: 1px solid #c8a96e;
+    border-radius: 8px;
+    color: #f0e6d0;
+    font-family: 'Georgia', serif;
+    font-size: .88rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,.5);
+  }
+
+  .btn:hover { background: linear-gradient(180deg,#a8722a,#7a4e18); transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+
+  .inputs-row {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+    margin-top: 6px; opacity: .85;
+  }
+
+  .inp-group {
+    font-size: .72rem; color: #a08850;
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+  }
+
+  .inp-group input {
+    width: 60px;
+    background: #1a1008;
+    border: 1px solid #6b4e1e;
+    color: #f0e6d0;
+    border-radius: 5px;
+    padding: 4px 6px;
+    text-align: center;
+    font-size: .9rem;
+  }
+
+  /* ─── Flash overlay ─── */
+  .flash-overlay {
+    position: fixed; inset: 0;
+    background: white; z-index: 100;
+    pointer-events: none; opacity: 0;
+  }
+
+  /* ─── Keyframes ─── */
+  @keyframes slideInLeft {
+    from { opacity:0; transform:translateX(-60px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  @keyframes slideInRight {
+    from { opacity:0; transform:translateX(60px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes fadeDown {
+    from { opacity:0; transform:translateY(-12px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  @keyframes floatUp {
+    0%   { opacity:0; transform:translateX(-50%) translateY(0) scale(.5); }
+    15%  { opacity:1; transform:translateX(-50%) translateY(-10px) scale(1.2); }
+    55%  { opacity:1; transform:translateX(-50%) translateY(-35px) scale(1); }
+    100% { opacity:0; transform:translateX(-50%) translateY(-70px) scale(.8); }
+  }
+  @keyframes shake {
+    0%,100% { transform:translateX(0); }
+    20%     { transform:translateX(10px); }
+    40%     { transform:translateX(-7px); }
+    60%     { transform:translateX(5px); }
+    80%     { transform:translateX(-3px); }
+  }
+  @keyframes hitFlash {
+    0%,100% { filter:none; transform:translateX(0) scale(1); }
+    20%     { filter:brightness(2.5) saturate(0); transform:translateX(-12px) scale(1.04); }
+    55%     { filter:brightness(1.4) hue-rotate(10deg); transform:translateX(4px) scale(.97); }
+    80%     { filter:none; }
+  }
+  @keyframes pulse {
+    0%  { transform:scale(1); }
+    40% { transform:scale(1.3); }
+    100%{ transform:scale(1); }
+  }
+  @keyframes arrowLeft {
+    0%   { opacity:0; transform:translate(-50%,-50%) translateX(20px); }
+    40%  { opacity:1; transform:translate(-50%,-50%) translateX(0); }
+    100% { opacity:0; transform:translate(-50%,-50%) translateX(-20px); }
+  }
+  @keyframes arrowRight {
+    0%   { opacity:0; transform:translate(-50%,-50%) translateX(-20px); }
+    40%  { opacity:1; transform:translate(-50%,-50%) translateX(0); }
+    100% { opacity:0; transform:translate(-50%,-50%) translateX(20px); }
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="combat-stage">
+  <div class="phase-title">⚔ Resolução de Combate ⚔</div>
+
+  <div class="main-row">
+
+    <!-- ── LEFT STATS ── -->
+    <div class="left-stats" id="leftStats">
+
+      <!-- Poppy stats -->
+      <div class="hero-stat-block">
+        <div class="stat-block-name" id="stat1Name">Poppy</div>
+        <div class="stat-row">
+          <span class="stat-row-label">⚔️ Ataque total</span>
+          <span class="stat-row-value val-atk" id="stat1Atk">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-row-label">🛡 Defesa total</span>
+          <span class="stat-row-value val-def" id="stat1Def">—</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-row">
+          <span class="stat-row-label">💥 Dano causado</span>
+          <span class="stat-row-value val-dmg" id="stat1Dmg">—</span>
+        </div>
+      </div>
+
+      <!-- Hakai stats -->
+      <div class="hero-stat-block">
+        <div class="stat-block-name" id="stat2Name">Hakai</div>
+        <div class="stat-row">
+          <span class="stat-row-label">⚔️ Ataque total</span>
+          <span class="stat-row-value val-atk" id="stat2Atk">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-row-label">🛡 Defesa total</span>
+          <span class="stat-row-value val-def" id="stat2Def">—</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-row">
+          <span class="stat-row-label">💥 Dano causado</span>
+          <span class="stat-row-value val-dmg" id="stat2Dmg">—</span>
+        </div>
+      </div>
+
+    </div><!-- /left-stats -->
+
+    <!-- ── HEROES ── -->
+    <div class="heroes-area" id="heroesArea">
+
+      <!-- Arrow indicator -->
+      <div class="attack-arrow" id="attackArrow">➤</div>
+
+      <!-- Hero 1: Poppy -->
+      <div class="hero-col left" id="col1">
+        <div class="hero-card" id="card1">
+          <div class="hero-art"><span id="emoji1">🧌</span></div>
+          <div class="hero-name-bar" id="name1">Poppy</div>
+          <div class="symbols-row">
+            <div class="symbol-dot sym-terra" title="Terra">⛰</div>
+            <div class="symbol-dot sym-terra" title="Terra">⛰</div>
+            <div class="symbol-dot sym-fogo"  title="Fogo">🔥</div>
+          </div>
+          <div class="hero-base-stats">
+            <span>⚔️ <span id="base1Atk">2</span></span>
+            <span>🛡 <span id="base1Def">1</span></span>
+          </div>
+        </div>
+        <div class="hp-wrap">
+          <div class="hp-label-row"><span class="hp-heart">♥</span><span>HP</span></div>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" id="bar1" style="width:75%"></div></div>
+          <div class="hp-num" id="num1">15 / 20</div>
+        </div>
+        <!-- damage float anchored to this card -->
+        <div class="damage-float" id="float1"></div>
+      </div>
+
+      <!-- VS -->
+      <div class="vs-center">
+        <div class="vs-label">VS</div>
+      </div>
+
+      <!-- Hero 2: Hakai -->
+      <div class="hero-col right" id="col2">
+        <div class="hero-card" id="card2">
+          <div class="hero-art"><span id="emoji2">🥷</span></div>
+          <div class="hero-name-bar" id="name2">Hakai</div>
+          <div class="symbols-row">
+            <div class="symbol-dot sym-ar" title="Ar">💨</div>
+            <div class="symbol-dot sym-ar" title="Ar">💨</div>
+            <div class="symbol-dot sym-ar" title="Ar">💨</div>
+          </div>
+          <div class="hero-base-stats">
+            <span>⚔️ <span id="base2Atk">1</span></span>
+            <span>🛡 <span id="base2Def">0</span></span>
+          </div>
+        </div>
+        <div class="hp-wrap">
+          <div class="hp-label-row"><span class="hp-heart">♥</span><span>HP</span></div>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" id="bar2" style="width:100%"></div></div>
+          <div class="hp-num" id="num2">10 / 10</div>
+        </div>
+        <!-- damage float anchored to this card -->
+        <div class="damage-float" id="float2"></div>
+      </div>
+
+    </div><!-- /heroes-area -->
+  </div><!-- /main-row -->
+
+  <!-- ── BOTTOM ── -->
+  <div class="bottom-area">
+    <div class="result-label" id="resultLabel"></div>
+    <div class="btn-row">
+      <button class="btn" id="btnSim">▶ Simular Combate</button>
+      <button class="btn" id="btnReset" style="display:none">↺ Resetar</button>
+    </div>
+
+    <!-- Inputs -->
+    <div class="inputs-row">
+      <div class="inp-group">
+        <span>Poppy — ⚔ cartas</span>
+        <input type="number" id="inpAtk1" value="3" min="0" max="20">
+      </div>
+      <div class="inp-group">
+        <span>Poppy — 🛡 cartas</span>
+        <input type="number" id="inpDef1" value="0" min="0" max="20">
+      </div>
+      <div class="inp-group">
+        <span>Poppy — ❤ HP atual</span>
+        <input type="number" id="inpHp1" value="15" min="1" max="40">
+      </div>
+      <div style="width:1px; background:rgba(200,169,110,.2); margin:0 4px;"></div>
+      <div class="inp-group">
+        <span>Hakai — ⚔ cartas</span>
+        <input type="number" id="inpAtk2" value="2" min="0" max="20">
+      </div>
+      <div class="inp-group">
+        <span>Hakai — 🛡 cartas</span>
+        <input type="number" id="inpDef2" value="1" min="0" max="20">
+      </div>
+      <div class="inp-group">
+        <span>Hakai — ❤ HP atual</span>
+        <input type="number" id="inpHp2" value="10" min="1" max="40">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const HEROES = [
+  { name:'Poppy', emoji:'🧌', baseAtk:2, baseDef:1, maxHp:20 },
+  { name:'Hakai', emoji:'🥷', baseAtk:1, baseDef:0, maxHp:10 },
+];
+
+let hp = [15, 10];
+let animating = false;
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+function setBar(idx, current){
+  const maxHp = HEROES[idx].maxHp;
+  const pct = clamp((current/maxHp)*100, 0, 100);
+  const bar = document.getElementById('bar'+(idx+1));
+  const num = document.getElementById('num'+(idx+1));
+  if(pct>50)       bar.style.background='linear-gradient(90deg,#27ae60,#2ecc71)';
+  else if(pct>25)  bar.style.background='linear-gradient(90deg,#e67e22,#f39c12)';
+  else             bar.style.background='linear-gradient(90deg,#c0392b,#e74c3c)';
+  bar.style.width  = pct+'%';
+  num.textContent  = Math.max(0,current)+' / '+maxHp;
+}
+
+function flash(){
+  const el=document.getElementById('flashOverlay');
+  el.style.transition='none'; el.style.opacity='.35';
+  requestAnimationFrame(()=>{ el.style.transition='opacity .45s ease'; el.style.opacity='0'; });
+}
+
+function popVal(id, txt){
+  const el=document.getElementById(id);
+  el.textContent=txt;
+  el.style.animation='none'; void el.offsetWidth;
+  el.style.animation='pulse .3s ease';
+}
+
+async function animateHpDrop(idx, dmg){
+  const from = hp[idx];
+  const to   = Math.max(0, from - dmg);
+  const steps = 18;
+  for(let i=1;i<=steps;i++){
+    const cur = Math.round(from - (dmg/steps)*i);
+    setBar(idx, Math.max(0,cur));
+    const numEl=document.getElementById('num'+(idx+1));
+    numEl.classList.remove('damaged'); void numEl.offsetWidth; numEl.classList.add('damaged');
+    await sleep(55);
+  }
+  hp[idx]=to;
+  setBar(idx,to);
+}
+
+async function strikeAnimation(attackerIdx, defenderIdx, dmg){
+  const atkCard = document.getElementById('card'+(attackerIdx+1));
+  const defCard = document.getElementById('card'+(defenderIdx+1));
+  const floatEl = document.getElementById('float'+(defenderIdx+1));
+
+  // Arrow pointing direction
+  const arrow = document.getElementById('attackArrow');
+  arrow.className = 'attack-arrow';
+  arrow.textContent = attackerIdx===0 ? '➤' : '◀';
+  void arrow.offsetWidth;
+  arrow.className = 'attack-arrow '+(attackerIdx===0?'show-left':'show-right');
+
+  await sleep(180);
+  atkCard.classList.add('shake');
+  await sleep(140);
+  flash();
+  defCard.classList.add('hit');
+
+  // Damage float
+  if(dmg > 0){
+    floatEl.textContent = '−'+dmg;
+    floatEl.className = 'damage-float dmg-red show';
+  } else {
+    floatEl.textContent = '🛡 bloqueado';
+    floatEl.className = 'damage-float dmg-grey show';
+  }
+
+  await sleep(200);
+  await animateHpDrop(defenderIdx, dmg);
+
+  await sleep(300);
+  atkCard.classList.remove('shake');
+  defCard.classList.remove('hit');
+  floatEl.className = 'damage-float'; // reset
+}
+
+async function simulate(){
+  if(animating) return;
+  animating=true;
+  document.getElementById('btnSim').style.display='none';
+
+  // Read inputs
+  const cardAtk1 = parseInt(document.getElementById('inpAtk1').value)||0;
+  const cardDef1 = parseInt(document.getElementById('inpDef1').value)||0;
+  const cardAtk2 = parseInt(document.getElementById('inpAtk2').value)||0;
+  const cardDef2 = parseInt(document.getElementById('inpDef2').value)||0;
+  hp[0] = parseInt(document.getElementById('inpHp1').value)||15;
+  hp[1] = parseInt(document.getElementById('inpHp2').value)||10;
+
+  // Reset bars
+  setBar(0, hp[0]);
+  setBar(1, hp[1]);
+
+  // Calc
+  const totalAtk1 = HEROES[0].baseAtk + cardAtk1;
+  const totalDef1 = HEROES[0].baseDef + cardDef1;
+  const totalAtk2 = HEROES[1].baseAtk + cardAtk2;
+  const totalDef2 = HEROES[1].baseDef + cardDef2;
+  const dmg1on2   = Math.max(0, totalAtk1 - totalDef2); // Poppy → Hakai
+  const dmg2on1   = Math.max(0, totalAtk2 - totalDef1); // Hakai → Poppy
+
+  // Reveal stats for Poppy
+  await sleep(400);
+  popVal('stat1Atk', totalAtk1);
+  popVal('stat1Def', totalDef1);
+  await sleep(250);
+  popVal('stat1Dmg', dmg1on2 > 0 ? '-'+dmg1on2 : '0');
+
+  // Reveal stats for Hakai
+  await sleep(350);
+  popVal('stat2Atk', totalAtk2);
+  popVal('stat2Def', totalDef2);
+  await sleep(250);
+  popVal('stat2Dmg', dmg2on1 > 0 ? '-'+dmg2on1 : '0');
+
+  await sleep(700);
+
+  // ── ROUND 1: Poppy attacks Hakai ──
+  document.getElementById('resultLabel').textContent = `⚔ ${HEROES[0].name} ataca ${HEROES[1].name}...`;
+  await strikeAnimation(0, 1, dmg1on2);
+
+  await sleep(800);
+
+  // ── ROUND 2: Hakai attacks Poppy ──
+  document.getElementById('resultLabel').textContent = `⚔ ${HEROES[1].name} ataca ${HEROES[0].name}...`;
+  await strikeAnimation(1, 0, dmg2on1);
+
+  await sleep(500);
+
+  // Final result
+  const results = [];
+  if(hp[1]<=0) results.push(`💀 ${HEROES[1].name} foi derrotado!`);
+  if(hp[0]<=0) results.push(`💀 ${HEROES[0].name} foi derrotado!`);
+  if(results.length===0){
+    results.push(`✔ Combate encerrado — ${HEROES[0].name} restou com ${hp[0]} HP,  ${HEROES[1].name} com ${hp[1]} HP.`);
+  }
+  document.getElementById('resultLabel').textContent = results.join('  ');
+
+  document.getElementById('btnReset').style.display='inline-block';
+  animating=false;
+}
+
+function reset(){
+  document.getElementById('btnReset').style.display='none';
+  document.getElementById('btnSim').style.display='inline-block';
+  ['stat1Atk','stat1Def','stat1Dmg','stat2Atk','stat2Def','stat2Dmg'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+  });
+  document.getElementById('resultLabel').textContent='';
+  document.getElementById('float1').className='damage-float';
+  document.getElementById('float2').className='damage-float';
+  document.getElementById('attackArrow').className='attack-arrow';
+  ['card1','card2'].forEach(id=>{ document.getElementById(id).className='hero-card'; });
+  hp[0]=parseInt(document.getElementById('inpHp1').value)||15;
+  hp[1]=parseInt(document.getElementById('inpHp2').value)||10;
+  setBar(0,hp[0]);
+  setBar(1,hp[1]);
+}
+
+document.getElementById('btnSim').addEventListener('click', simulate);
+document.getElementById('btnReset').addEventListener('click', reset);
+
+window.addEventListener('load',()=>{ setBar(0,hp[0]); setBar(1,hp[1]); });
+</script>
+</body>
+</html>

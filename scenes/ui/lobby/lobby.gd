@@ -1,7 +1,7 @@
 extends Control
 
 const PORT              := 7000
-const BOARD_SCENE       := "res://scenes/ui/board/Board.tscn"
+const BOARD_SCENE       := "res://scenes/ui/boardv2/board.tscn"
 const WORLD_CONNECT_SCENE := "res://scenes/world/world_connect.tscn"
 
 # ── Node references ────────────────────────────────────────────────────────────
@@ -31,6 +31,8 @@ var _toast_tween : Tween
 var _music       : AudioStreamPlayer
 
 func _ready() -> void:
+	# Garante que nenhum peer antigo (TCG ou mundo) interfere ao voltar para o lobby
+	multiplayer.multiplayer_peer = null
 	position = Vector2.ZERO
 	size     = get_viewport_rect().size
 	address_input.text = "127.0.0.1"

@@ -1,0 +1,112 @@
+[gd_scene format=3 uid="uid://dpdqfftqd1j61"]
+
+[ext_resource type="Script" path="res://scenes/ui/boardv2/center_bar.gd" id="center_bar_gd"]
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="font_black"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="font_regular"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar"]
+bg_color = Color(0.043, 0.035, 0.024, 1)
+border_width_top = 1
+border_width_bottom = 1
+border_color = Color(0.545, 0.471, 0.353, 0.38)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.1, 0.078, 0.047, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.478, 0.376, 0.188, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.14, 0.11, 0.06, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.784, 0.627, 0.282, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
+bg_color = Color(0.06, 0.05, 0.03, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.25, 0.15, 0.28)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="CenterBar" type="PanelContainer" unique_id=1540079012]
+custom_minimum_size = Vector2(0, 50)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bar")
+script = ExtResource("center_bar_gd")
+
+[node name="HBox" type="HBoxContainer" parent="." unique_id=1433993512]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeftSection" type="HBoxContainer" parent="HBox" unique_id=61346391]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TurnGem" type="ColorRect" parent="HBox/LeftSection" unique_id=1145053200]
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.8, 0.314, 0.133, 1)
+
+[node name="TurnVBox" type="VBoxContainer" parent="HBox/LeftSection" unique_id=1230672417]
+layout_mode = 2
+
+[node name="TurnLabel" type="Label" parent="HBox/LeftSection/TurnVBox" unique_id=1702675467]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("font_black")
+text = "Turno do Oponente"
+
+[node name="PhaseLabel" type="Label" parent="HBox/LeftSection/TurnVBox" unique_id=1281600877]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "Fase de Ação"
+
+[node name="ClockSection" type="VBoxContainer" parent="HBox" unique_id=1177613022]
+layout_mode = 2
+size_flags_horizontal = 10
+alignment = 1
+
+[node name="ClockDisplay" type="Label" parent="HBox/ClockSection" unique_id=1475356464]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_fonts/font = ExtResource("font_black")
+text = "01:30"
+horizontal_alignment = 1
+
+[node name="RightSection" type="HBoxContainer" parent="HBox" unique_id=2126433680]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="PassTurnButton" type="Button" parent="HBox/RightSection" unique_id=1947664277]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("font_regular")
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+disabled = true
+text = "Passar Turno ▶"

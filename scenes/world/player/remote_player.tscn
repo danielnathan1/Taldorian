@@ -6,7 +6,7 @@
 script = ExtResource("1_rp")
 
 [node name="NameLabel" type="Label" parent="."]
-position = Vector2(-40, -26)
+position = Vector2(-40, -38)
 custom_minimum_size = Vector2(80, 14)
 theme_override_font_sizes/font_size = 9
 

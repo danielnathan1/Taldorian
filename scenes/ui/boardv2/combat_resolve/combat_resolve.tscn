@@ -1,0 +1,159 @@
+[gd_scene format=3 uid="uid://0kcrorv7ngoh"]
+
+[ext_resource type="Script" path="res://scenes/ui/boardv2/combat_resolve/combat_resolve.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="2_heroslot"]
+[ext_resource type="FontFile" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="3_font_black"]
+[ext_resource type="FontFile" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="4_font_regular"]
+
+[node name="CombatResolveScreen" type="Control" unique_id=960352311]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BG" type="ColorRect" parent="." unique_id=140663227]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.04, 0.03, 0.02, 0.82)
+
+[node name="Center" type="CenterContainer" parent="." unique_id=2065809490]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Center" unique_id=387857852]
+layout_mode = 2
+theme_override_constants/separation = 28
+
+[node name="Title" type="Label" parent="Center/VBox" unique_id=855162138]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.66, 0.43, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 32
+text = "⚔   RESOLUÇÃO DE COMBATE   ⚔"
+horizontal_alignment = 1
+
+[node name="Row" type="HBoxContainer" parent="Center/VBox" unique_id=923664696]
+layout_mode = 2
+theme_override_constants/separation = 44
+alignment = 1
+
+[node name="Heroes" type="HBoxContainer" parent="Center/VBox/Row" unique_id=826108761]
+layout_mode = 2
+theme_override_constants/separation = 32
+alignment = 1
+
+[node name="Col0" type="VBoxContainer" parent="Center/VBox/Row/Heroes" unique_id=1204048842]
+layout_mode = 2
+alignment = 1
+
+[node name="Stat0" type="VBoxContainer" parent="Center/VBox/Row/Heroes/Col0" unique_id=1247212089]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name0" type="Label" parent="Center/VBox/Row/Heroes/Col0/Stat0" unique_id=567394975]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.66, 0.43, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 24
+text = "Herói 0"
+
+[node name="Atk0" type="Label" parent="Center/VBox/Row/Heroes/Col0/Stat0" unique_id=2034936908]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Def0" type="Label" parent="Center/VBox/Row/Heroes/Col0/Stat0" unique_id=813748263]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Dmg0" type="Label" parent="Center/VBox/Row/Heroes/Col0/Stat0" unique_id=1527930367]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Slot0" parent="Center/VBox/Row/Heroes/Col0" unique_id=1004938082 instance=ExtResource("2_heroslot")]
+layout_mode = 2
+custom_minimum_size = Vector2(220, 320)
+
+[node name="VsLbl" type="Label" parent="Center/VBox/Row/Heroes" unique_id=1294417266]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.66, 0.43, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 42
+text = "VS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Col1" type="VBoxContainer" parent="Center/VBox/Row/Heroes" unique_id=1631717982]
+layout_mode = 2
+alignment = 1
+
+[node name="Stat1" type="VBoxContainer" parent="Center/VBox/Row/Heroes/Col1" unique_id=2042250914]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Name1" type="Label" parent="Center/VBox/Row/Heroes/Col1/Stat1" unique_id=2139994950]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.66, 0.43, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 24
+text = "Herói 1"
+
+[node name="Atk1" type="Label" parent="Center/VBox/Row/Heroes/Col1/Stat1" unique_id=2113683518]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Def1" type="Label" parent="Center/VBox/Row/Heroes/Col1/Stat1" unique_id=82672234]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Dmg1" type="Label" parent="Center/VBox/Row/Heroes/Col1/Stat1" unique_id=121514532]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 20
+text = "—"
+
+[node name="Slot1" parent="Center/VBox/Row/Heroes/Col1" unique_id=612066569 instance=ExtResource("2_heroslot")]
+layout_mode = 2
+custom_minimum_size = Vector2(220, 320)
+
+[node name="ResultLbl" type="Label" parent="Center/VBox" unique_id=1952209246]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.66, 0.43, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+
+[node name="ContinueBtn" type="Button" parent="Center/VBox" unique_id=1993179778]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 22
+text = "Continuar"

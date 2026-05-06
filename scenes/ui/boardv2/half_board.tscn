@@ -1,0 +1,468 @@
+[gd_scene format=3 uid="uid://bugjvnuujig54"]
+
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="font_black"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="font_regular"]
+[ext_resource type="Script" uid="uid://cfwr46gf2p6tn" path="res://scenes/ui/boardv2/half_board.gd" id="half_board_gd"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_combat_band"]
+bg_color = Color(0, 0, 0, 0.1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.545, 0.471, 0.353, 0.22)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_active"]
+bg_color = Color(0, 0, 0, 0.28)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.784, 0.627, 0.282, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hero"]
+bg_color = Color(0, 0, 0, 0.28)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.545, 0.471, 0.353, 0.48)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_arsenal"]
+bg_color = Color(0, 0, 0.08, 0.32)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.29, 0.471, 0.831, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deck"]
+bg_color = Color(0, 0, 0, 0.32)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.478, 0.416, 0.29, 0.5)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grave"]
+bg_color = Color(0.098, 0, 0, 0.28)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.541, 0.227, 0.165, 0.48)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="HalfBoard" type="Control" unique_id=1770288429]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("half_board_gd")
+
+[node name="PlaymatBackground" type="TextureRect" parent="." unique_id=872490569]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="PlaymatOverlay" type="ColorRect" parent="." unique_id=1699922430]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.4)
+
+[node name="TurnGlowLine" type="ColorRect" parent="." unique_id=311193193]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 3.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.722, 0.392, 0.157, 0)
+
+[node name="PlayerNameLabel" type="Label" parent="." unique_id=516470452]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = -22.0
+offset_right = 120.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("font_black")
+text = "Você"
+
+[node name="HalfInner" type="VBoxContainer" parent="." unique_id=1632897455]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterSpace" type="VBoxContainer" parent="HalfInner" unique_id=1114516286]
+layout_mode = 2
+
+[node name="CombatBand" type="PanelContainer" parent="HalfInner" unique_id=1637605222]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_combat_band")
+
+[node name="CombatBandInner" type="HBoxContainer" parent="HalfInner/CombatBand" unique_id=589482140]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 1
+
+[node name="CombatCards" type="HBoxContainer" parent="HalfInner/CombatBand/CombatBandInner" unique_id=458913632]
+layout_mode = 2
+
+[node name="MainRow" type="HBoxContainer" parent="HalfInner" unique_id=1974741643]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MockSpace" type="HBoxContainer" parent="HalfInner/MainRow" unique_id=453472875]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+
+[node name="ColD_ActiveHero" type="VBoxContainer" parent="HalfInner/MainRow" unique_id=1734333640]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+alignment = 1
+
+[node name="ActiveHeroWrap" type="Control" parent="HalfInner/MainRow/ColD_ActiveHero" unique_id=1282087551]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActiveHeroSlot" type="PanelContainer" parent="HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap" unique_id=974323590]
+custom_minimum_size = Vector2(118, 165)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -59.0
+offset_top = 5.0
+offset_right = 59.0
+offset_bottom = 170.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="ActiveHeroLabel" type="Label" parent="HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap" unique_id=1720923726]
+visible = false
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = -14.0
+offset_bottom = 23.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("font_black")
+text = "HERÓI ATIVO"
+horizontal_alignment = 1
+
+[node name="HPContainer" type="VBoxContainer" parent="HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap" unique_id=802297136]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -30.0
+offset_right = -10.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HPBar" type="ProgressBar" parent="HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/HPContainer" unique_id=1573248168]
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+size_flags_horizontal = 3
+value = 100.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/HPContainer" unique_id=385992570]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_fonts/font = ExtResource("font_regular")
+text = "10 / 10"
+horizontal_alignment = 1
+
+[node name="MockHSpce" type="VBoxContainer" parent="HalfInner/MainRow/ColD_ActiveHero" unique_id=1976298831]
+custom_minimum_size = Vector2(0, 270)
+layout_mode = 2
+
+[node name="ColC_Heroes" type="VBoxContainer" parent="HalfInner/MainRow" unique_id=449152049]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 2
+
+[node name="HeroesRow" type="HBoxContainer" parent="HalfInner/MainRow/ColC_Heroes" unique_id=2048408733]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 35
+alignment = 1
+
+[node name="Hero1Wrap" type="Control" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow" unique_id=1599185532]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 2
+
+[node name="Hero1Slot" type="PanelContainer" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero1Wrap" unique_id=2119222090]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hero")
+
+[node name="Hero1Label" type="Label" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero1Wrap" unique_id=1725185882]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "HERÓI"
+horizontal_alignment = 1
+
+[node name="Hero2Wrap" type="Control" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow" unique_id=1063761730]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 2
+
+[node name="Hero2Slot" type="PanelContainer" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero2Wrap" unique_id=95716885]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hero")
+
+[node name="Hero2Label" type="Label" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero2Wrap" unique_id=465337214]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "HERÓI"
+horizontal_alignment = 1
+
+[node name="Hero3Wrap" type="Control" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow" unique_id=725777870]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 2
+
+[node name="Hero3Slot" type="PanelContainer" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero3Wrap" unique_id=1097395111]
+custom_minimum_size = Vector2(112, 168)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hero")
+
+[node name="Hero3Label" type="Label" parent="HalfInner/MainRow/ColC_Heroes/HeroesRow/Hero3Wrap" unique_id=173707210]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "HERÓI"
+horizontal_alignment = 1
+
+[node name="HerosMockSpace" type="HBoxContainer" parent="HalfInner/MainRow/ColC_Heroes" unique_id=1718540035]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 8
+
+[node name="ColB_Arsenal" type="VBoxContainer" parent="HalfInner/MainRow" unique_id=1834747810]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+alignment = 1
+
+[node name="ArsenalWrap" type="Control" parent="HalfInner/MainRow/ColB_Arsenal" unique_id=1826826376]
+custom_minimum_size = Vector2(0, 107)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ArsenalSlot" type="PanelContainer" parent="HalfInner/MainRow/ColB_Arsenal/ArsenalWrap" unique_id=1237933722]
+custom_minimum_size = Vector2(62, 87)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_arsenal")
+
+[node name="ArsenalLabel" type="Label" parent="HalfInner/MainRow/ColB_Arsenal/ArsenalWrap" unique_id=919248386]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "ARSENAL"
+horizontal_alignment = 1
+
+[node name="ColA_DeckGrave" type="VBoxContainer" parent="HalfInner/MainRow" unique_id=1836106957]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+alignment = 1
+
+[node name="DeckWrap" type="Control" parent="HalfInner/MainRow/ColA_DeckGrave" unique_id=1292768410]
+custom_minimum_size = Vector2(0, 107)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DeckSlot" type="PanelContainer" parent="HalfInner/MainRow/ColA_DeckGrave/DeckWrap" unique_id=1300184760]
+custom_minimum_size = Vector2(62, 87)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_deck")
+
+[node name="DeckSleeve" type="TextureRect" parent="HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot" unique_id=732391461]
+layout_mode = 2
+expand_mode = 5
+stretch_mode = 5
+
+[node name="CountBadge" type="Label" parent="HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot" unique_id=1254694117]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "34"
+horizontal_alignment = 1
+
+[node name="DeckLabel" type="Label" parent="HalfInner/MainRow/ColA_DeckGrave/DeckWrap" unique_id=240159071]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "DECK"
+horizontal_alignment = 1
+
+[node name="GraveWrap" type="Control" parent="HalfInner/MainRow/ColA_DeckGrave" unique_id=1215222165]
+custom_minimum_size = Vector2(0, 107)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GraveSlot" type="PanelContainer" parent="HalfInner/MainRow/ColA_DeckGrave/GraveWrap" unique_id=792426436]
+custom_minimum_size = Vector2(62, 87)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -31.0
+offset_top = 5.0
+offset_right = 31.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_grave")
+
+[node name="GraveLabel" type="Label" parent="HalfInner/MainRow/ColA_DeckGrave/GraveWrap" unique_id=742052454]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("font_regular")
+text = "CEMITÉRIO"
+horizontal_alignment = 1

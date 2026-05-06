@@ -13,8 +13,6 @@ var hero: Hero = null
 var is_opponent: bool = false
 var _face_down: bool = false
 var _sleeve_texture: Texture2D = preload("res://assets/sleve/default.png")
-var _hover_pending_hide: bool = false
-
 func _ready() -> void:
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
@@ -24,16 +22,10 @@ func _on_mouse_entered() -> void:
 		return
 	if is_opponent and _face_down:
 		return
-	_hover_pending_hide = false
 	GameBus.card_hovered.emit({ "type": "hero", "hero": hero })
 
 func _on_mouse_exited() -> void:
-	_hover_pending_hide = true
-	get_tree().create_timer(0.08).timeout.connect(func():
-		if _hover_pending_hide:
-			_hover_pending_hide = false
-			GameBus.card_hover_ended.emit()
-	)
+	GameBus.card_hover_ended.emit()
 
 func set_sleeve_texture(texture: Texture2D) -> void:
 	_sleeve_texture = texture
@@ -47,7 +39,22 @@ func bind(p_hero: Hero) -> void:
 	hp_label.text     = "%d/%d" % [hero.current_hp, hero.max_hp]
 	_apply_texture()
 	_update_state_style()
+	_update_hp_bar_color()
 	_apply_face_down_visibility()
+
+func _update_hp_bar_color() -> void:
+	var ratio := float(hero.current_hp) / float(hero.max_hp)
+	var fill_style := hp_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	if fill_style == null:
+		fill_style = StyleBoxFlat.new()
+	fill_style = fill_style.duplicate() as StyleBoxFlat
+	if ratio < 0.4:
+		fill_style.bg_color = Color(0.85, 0.15, 0.15)
+	elif ratio < 0.8:
+		fill_style.bg_color = Color(0.9, 0.75, 0.1)
+	else:
+		fill_style.bg_color = Color(0.2, 0.8, 0.2)
+	hp_bar.add_theme_stylebox_override("fill", fill_style)
 
 func refresh() -> void:
 	if hero:

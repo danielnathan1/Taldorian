@@ -3,6 +3,7 @@ class_name MapLoader extends RefCounted
 
 const MAP_SCENES: Dictionary = {
 	"floresta_inicial": "res://scenes/world/maps/floresta_inicial.tscn",
+	"taldorian_city":   "res://scenes/world/maps/taldorian_city.tscn",
 }
 
 static func load_map(map_name: String) -> PackedScene:

@@ -45,19 +45,21 @@ theme_override_font_sizes/font_size = 22
 text = "Explorar Mundo"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Center/Panel/Margin/VBox"]
+[node name="Sep1" type="HSeparator" parent="Center/Panel/Margin/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
-text = "Conecte-se ao servidor do mundo (porta 7001)"
-horizontal_alignment = 1
 
-[node name="Sep" type="HSeparator" parent="Center/Panel/Margin/VBox"]
+[node name="HostButton" type="Button" parent="Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⚑  Hospedar Mundo"
+
+[node name="Sep2" type="HSeparator" parent="Center/Panel/Margin/VBox"]
 layout_mode = 2
 
 [node name="IpLabel" type="Label" parent="Center/Panel/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "IP do Servidor"
 
 [node name="IpInput" type="LineEdit" parent="Center/Panel/Margin/VBox"]
@@ -69,7 +71,7 @@ caret_blink = true
 [node name="ConnectButton" type="Button" parent="Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Entrar no Mundo"
+text = "⚔  Entrar no Mundo"
 
 [node name="BackButton" type="Button" parent="Center/Panel/Margin/VBox"]
 unique_name_in_owner = true

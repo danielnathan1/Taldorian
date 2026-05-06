@@ -3,7 +3,7 @@
 # Fase 1 — stub; implementação completa na Fase 2.
 class_name EncounterManager extends RefCounted
 
-const BOARD_SCENE := "res://scenes/ui/board/Board.tscn"
+const BOARD_SCENE := "res://scenes/ui/boardv2/board.tscn"
 
 static func start_encounter_vs_npc(hero_id: String) -> void:
 	push_warning("EncounterManager: encontro vs '%s' — pendente para Fase 2" % hero_id)
