@@ -235,7 +235,9 @@ var _match_peer_to_idx: Dictionary:
 		_m._match_peer_to_idx = value
 
 func _ready() -> void:
-	pass
+	# Servidor: limpa a partida de um peer que cai (e dá a vitória ao oponente).
+	if not multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
+		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
 	var p0: Player = _make_player(0, "Jogador 1") if deck0.is_empty() else _make_player_from_deck(0, "Jogador 1", deck0)
@@ -1799,6 +1801,9 @@ func _peer_to_player_index(peer_id: int) -> int:
 ## Cria um MatchState isolado, mapeia peer→player_index e peer→match_id. Retorna
 ## o id da partida. Usado pelo MatchService quando uma sala enche (Modelo A).
 func register_match(p_peer0: int, p_peer1: int) -> int:
+	# Limpa partidas anteriores destes peers (evita leak ao rejogar).
+	_cleanup_peer_match(p_peer0)
+	_cleanup_peer_match(p_peer1)
 	var mid := _next_match_id
 	_next_match_id += 1
 	var m := MatchState.new()
@@ -1818,16 +1823,28 @@ func end_match(p_match_id: int) -> void:
 			_peer_to_match.erase(peer)
 	_matches.erase(p_match_id)
 
-## Servidor define quais peers são player 0 e player 1 na partida ATUAL (_m).
-## Mantido para o fluxo lobby/standalone (host-as-player), que não usa salas.
-func set_match_participants(p_peer0: int, p_peer1: int) -> void:
-	_match_peer_to_idx = { p_peer0: 0, p_peer1: 1 }
-	_deck_submitted = [false, false]
-	_submitted_deck = [{}, {}]
+## Encerra a partida em que `peer_id` está, se houver (servidor).
+func _cleanup_peer_match(peer_id: int) -> void:
+	if _peer_to_match.has(peer_id):
+		end_match(_peer_to_match[peer_id])
 
-## Limpa o mapeamento da partida atual (volta ao fallback lobby/standalone).
-func clear_match_participants() -> void:
-	_match_peer_to_idx = {}
+## Servidor: um peer caiu. Se estava numa partida em andamento, o oponente vence;
+## em seguida a partida é encerrada e seu roteamento liberado.
+func _on_peer_disconnected(peer_id: int) -> void:
+	if not multiplayer.is_server() or not _peer_to_match.has(peer_id):
+		return
+	var mid: int = _peer_to_match[peer_id]
+	if _matches.has(mid):
+		var m: MatchState = _matches[mid]
+		if m._winner_index < 0:
+			var leaver_idx: int = int(m._match_peer_to_idx.get(peer_id, -1))
+			if leaver_idx >= 0:
+				var winner_idx := 1 - leaver_idx
+				m._winner_index = winner_idx
+				for other_peer in m._match_peer_to_idx.keys():
+					if other_peer != peer_id:
+						_rpc_notify_game_over.rpc_id(other_peer, winner_idx)
+	end_match(mid)
 
 ## Envia o estado autoritativo da partida atual (_m). No servidor multi-sala,
 ## direciona só aos 2 peers da partida; no lobby/standalone, broadcast (call_local).
