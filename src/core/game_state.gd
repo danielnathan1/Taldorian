@@ -25,6 +25,11 @@ var _pending_effect_card: Card          = null
 var _pending_effect_player: int         = -1
 var _pending_effect_from_arsenal: bool  = false
 
+# Pick de herói aliado pendente — aguarda o jogador escolher um herói via PickAlly overlay.
+var _pending_ally_pick_player: int  = -1
+var _pending_ally_pick_action: String = ""   # "heal" etc.
+var _pending_ally_pick_amount: int  = 0
+
 # Pick de símbolo pendente — aguarda o jogador escolher elementos via PickSymbol overlay.
 var _pending_symbol_player: int            = -1
 var _pending_symbol_count: int             = 0
@@ -32,32 +37,79 @@ var _pending_symbol_card: Card             = null   # carta que receberá os sí
 var _pending_symbol_after_reaction: bool   = false  # se true, chama _on_reaction_window_closed() após resolver
 
 # Pick de carta pendente — aguarda o jogador escolher uma carta via PickCard overlay.
-enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD }
+enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD, HAND_ARSENAL, GRAVEYARD_ARSENAL, DECK_PEEK }
 var _pending_pick_player: int                = -1
 var _pending_pick_source: PickSource         = PickSource.DECK
 var _pending_pick_count: int                 = 1    # quantas cartas o jogador deve selecionar
 var _pending_pick_draw_after: int            = 0    # comprar N cartas após resolver o pick
 var _pending_pick_indices: Array[int]        = []   # índices na fonte (deck, graveyard ou mão)
 var _pending_pick_cards_display: Array[Card] = []   # cópias p/ exibição (cliente)
+var _pending_pick_instruction: String        = ""   # texto exibido no topo do overlay PickCard
+# Para Ecos do Passado: após o pick do jogador 0, inicia pick para o jogador 1
+var _pending_both_recycle_followup: int = -1
+# Estado do herói no momento em que a carta foi jogada (antes de revelar)
+var _hero_was_hidden_at_play: Array[bool] = [false, false]
+
+# ── habilidades de retaguarda interativas ───────────────
+# Fila de habilidades pendentes (heróis com has_backline_ability()==true).
+# Cada entrada: { "player_idx": int, "hero_idx": int }
+var _backline_queue:            Array[Dictionary] = []
+var _backline_awaiting_response: bool = false
+var _backline_awaiting_target:   bool = false
+var _backline_current_player:    int  = -1
+var _backline_current_hero_idx:  int  = -1
+
+# ── submissão de deck (multiplayer) ─────────────────────────────────────────
+var _deck_submitted: Array[bool]  = [false, false]
+var _submitted_deck: Array[Dictionary] = [{}, {}]
+
+# ── mapeamento de peers (Modelo A — partida no servidor do mundo) ────────────
+# peer_id → player_index (0/1). Vazio no fluxo lobby/standalone, onde vale o
+# fallback histórico (peer<=1 = host = player 0). Definido pelo servidor ao
+# iniciar uma partida entre dois clientes do mundo.
+var _match_peer_to_idx: Dictionary = {}
 
 func _ready() -> void:
-	if multiplayer.is_server():
-		start_match()
-func start_match() -> void:
-	players = [_make_player(0, "Jogador 1"), _make_player2(1, "Jogador 2")]
+	pass
+
+func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
+	var p0: Player = _make_player(0, "Jogador 1") if deck0.is_empty() else _make_player_from_deck(0, "Jogador 1", deck0)
+	var p1: Player = _make_player2(1, "Jogador 2") if deck1.is_empty() else _make_player_from_deck(1, "Jogador 2", deck1)
+	players = [p0, p1]
 	turn.players = players
 	turn.current_player_index = 0
 	_winner_index = -1
+	_deck_submitted   = [false, false]
+	_submitted_deck   = [{}, {}]
 	for p in players:
 		_shuffle_deck(p.deck)
-	# Forçar cartas ANTES do draw inicial — assim draw_up_to completa até o cap
-	# sem estourar o limite e sem causar descartes extras no mulligan.
-	#_debug_force_card_to_hand(players[0], "Planos Futuros")
-	#_debug_force_card_to_hand(players[0], "Planos Futuros")
+
 	for p in players:
 		p.draw_up_to(Player.HAND_CAP_START)
+
+	# ── DEBUG: forçar carta específica na mão ────────────────────────────────
+	# Para ativar: descomente as 2 linhas abaixo.
+	# Para desativar: comente novamente.
+	# Parâmetros:
+	#   player_idx → 0 = host/Jogador1 | 1 = cliente/Jogador2
+	#   card_id    → id da carta em data/cards/base_set.json
+	#   hand_slot  → posição na mão (0 = primeira, -1 = última)
+	#_debug_force_card_in_hand(0, 83)  # "Dois Passos à Frente" → mão do Jogador 0
+	# ── fim do bloco DEBUG ───────────────────────────────────────────────────
+
 	_opening_mulligan_done = [false, false]
+	# Envia os decks ao(s) cliente(s) para que construam seus próprios players
+	# antes do primeiro _sync_state chegar.
+	if multiplayer.is_server() and not multiplayer.get_peers().is_empty():
+		_rpc_init_players.rpc(deck0, deck1)
 	turn.emit_phase_changed()
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_init_players(deck0: Dictionary, deck1: Dictionary) -> void:
+	var p0: Player = _make_player(0, "Jogador 1") if deck0.is_empty() else _make_player_from_deck(0, "Jogador 1", deck0)
+	var p1: Player = _make_player2(1, "Jogador 2") if deck1.is_empty() else _make_player_from_deck(1, "Jogador 2", deck1)
+	players = [p0, p1]
+	turn.players = players
 
 func is_game_over() -> bool:
 	return _winner_index >= 0
@@ -85,6 +137,11 @@ func get_hero_revealed(player_idx: int) -> bool:
 	if player_idx < 0 or player_idx > 1:
 		return false
 	return _hero_revealed[player_idx]
+
+func get_backline_awaiting_response() -> bool: return _backline_awaiting_response
+func get_backline_awaiting_target()   -> bool: return _backline_awaiting_target
+func get_backline_current_player()    -> int:  return _backline_current_player
+func get_backline_current_hero_idx()  -> int:  return _backline_current_hero_idx
 
 ## Oculta o herói novamente (torna furtivo). Usado pela habilidade ativa de Hakai.
 func set_hero_stealth(player_idx: int) -> void:
@@ -129,7 +186,7 @@ func submit_opening_mulligan(player_idx: int, idx_a: int, idx_b: int) -> bool:
 	var c_b: Card = pl.hand[idx_b]
 	pl.send_cards_to_bottom([c_a, c_b])
 	_opening_mulligan_done[player_idx] = true
-	print(_opening_mulligan_done)
+	print("[TCG] Jogador %d (%s): mulligan — devolveu '%s' e '%s'" % [player_idx, pl.player_name, c_a.card_name, c_b.card_name])
 	if _opening_mulligan_done[0] and _opening_mulligan_done[1]:
 		turn.current_player_index = 0
 		_begin_turn_for_active_player()
@@ -140,6 +197,24 @@ func submit_opening_mulligan(player_idx: int, idx_a: int, idx_b: int) -> bool:
 func _begin_turn_for_active_player() -> void:
 	if _winner_index >= 0:
 		return
+	print("[TCG] ════════════════════════════════")
+	print("[TCG] Início do turno — Jogador %d (%s)" % [turn.current_player_index, players[turn.current_player_index].player_name])
+	# Reseta revelação de heróis: valores do turno anterior (true/true ao final do
+	# COMBAT) não devem vazar para DRAW e HERO_SELECTION do novo turno.
+	# Herois normais voltam face-down para o blefe; starts_face_up permanecem revelados.
+	for i in 2:
+		var _active := players[i].active_hero
+		_hero_revealed[i] = _active != null and _active.starts_face_up
+	# Reseta is_backline_revealed e estado de fila de backline
+	for p in players:
+		for h in p.heroes:
+			h.is_backline_revealed = h.starts_face_up
+	_backline_queue.clear()
+	_backline_awaiting_response = false
+	_backline_awaiting_target   = false
+	_backline_current_player    = -1
+	_backline_current_hero_idx  = -1
+
 	var idx := turn.current_player_index
 	var player: Player = players[idx]
 
@@ -166,8 +241,6 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 		return false
 	if player_idx < 0 or player_idx > 1 or hero_slot < 0 or hero_slot > 2:
 		return false
-	if player_idx != _next_hero_pick_player:
-		return false
 	if _hero_submitted[player_idx]:
 		return false
 	var pl: Player = players[player_idx]
@@ -176,16 +249,108 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 		return false
 	pl.choose_hero(hero)
 	hero.on_turn_start(pl)
+	if hero.starts_face_up:
+		_hero_revealed[player_idx] = true
+		GameBus.hero_revealed.emit(player_idx, hero)
+	print("[TCG] Jogador %d (%s): escolheu herói %s (HP:%d/%d)" % [player_idx, pl.player_name, hero.hero_name, hero.current_hp, hero.max_hp])
 	GameBus.hero_chosen.emit(player_idx, hero)
 	_hero_submitted[player_idx] = true
 	if _hero_submitted[0] and _hero_submitted[1]:
+		# Passivas de retaguarda — dispara não-interativas imediatamente;
+		# interativas (has_backline_ability) entram na fila de decisão do jogador.
+		var interactive: Array[Dictionary] = []
+		for i in 2:
+			var sp: Player = players[i]
+			var opp: Player = players[1 - i]
+			for h in sp.heroes:
+				if h.is_alive() and h.state == Hero.State.ACTIVE and h != sp.active_hero:
+					if h.has_backline_ability():
+						interactive.append({ "player_idx": i, "hero_idx": sp.heroes.find(h) })
+					else:
+						var desc := h.on_support_turn_start(sp, opp)
+						if not desc.is_empty():
+							var hero_idx := sp.heroes.find(h)
+							GameBus.skill_activated.emit(h, desc)
+							_rpc_notify_skill_activated.rpc(i, hero_idx, desc)
+		_backline_queue = interactive
+		_process_next_backline_ability()
+	else:
+		# Apenas sincroniza — o outro jogador ainda verá a tela de seleção
+		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	return true
+
+# ── habilidades de retaguarda interativas ───────────────────────────────────
+
+## Processa o próximo item da fila de habilidades de retaguarda.
+## Se a fila estiver vazia, inicia a fase ACTION normalmente.
+func _process_next_backline_ability() -> void:
+	if _backline_queue.is_empty():
 		turn.current_phase = TurnManager.Phase.ACTION
 		_reset_action_phase_state()
-		turn.emit_phase_changed()
-	else:
-		_next_hero_pick_player = 1 - player_idx
-		turn.emit_phase_changed()
-	return true
+		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		return
+	var entry: Dictionary = _backline_queue.pop_front()
+	_backline_current_player    = entry["player_idx"]
+	_backline_current_hero_idx  = entry["hero_idx"]
+	_backline_awaiting_response = true
+	_backline_awaiting_target   = false
+	turn.current_phase = TurnManager.Phase.BACKLINE_ABILITY
+	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+
+## Jogador responde se quer usar a habilidade de retaguarda (Sim/Não).
+@rpc("any_peer", "call_local", "reliable")
+func rpc_respond_backline_ability(use: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
+	if player_idx != _backline_current_player or not _backline_awaiting_response:
+		return
+	_backline_awaiting_response = false
+	if not use:
+		_process_next_backline_ability()
+		return
+	# Confirma uso: revela o herói na backline, pede escolha de alvo
+	var hero := players[_backline_current_player].heroes[_backline_current_hero_idx]
+	hero.is_backline_revealed = true
+	_backline_awaiting_target = true
+	GameBus.skill_activated.emit(hero, hero.passive_desc)
+	_rpc_notify_skill_activated.rpc(_backline_current_player, _backline_current_hero_idx, hero.passive_desc)
+	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+
+## Jogador escolheu o herói alvo para a habilidade de retaguarda.
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_backline_target(target_player_idx: int, target_hero_idx: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
+	if player_idx != _backline_current_player or not _backline_awaiting_target:
+		return
+	if target_player_idx < 0 or target_player_idx > 1:
+		return
+	if target_hero_idx < 0 or target_hero_idx >= players[target_player_idx].heroes.size():
+		return
+	var target_hero := players[target_player_idx].heroes[target_hero_idx]
+	if not target_hero.is_alive():
+		return
+	var sp  := players[_backline_current_player]
+	var opp := players[1 - _backline_current_player]
+	var backline_hero := sp.heroes[_backline_current_hero_idx]
+	# Notifica ambos os clientes para que animem a flecha antes de aplicar o efeito
+	GameBus.backline_arrow_fired.emit(_backline_current_player, _backline_current_hero_idx, target_player_idx, target_hero_idx)
+	_rpc_notify_backline_arrow.rpc(_backline_current_player, _backline_current_hero_idx, target_player_idx, target_hero_idx)
+	var desc := backline_hero.apply_backline_ability(sp, opp, target_hero)
+	if not desc.is_empty():
+		GameBus.skill_activated.emit(backline_hero, desc)
+		_rpc_notify_skill_activated.rpc(_backline_current_player, _backline_current_hero_idx, desc)
+	_backline_awaiting_target  = false
+	_backline_current_player   = -1
+	_backline_current_hero_idx = -1
+	var w := _evaluate_winner()
+	if w >= 0:
+		_winner_index = w
+		GameBus.game_over.emit(w)
+		_rpc_notify_game_over.rpc(w)
+	_process_next_backline_ability()
 
 func action_play_card(player_idx: int, hand_idx: int) -> bool:
 	if _winner_index >= 0:
@@ -195,6 +360,8 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 	if _pending_pick_player >= 0:
 		return false
 	if _pending_symbol_player >= 0:
+		return false
+	if _pending_ally_pick_player >= 0:
 		return false
 	var pl: Player = players[player_idx]
 	if hand_idx < 0 or hand_idx >= pl.hand.size():
@@ -209,6 +376,9 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			pl.hand.remove_at(hand_idx)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_a := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou ACTION '%s' (atk:%d def:%d%s%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_a, " [furtivo]" if card.is_stealth else ""])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_action_done[player_idx] = true
@@ -217,6 +387,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = false
 			card.execute_pre_window_effects(_make_effect_ctx(player_idx, card))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
 			if players[player_idx].pending_cancel_reaction:
 				_reaction_window_for = -1
@@ -234,6 +405,9 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			pl.hand.remove_at(hand_idx)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_b := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou BONUS '%s' (atk:%d def:%d%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_b])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_bonus_done[player_idx] = true
@@ -241,6 +415,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = false
 			card.execute_pre_window_effects(_make_effect_ctx(player_idx, card))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
 			_reaction_window_for = 1 - player_idx
 			GameBus.reaction_window_opened.emit(1 - player_idx)
@@ -252,13 +427,17 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			pl.hand.remove_at(hand_idx)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_r := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou REACTION '%s'%s" % [player_idx, pl.player_name, card.card_name, _syms_r])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_reaction_window_for = -1
 			card.execute_effects(_make_effect_ctx(player_idx, card))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
-			# Se o efeito abriu um symbol pick, pausar — o pick resolverá o fluxo
-			if _pending_symbol_player >= 0:
+			# Se o efeito abriu um pick (carta ou símbolo), pausar — o pick resolverá o fluxo
+			if _pending_symbol_player >= 0 or _pending_pick_player >= 0 or _pending_ally_pick_player >= 0:
 				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
 				return true
 			_on_reaction_window_closed()
@@ -282,6 +461,9 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			pl.arsenal.remove_at(0)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_aa := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou ACTION '%s' do arsenal (atk:%d def:%d%s%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_aa, " [furtivo]" if card.is_stealth else ""])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_action_done[player_idx] = true
@@ -290,6 +472,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = true
 			card.execute_pre_window_effects(_make_effect_ctx(player_idx, card, true))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
 			if players[player_idx].pending_cancel_reaction:
 				_reaction_window_for = -1
@@ -306,6 +489,9 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			pl.arsenal.remove_at(0)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_ba := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou BONUS '%s' do arsenal (atk:%d def:%d%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_ba])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_bonus_done[player_idx] = true
@@ -313,6 +499,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = true
 			card.execute_pre_window_effects(_make_effect_ctx(player_idx, card, true))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
 			_reaction_window_for = 1 - player_idx
 			GameBus.reaction_window_opened.emit(1 - player_idx)
@@ -323,12 +510,16 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			pl.arsenal.remove_at(0)
 			pl.cards_this_turn.append(card)
 			pl.round_cards.append(card)
+			var _syms_ra := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
+			print("[TCG] Jogador %d (%s): jogou REACTION '%s' do arsenal%s" % [player_idx, pl.player_name, card.card_name, _syms_ra])
+			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_reaction_window_for = -1
 			card.execute_effects(_make_effect_ctx(player_idx, card, true))
+			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
-			if _pending_symbol_player >= 0:
+			if _pending_symbol_player >= 0 or _pending_pick_player >= 0 or _pending_ally_pick_player >= 0:
 				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
 				return true
 			_on_reaction_window_closed()
@@ -345,9 +536,12 @@ func action_pass(player_idx: int) -> bool:
 		return false
 	if _pending_symbol_player >= 0:
 		return false
+	if _pending_ally_pick_player >= 0:
+		return false
 
 	# Passar janela de reação
 	if _reaction_window_for == player_idx:
+		print("[TCG] Jogador %d (%s): passou a janela de reação" % [player_idx, players[player_idx].player_name])
 		_reaction_window_for = -1
 		_on_reaction_window_closed()
 		return true
@@ -355,6 +549,7 @@ func action_pass(player_idx: int) -> bool:
 	# Passar segmento ativo (sem janela aberta)
 	if player_idx != _active_segment_player:
 		return false
+	print("[TCG] Jogador %d (%s): passou o segmento" % [player_idx, players[player_idx].player_name])
 	_finish_segment(player_idx)
 	return true
 
@@ -364,6 +559,13 @@ func action_pass(player_idx: int) -> bool:
 ## Verifica se a cadeia de símbolos ativa a skill do herói e notifica a passiva.
 func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 	var pl: Player = players[player_idx]
+	# Consome bônus pendente para esta carta (definido pela carta anterior)
+	if pl.pending_next_card_attack != 0:
+		pl.pending_bonus_attack += pl.pending_next_card_attack
+		pl.pending_next_card_attack = 0
+	if pl.pending_next_card_defense != 0:
+		pl.pending_bonus_defense += pl.pending_next_card_defense
+		pl.pending_next_card_defense = 0
 	var active: Hero = pl.active_hero
 	if active == null:
 		return
@@ -376,16 +578,29 @@ func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 			active.on_skill_activated(pl)
 			var hero_idx := pl.heroes.find(active)
 			_rpc_notify_skill_activated.rpc(pl.player_index, hero_idx, active.skill_desc)
-	active.on_card_played(card, pl)
+			# Sintonia Primordial — compra 1 se habilidade ativa disparou
+			if pl.pending_skill_draw:
+				pl.pending_skill_draw = false
+				pl.draw_cards(1)
+
+func _fire_on_card_played(player_idx: int, card: Card) -> void:
+	var pl: Player = players[player_idx]
+	var active: Hero = pl.active_hero
+	if active != null:
+		active.on_card_played(card, pl)
 
 func _reset_action_phase_state() -> void:
+	for p in players:
+		p.reset_hero_round_state()
 	_active_segment_player    = turn.current_player_index
 	_round_first_player       = turn.current_player_index
 	_segment_action_done      = [false, false]
 	_segment_bonus_done       = [false, false]
 	_reaction_window_for      = -1
 	_consecutive_empty_rounds = 0
-	_hero_revealed            = [false, false]
+	for i in 2:
+		var _active := players[i].active_hero
+		_hero_revealed[i] = _active != null and _active.starts_face_up
 	_pending_effect_card         = null
 	_pending_effect_player       = -1
 	_pending_effect_from_arsenal = false
@@ -393,8 +608,12 @@ func _reset_action_phase_state() -> void:
 	_pending_pick_source     = PickSource.DECK
 	_pending_pick_count      = 1
 	_pending_pick_draw_after = 0
+	_pending_ally_pick_player = -1
+	_pending_ally_pick_action = ""
+	_pending_ally_pick_amount = 0
 	_pending_pick_indices.clear()
 	_pending_pick_cards_display.clear()
+	_pending_both_recycle_followup = -1
 	_pending_symbol_player         = -1
 	_pending_symbol_count          = 0
 	_pending_symbol_card           = null
@@ -423,6 +642,9 @@ func get_pending_pick_source() -> PickSource:
 
 func get_pending_pick_count() -> int:
 	return _pending_pick_count
+
+func get_pending_pick_instruction() -> String:
+	return _pending_pick_instruction
 
 func get_pending_symbol_player() -> int:
 	return _pending_symbol_player
@@ -454,40 +676,135 @@ func get_pending_pick_cards(player_idx: int) -> Array[Card]:
 ## Retorna o array-fonte correto (deck, graveyard ou mão) para o jogador dado.
 func _pick_source_array(player_idx: int) -> Array[Card]:
 	match _pending_pick_source:
-		PickSource.GRAVEYARD:   return players[player_idx].discard_pile
-		PickSource.HAND:        return players[player_idx].hand
-		PickSource.HAND_DISCARD: return players[player_idx].hand
-		_:                      return players[player_idx].deck
+		PickSource.GRAVEYARD, PickSource.GRAVEYARD_ARSENAL:
+			return players[player_idx].discard_pile
+		PickSource.HAND, PickSource.HAND_DISCARD, PickSource.HAND_ARSENAL:
+			return players[player_idx].hand
+		_:
+			return players[player_idx].deck
 
 ## Inicia um pick a partir do deck do jogador.
-func begin_card_pick(player_idx: int, indices: Array[int]) -> void:
-	_pending_pick_player = player_idx
-	_pending_pick_source = PickSource.DECK
-	_pending_pick_indices = indices
+func begin_card_pick(player_idx: int, indices: Array[int], instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.DECK
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
 
 ## Inicia um pick a partir do cemitério do jogador.
-func begin_graveyard_pick(player_idx: int, indices: Array[int]) -> void:
-	_pending_pick_player  = player_idx
-	_pending_pick_source  = PickSource.GRAVEYARD
-	_pending_pick_indices = indices
+## draw_after=1 → compra 1 após; draw_after=0 → apenas coloca ao fundo (Respiração Profunda).
+func begin_graveyard_pick(player_idx: int, indices: Array[int], draw_after: int = 1, instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.GRAVEYARD
+	_pending_pick_draw_after  = draw_after
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
 
 ## Inicia um pick da mão do jogador (carta escolhida vai ao fundo do deck).
-func begin_hand_pick(player_idx: int, indices: Array[int]) -> void:
-	_pending_pick_player     = player_idx
-	_pending_pick_source     = PickSource.HAND
-	_pending_pick_count      = 1
-	_pending_pick_draw_after = 0
-	_pending_pick_indices    = indices
+## draw_after=1 → compra 1 após (Reorganizar); draw_after=0 → apenas coloca ao fundo.
+func begin_hand_pick(player_idx: int, indices: Array[int], draw_after: int = 0, instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.HAND
+	_pending_pick_count       = 1
+	_pending_pick_draw_after  = draw_after
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
+
+## Inicia um pick da mão do jogador para colocar no arsenal (Passo Estratégico).
+func begin_hand_arsenal_pick(player_idx: int, indices: Array[int], instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.HAND_ARSENAL
+	_pending_pick_count       = 1
+	_pending_pick_draw_after  = 0
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
+
+## Inicia um pick do cemitério para o arsenal (Ecos do Passado).
+## followup_player=-1 → nenhum; outro valor → inicia pick para esse jogador após resolver.
+func begin_graveyard_arsenal_pick(player_idx: int, indices: Array[int], followup_player: int = -1, instruction: String = "") -> void:
+	_pending_pick_player           = player_idx
+	_pending_pick_source           = PickSource.GRAVEYARD_ARSENAL
+	_pending_pick_count            = 1
+	_pending_pick_draw_after       = 0
+	_pending_pick_indices          = indices
+	_pending_pick_instruction      = instruction
+	_pending_both_recycle_followup = followup_player
 
 ## Inicia um pick de descarte da mão (cartas vão ao cemitério; depois compra draw_after).
-func begin_hand_discard(player_idx: int, indices: Array[int], count: int, draw_after: int) -> void:
-	_pending_pick_player     = player_idx
-	_pending_pick_source     = PickSource.HAND_DISCARD
-	_pending_pick_count      = count
-	_pending_pick_draw_after = draw_after
-	_pending_pick_indices    = indices
+func begin_hand_discard(player_idx: int, indices: Array[int], count: int, draw_after: int, instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.HAND_DISCARD
+	_pending_pick_count       = count
+	_pending_pick_draw_after  = draw_after
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
+
+## Inicia um pick de herói aliado (ex.: Broto Vital — curar 1 aliado à escolha).
+## action: "heal" | amount: quantidade a aplicar.
+func begin_ally_pick(player_idx: int, action: String, amount: int) -> void:
+	_pending_ally_pick_player = player_idx
+	_pending_ally_pick_action = action
+	_pending_ally_pick_amount = amount
+
+func get_pending_ally_pick_player() -> int: return _pending_ally_pick_player
+func get_pending_ally_pick_action()  -> String: return _pending_ally_pick_action
+func get_pending_ally_pick_amount()  -> int: return _pending_ally_pick_amount
+
+## O jogador escolheu qual herói aliado curar. hero_idx = índice em Player.heroes.
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_ally_pick(hero_idx: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
+	if _pending_ally_pick_player != player_idx:
+		return
+	var p := players[player_idx]
+	if hero_idx < 0 or hero_idx >= p.heroes.size():
+		return
+	var target_hero := p.heroes[hero_idx]
+	if target_hero.state == Hero.State.DEFEATED:
+		return
+	match _pending_ally_pick_action:
+		"heal":
+			var hp_before := target_hero.current_hp
+			target_hero.heal(_pending_ally_pick_amount)
+			var gained := target_hero.current_hp - hp_before
+			if gained > 0:
+				print("[TCG]   ♥ Ally Pick (J%d): curou %s em %d HP (HP: %d→%d)" % [
+					player_idx, target_hero.hero_name, gained, hp_before, target_hero.current_hp
+				])
+			else:
+				print("[TCG]   ♥ Ally Pick (J%d): cura aplicada em %s (HP cheio — sem ganho de HP)" % [
+					player_idx, target_hero.hero_name
+				])
+	_pending_ally_pick_player = -1
+	_pending_ally_pick_action = ""
+	_pending_ally_pick_amount = 0
+	# Retoma o fluxo do segmento se possível
+	if _pending_pick_player < 0 and _pending_symbol_player < 0 \
+			and turn.current_phase == TurnManager.Phase.ACTION:
+		var active := _active_segment_player
+		if _segment_action_done[active] and _segment_bonus_done[active]:
+			_finish_segment(active)
+			return
+	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+
+## Inicia um peek do topo do deck (Dois Passos à Frente).
+## Mostra a carta do topo sem removê-la. Jogador escolhe: manter no topo (enviar [])
+## ou mover ao fundo (enviar [0]).
+func begin_deck_peek(player_idx: int, instruction: String = "") -> void:
+	if players[player_idx].deck.is_empty():
+		return
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.DECK_PEEK
+	_pending_pick_count       = 0   # 0 = sem seleção obrigatória (manter no topo é válido)
+	_pending_pick_indices     = [0]  # exibe deck[0]
+	_pending_pick_instruction = instruction
 
 # ── Revela herói ────────────────────────────────────────
+
+## Captura se o herói estava oculto antes de tentar revelar (para CardEffectContext).
+func _capture_hero_hidden(player_idx: int) -> void:
+	_hero_was_hidden_at_play[player_idx] = not _hero_revealed[player_idx]
 
 ## Revela o herói ativo do jogador se a carta não for furtiva e ele ainda não foi revelado.
 func _try_reveal_hero(player_idx: int, card: Card) -> void:
@@ -504,6 +821,10 @@ func _try_reveal_hero(player_idx: int, card: Card) -> void:
 # apenas sincroniza — o jogador ainda pode jogar a outra carta.
 func _on_reaction_window_closed() -> void:
 	_execute_pending_effect()
+	# If an effect triggered a pick, pause here — _continue_after_pick() resumes the flow.
+	if _pending_pick_player >= 0 or _pending_symbol_player >= 0 or _pending_ally_pick_player >= 0:
+		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		return
 	var active := _active_segment_player
 	if _segment_action_done[active] and _segment_bonus_done[active]:
 		_finish_segment(active)
@@ -523,7 +844,13 @@ func _finish_segment(player_idx: int) -> void:
 		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
 	else:
 		# Segundo segmento concluído → rodada terminou
-		if _consecutive_empty_rounds >= 2 or _both_hands_empty():
+		# Se qualquer carta foi jogada nesta rodada o combate SEMPRE resolve,
+		# independente de as mãos estarem vazias.
+		var round_had_cards := not players[0].round_cards.is_empty() \
+							or not players[1].round_cards.is_empty()
+		if round_had_cards:
+			_resolve_round_combat()
+		elif _consecutive_empty_rounds >= 2 or _both_hands_empty():
 			_run_combat_and_enter_end()
 		else:
 			_resolve_round_combat()
@@ -535,7 +862,22 @@ func _resolve_round_combat() -> void:
 	var preview := _build_combat_preview()
 	if not preview.is_empty():
 		_rpc_notify_combat_preview.rpc(preview)
+	# Captura os valores de dano para replicar combat_resolved ao(s) cliente(s).
+	# A lambda dispara sincronamente dentro de CombatResolver.resolve_round().
+	var _cap := [0, 0]
+	GameBus.combat_resolved.connect(
+		func(d0: int, d1: int) -> void: _cap[0] = d0; _cap[1] = d1,
+		CONNECT_ONE_SHOT
+	)
 	CombatResolver.resolve_round(players[0], players[1])
+	# Propaga o sinal ao cliente (servidor já recebeu acima via CombatResolver).
+	if multiplayer.has_multiplayer_peer() and not multiplayer.get_peers().is_empty():
+		_rpc_notify_combat_resolved.rpc(_cap[0], _cap[1])
+	# Execução Silenciosa: se marcado, oculta herói para o próximo combate
+	for i in 2:
+		if players[i].next_round_stealth:
+			_hero_revealed[i] = false
+			players[i].next_round_stealth = false
 	# Cartas NÃO vão ao cemitério aqui — apenas round_cards é limpo para o
 	# próximo combate começar do zero. O cemitério só recebe as cartas na END.
 	players[0].clear_round_cards()
@@ -555,7 +897,12 @@ func _resolve_round_combat() -> void:
 		_run_combat_and_enter_end()
 		return
 
-	# Nenhuma baixa — inicia nova rodada com o jogador dono do turno
+	# Nenhuma baixa — inicia nova rodada, a menos que ambas as mãos estejam vazias
+	if _both_hands_empty():
+		_run_combat_and_enter_end()
+		return
+	for p in players:
+		p.reset_hero_round_state()
 	_active_segment_player = turn.current_player_index
 	_round_first_player    = turn.current_player_index
 	_segment_action_done   = [false, false]
@@ -577,11 +924,35 @@ func _run_combat_and_enter_end() -> void:
 		if h and not _hero_revealed[i]:
 			_hero_revealed[i] = true
 			GameBus.hero_revealed.emit(i, h)
+	# Onda Reversa: carta vai ao fundo do deck em vez do cemitério
+	for p in players:
+		if p.pending_return_card != null:
+			p.cards_this_turn.erase(p.pending_return_card)
+			p.deck.append(p.pending_return_card)
+			p.pending_return_card = null
+	# Ciclo Vital: retorna carta à mão se herói ficou com HP cheio
+	for p in players:
+		if p.pending_heal_return_card != null:
+			p.cards_this_turn.erase(p.pending_heal_return_card)
+			p.hand.append(p.pending_heal_return_card)
+			p.pending_heal_return_card = null
 	# Todas as cartas jogadas no turno inteiro vão ao cemitério agora (END phase).
 	for p in players:
 		p.discard_pile.append_array(p.cards_this_turn)
 	players[0].clear_combat_cards()
 	players[1].clear_combat_cards()
+
+	# Dispara passivas de fim de turno dos heróis ativos (ex: cura da Irena).
+	# on_turn_end() aplica o efeito e retorna a descrição — GameState emite o sinal
+	# localmente (servidor) e via RPC (clientes) para o popup aparecer em ambos.
+	for i in 2:
+		var h: Hero = players[i].active_hero
+		if h != null:
+			var desc := h.on_turn_end(players[i])
+			if not desc.is_empty():
+				var hero_idx := players[i].heroes.find(h)
+				GameBus.skill_activated.emit(h, desc)
+				_rpc_notify_skill_activated.rpc(i, hero_idx, desc)
 
 	# Exausta heróis e devolve aos slots
 	players[0].exhaust_active_hero()
@@ -591,6 +962,11 @@ func _run_combat_and_enter_end() -> void:
 	turn.current_phase = TurnManager.Phase.END
 	_end_submitted = [false, false]
 	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	# Jogadores sem cartas na mão pulam o arsenal automaticamente
+	for _auto_i in 2:
+		if players[_auto_i].hand.is_empty() and not _end_submitted[_auto_i]:
+			print("[TCG] Jogador %d sem cartas na mão — pulando arsenal automaticamente" % _auto_i)
+			finish_end_turn(_auto_i, -1)
 
 func get_end_submitted(player_idx: int) -> bool:
 	if player_idx < 0 or player_idx > 1:
@@ -607,8 +983,11 @@ func finish_end_turn(player_idx: int, arsenal_hand_index: int) -> bool:
 	if _end_submitted[player_idx]:
 		return false
 	var p: Player = players[player_idx]
+	var _arsenal_log := "sem arsenal"
 	if arsenal_hand_index >= 0 and arsenal_hand_index < p.hand.size():
+		_arsenal_log = "guardou '%s' no arsenal" % p.hand[arsenal_hand_index].card_name
 		p.store_in_arsenal(p.hand[arsenal_hand_index])
+	print("[TCG] Jogador %d (%s): encerrou turno — %s" % [player_idx, p.player_name, _arsenal_log])
 	_end_submitted[player_idx] = true
 	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
 	if _end_submitted[0] and _end_submitted[1]:
@@ -643,9 +1022,9 @@ static func _make_player(index: int, pname: String) -> Player:
 	p.player_index = index
 	p.player_name = pname
 	p.heroes = [
-		_make_hero(),
-		_make_hero(),
-		HeroHakai.new(),
+		HeroIeldor.new(),
+		HeroNissin.new(),
+		HeroValkar.new(),
 	]
 	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
 	p.playmat_key = 'default'
@@ -656,13 +1035,78 @@ static func _make_player2(index: int, pname: String) -> Player:
 	p.player_index = index
 	p.player_name = pname
 	p.heroes = [
-		HeroHakai.new(),
-		HeroHakai.new(),
+		HeroIrena.new(),
 		HeroPoppy.new(),
+		HeroHakai.new(),
 	]
 	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
 	p.playmat_key = 'default'
 	return p
+
+static func _make_player_from_deck(index: int, pname: String, deck_dict: Dictionary) -> Player:
+	var p := Player.new()
+	p.player_index = index
+	p.player_name  = pname
+	var hero_names: Variant = deck_dict.get("heroes", [])
+	if hero_names is Array:
+		for hname in hero_names:
+			var h := _hero_from_name(str(hname))
+			if h != null:
+				p.heroes.append(h)
+	if p.heroes.is_empty():
+		p.heroes = [HeroPoppy.new(), HeroHakai.new(), HeroIrena.new()]
+	var card_entries: Variant = deck_dict.get("cards", [])
+	if card_entries is Array and not (card_entries as Array).is_empty():
+		p.deck = _build_deck_from_entries(card_entries as Array)
+	else:
+		p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
+	p.sleeve_key  = str(deck_dict.get("sleeve",  "default"))
+	p.playmat_key = str(deck_dict.get("playmat", "default"))
+	return p
+
+
+static func _hero_from_name(hero_name: String) -> Hero:
+	match hero_name:
+		"Poppy":              return HeroPoppy.new()
+		"Hakai":              return HeroHakai.new()
+		"Irena":              return HeroIrena.new()
+		"Ieldor":             return HeroIeldor.new()
+		"Nissin":             return HeroNissin.new()
+		"Valkar":             return HeroValkar.new()
+	push_warning("GameState: herói desconhecido '%s'" % hero_name)
+	return null
+
+
+static func _build_deck_from_entries(entries: Array) -> Array[Card]:
+	var out: Array[Card] = []
+	for entry in entries:
+		var cname: String = str(entry.get("name", ""))
+		var count: int    = int(entry.get("count", 1))
+		var card_dict := Collection.get_card_dict(cname)
+		if card_dict.is_empty():
+			push_warning("GameState: carta '%s' não encontrada na coleção" % cname)
+			continue
+		for _i in count:
+			out.append(Card.from_dict(card_dict))
+	return out
+
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_submit_deck(deck_dict: Dictionary) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender     := multiplayer.get_remote_sender_id()
+	var player_idx := _peer_to_player_index(sender)
+	_submitted_deck[player_idx] = deck_dict
+	_deck_submitted[player_idx] = true
+	# Em standalone (sem peers conectados) inicia assim que o host submete
+	if multiplayer.get_peers().is_empty():
+		start_match(_submitted_deck[0], {})
+		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	elif _deck_submitted[0] and _deck_submitted[1]:
+		start_match(_submitted_deck[0], _submitted_deck[1])
+		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+
 
 func _make_effect_ctx(player_idx: int, card: Card, from_arsenal: bool = false) -> CardEffectContext:
 	var ctx := CardEffectContext.new()
@@ -670,6 +1114,7 @@ func _make_effect_ctx(player_idx: int, card: Card, from_arsenal: bool = false) -
 	ctx.opponent_player      = players[1 - player_idx]
 	ctx.source_card          = card
 	ctx.played_from_arsenal  = from_arsenal
+	ctx.hero_was_hidden      = _hero_was_hidden_at_play[player_idx]
 	return ctx
 
 static func _make_hero() -> Hero:
@@ -687,7 +1132,7 @@ func _build_combat_preview() -> Dictionary:
 	var atk0 := h0.base_attack
 	for card in p0.round_cards:
 		atk0 += card.attack_value
-	atk0 += p0.pending_bonus_attack + p0.passive_attack_bonus
+	atk0 += p0.pending_bonus_attack + p0.passive_attack_bonus + p0.turn_bonus_attack + p0.next_round_bonus_attack
 
 	var def0 := h0.base_defense
 	for card in p0.round_cards:
@@ -698,7 +1143,7 @@ func _build_combat_preview() -> Dictionary:
 	var atk1 := h1.base_attack
 	for card in p1.round_cards:
 		atk1 += card.attack_value
-	atk1 += p1.pending_bonus_attack + p1.passive_attack_bonus
+	atk1 += p1.pending_bonus_attack + p1.passive_attack_bonus + p1.turn_bonus_attack + p1.next_round_bonus_attack
 
 	var def1 := h1.base_defense
 	for card in p1.round_cards:
@@ -782,11 +1227,16 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 	if _pending_pick_player != player_idx:
 		return
 	# Valida todos os índices recebidos
-	if pick_indices.size() != _pending_pick_count:
-		return
-	for pi in pick_indices:
-		if pi < 0 or pi >= _pending_pick_indices.size():
+	# DECK_PEEK permite 0 ou 1 índice (0 = manter no topo, 1 = mover ao fundo)
+	if _pending_pick_source == PickSource.DECK_PEEK:
+		if pick_indices.size() > 1:
 			return
+	else:
+		if pick_indices.size() != _pending_pick_count:
+			return
+		for pi in pick_indices:
+			if pi < 0 or pi >= _pending_pick_indices.size():
+				return
 	var p := players[player_idx]
 	match _pending_pick_source:
 		PickSource.DECK:
@@ -796,14 +1246,18 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 				p.hand.append(p.deck[source_idx])
 				p.deck.remove_at(source_idx)
 				GameBus.card_drawn.emit(player_idx)
+			_shuffle_deck(p.deck)
+			GameBus.deck_shuffled.emit(player_idx)
+			_rpc_notify_deck_shuffled.rpc(player_idx)
 		PickSource.GRAVEYARD:
-			# Carta escolhida vai ao fundo do deck; puxa a carta do topo
+			# Carta escolhida vai ao fundo do deck; compra draw_after cartas
 			var source_idx: int = _pending_pick_indices[pick_indices[0]]
 			if source_idx < p.discard_pile.size():
 				var card := p.discard_pile[source_idx]
 				p.discard_pile.remove_at(source_idx)
 				p.deck.append(card)
-			p.draw_cards(1)
+			if _pending_pick_draw_after > 0:
+				p.draw_cards(_pending_pick_draw_after)
 		PickSource.HAND:
 			# Carta escolhida da mão vai ao fundo do deck (índice único)
 			var source_idx: int = _pending_pick_indices[pick_indices[0]]
@@ -811,6 +1265,8 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 				var card := p.hand[source_idx]
 				p.hand.remove_at(source_idx)
 				p.deck.append(card)
+			if _pending_pick_draw_after > 0:
+				p.draw_cards(_pending_pick_draw_after)
 		PickSource.HAND_DISCARD:
 			# Cartas escolhidas vão ao cemitério — remover do maior para o menor índice
 			var real_indices: Array[int] = []
@@ -825,11 +1281,52 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 			# Compra as cartas prometidas após o descarte
 			if _pending_pick_draw_after > 0:
 				p.draw_cards(_pending_pick_draw_after)
-	_pending_pick_player     = -1
-	_pending_pick_source     = PickSource.DECK
-	_pending_pick_count      = 1
-	_pending_pick_draw_after = 0
+		PickSource.HAND_ARSENAL:
+			# Carta escolhida da mão vai para o arsenal
+			var source_idx: int = _pending_pick_indices[pick_indices[0]]
+			if source_idx < p.hand.size():
+				p.store_in_arsenal(p.hand[source_idx])
+		PickSource.GRAVEYARD_ARSENAL:
+			# Carta escolhida do cemitério vai para o arsenal face-up (Ecos do Passado)
+			var source_idx: int = _pending_pick_indices[pick_indices[0]]
+			if source_idx < p.discard_pile.size():
+				var card := p.discard_pile[source_idx]
+				p.discard_pile.remove_at(source_idx)
+				if not p.arsenal.is_empty():
+					p.deck.append(p.arsenal.pop_back())
+				p.arsenal.append(card)
+				p.arsenal_face_up = true   # efeito explícito: virado para cima
+		PickSource.DECK_PEEK:
+			# pick_indices vazio → manter no topo (no-op)
+			# pick_indices == [0] → mover ao fundo do deck
+			if not pick_indices.is_empty() and not p.deck.is_empty():
+				p.deck.push_back(p.deck.pop_front())
+				print("[TCG]   ↕ Dois Passos à Frente (J%d): carta movida ao fundo do deck" % player_idx)
+			else:
+				print("[TCG]   ↑ Dois Passos à Frente (J%d): carta mantida no topo do deck" % player_idx)
+	var followup    := _pending_both_recycle_followup
+	var instruction := _pending_pick_instruction   # preserva antes de limpar
+	_pending_pick_player           = -1
+	_pending_pick_source           = PickSource.DECK
+	_pending_pick_count            = 1
+	_pending_pick_draw_after       = 0
+	_pending_pick_instruction      = ""
 	_pending_pick_indices.clear()
+	_pending_both_recycle_followup = -1
+	# Ecos do Passado: inicia o pick do segundo jogador (repassa a instrução)
+	if followup >= 0 and not players[followup].discard_pile.is_empty():
+		var idxs: Array[int] = []
+		for i in players[followup].discard_pile.size():
+			idxs.append(i)
+		begin_graveyard_arsenal_pick(followup, idxs, -1, instruction)
+	# Se o pick foi disparado por um efeito durante o fechamento da janela de reação
+	# e não há outro pick pendente, continua o fluxo do segmento.
+	if _pending_pick_player < 0 and _pending_symbol_player < 0 \
+			and turn.current_phase == TurnManager.Phase.ACTION:
+		var active := _active_segment_player
+		if _segment_action_done[active] and _segment_bonus_done[active]:
+			_finish_segment(active)
+			return
 	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
 
 @rpc("any_peer", "call_local", "reliable")
@@ -880,10 +1377,34 @@ func _sync_state(phase_str: String, snapshot: Dictionary) -> void:
 	GameBus.phase_changed.emit(phase_str)
 	GameBus.state_synced.emit()
 
+@rpc("any_peer", "call_local", "reliable")
+func rpc_forfeit() -> void:
+	if not multiplayer.is_server():
+		return
+	if _winner_index >= 0:
+		return
+	var forfeiting_peer := multiplayer.get_remote_sender_id()
+	var forfeiting_idx := _peer_to_player_index(forfeiting_peer)
+	if forfeiting_idx < 0:
+		return
+	var winner_idx := 1 - forfeiting_idx
+	_winner_index = winner_idx
+	GameBus.game_over.emit(winner_idx)
+	_rpc_notify_game_over.rpc(winner_idx)
+
 # Notifica apenas o cliente (host já emitiu diretamente).
 @rpc("authority", "call_remote", "reliable")
 func _rpc_notify_game_over(winner_idx: int) -> void:
 	GameBus.game_over.emit(winner_idx)
+
+# Replica combat_resolved para o cliente (o servidor já o recebeu via CombatResolver).
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_combat_resolved(dmg_p0: int, dmg_p1: int) -> void:
+	GameBus.combat_resolved.emit(dmg_p0, dmg_p1)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_deck_shuffled(player_idx: int) -> void:
+	GameBus.deck_shuffled.emit(player_idx)
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_notify_card_played(player_idx: int, card_data: Dictionary) -> void:
@@ -902,30 +1423,37 @@ func _rpc_notify_skill_activated(player_idx: int, hero_idx: int, skill_name: Str
 		return
 	GameBus.skill_activated.emit(players[player_idx].heroes[hero_idx], skill_name)
 
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_backline_arrow(source_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	GameBus.backline_arrow_fired.emit(source_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
 # Serializa o estado mínimo necessário para o cliente redesenhar a UI.
 func _build_snapshot() -> Dictionary:
 	var snap := { "players": [] }
 	for p in players:
 		var heroes_data: Array = []
 		for h in p.heroes:
-			heroes_data.append({ "hp": h.current_hp, "state": int(h.state) })
-		var discard_top: Dictionary = {}
-		if not p.discard_pile.is_empty():
-			discard_top = _serialize_cards([p.discard_pile.back()])[0]
+			heroes_data.append({ "hp": h.current_hp, "state": int(h.state), "backline_revealed": h.is_backline_revealed, "damage_shield": h.damage_shield })
 		snap["players"].append({
 			"hand":                 _serialize_cards(p.hand),
 			"arsenal":              _serialize_cards(p.arsenal),
+			"arsenal_face_up":      p.arsenal_face_up,
 			"round_cards":          _serialize_cards(p.round_cards),
 			"heroes":               heroes_data,
 			"active_hero_idx":      p.heroes.find(p.active_hero),
 			"sleeve_key":           p.sleeve_key,
 			"playmat_key":          p.playmat_key,
-			"discard_top":          discard_top,
-			"pending_bonus_attack":  p.pending_bonus_attack,
-			"pending_bonus_defense": p.pending_bonus_defense,
-			"next_defense_penalty":  p.next_defense_penalty,
-			"passive_attack_bonus":  (p.active_hero.get_passive_attack_bonus() if p.active_hero != null else 0),
+			"discard_pile":         _serialize_cards(p.discard_pile),
+			"pending_bonus_attack":            p.pending_bonus_attack,
+			"pending_bonus_defense":           p.pending_bonus_defense,
+			"next_defense_penalty":            p.next_defense_penalty,
+			"passive_attack_bonus":            (p.active_hero.get_passive_attack_bonus() if p.active_hero != null else 0),
+			"turn_bonus_attack":               p.turn_bonus_attack,
+			"next_round_bonus_attack":         p.next_round_bonus_attack,
+			"pending_cross_round_if_no_damage": p.pending_cross_round_if_no_damage,
 		})
+	# estado do mulligan de abertura
+	snap["opening_mulligan_done"] = [_opening_mulligan_done[0], _opening_mulligan_done[1]]
 	# estado da fase de escolha de herói
 	snap["next_hero_pick_player"] = _next_hero_pick_player
 	snap["hero_submitted"]        = [_hero_submitted[0], _hero_submitted[1]]
@@ -939,10 +1467,11 @@ func _build_snapshot() -> Dictionary:
 	snap["hero_revealed"]            = [_hero_revealed[0], _hero_revealed[1]]
 	snap["end_submitted"]            = [_end_submitted[0], _end_submitted[1]]
 	# pick de carta pendente
-	snap["pending_pick_player"]     = _pending_pick_player
-	snap["pending_pick_source"]     = int(_pending_pick_source)
-	snap["pending_pick_count"]      = _pending_pick_count
-	snap["pending_pick_draw_after"] = _pending_pick_draw_after
+	snap["pending_pick_player"]      = _pending_pick_player
+	snap["pending_pick_source"]      = int(_pending_pick_source)
+	snap["pending_pick_count"]       = _pending_pick_count
+	snap["pending_pick_draw_after"]  = _pending_pick_draw_after
+	snap["pending_pick_instruction"] = _pending_pick_instruction
 	if _pending_pick_player >= 0 and _pending_pick_player < players.size():
 		var source_arr := _pick_source_array(_pending_pick_player)
 		var show: Array[Card] = []
@@ -952,9 +1481,18 @@ func _build_snapshot() -> Dictionary:
 		snap["pending_pick_cards"] = _serialize_cards(show)
 	else:
 		snap["pending_pick_cards"] = []
+	# pick de herói aliado pendente
+	snap["pending_ally_pick_player"] = _pending_ally_pick_player
+	snap["pending_ally_pick_action"] = _pending_ally_pick_action
+	snap["pending_ally_pick_amount"] = _pending_ally_pick_amount
 	# pick de símbolo pendente
 	snap["pending_symbol_player"] = _pending_symbol_player
 	snap["pending_symbol_count"]  = _pending_symbol_count
+	# habilidades de retaguarda interativas
+	snap["backline_awaiting_response"] = _backline_awaiting_response
+	snap["backline_awaiting_target"]   = _backline_awaiting_target
+	snap["backline_current_player"]    = _backline_current_player
+	snap["backline_current_hero_idx"]  = _backline_current_hero_idx
 	return snap
 
 static func _serialize_cards(cards: Array[Card]) -> Array:
@@ -968,6 +1506,8 @@ static func _serialize_cards(cards: Array[Card]) -> Array:
 			"symbols":       Array(c.symbols),
 			"stealth":       c.is_stealth,
 			"art_key":       c.art_key,
+			"description":   c.description,
+			"rarity":        Card.Rarity.keys()[c.rarity],
 		})
 	return out
 
@@ -982,27 +1522,35 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		# Sobrescrever com cópias desserializadas (sem effects) quebraria a execução
 		# de efeitos. Apenas o cliente precisa reconstruir essas listas.
 		if not multiplayer.is_server():
-			p.hand        = _deserialize_cards(pd.get("hand", []))
-			p.arsenal     = _deserialize_cards(pd.get("arsenal", []))
-			p.round_cards = _deserialize_cards(pd.get("round_cards", []))
-		p.pending_bonus_attack  = pd.get("pending_bonus_attack",  0)
-		p.pending_bonus_defense = pd.get("pending_bonus_defense", 0)
-		p.next_defense_penalty  = pd.get("next_defense_penalty",  0)
-		p.passive_attack_bonus  = pd.get("passive_attack_bonus",  0)
+			p.hand           = _deserialize_cards(pd.get("hand", []))
+			p.arsenal        = _deserialize_cards(pd.get("arsenal", []))
+			p.round_cards    = _deserialize_cards(pd.get("round_cards", []))
+		p.arsenal_face_up = pd.get("arsenal_face_up", false)
+		p.pending_bonus_attack             = pd.get("pending_bonus_attack",             0)
+		p.pending_bonus_defense            = pd.get("pending_bonus_defense",            0)
+		p.next_defense_penalty             = pd.get("next_defense_penalty",             0)
+		p.passive_attack_bonus             = pd.get("passive_attack_bonus",             0)
+		p.turn_bonus_attack                = pd.get("turn_bonus_attack",                0)
+		p.next_round_bonus_attack          = pd.get("next_round_bonus_attack",          0)
+		p.pending_cross_round_if_no_damage = pd.get("pending_cross_round_if_no_damage", 0)
 		if not multiplayer.is_server():
-			var dt: Dictionary = pd.get("discard_top", {})
-			if not dt.is_empty():
-				p.discard_pile = _deserialize_cards([dt])
-			else:
-				p.discard_pile.clear()
+			var dp: Array = pd.get("discard_pile", [])
+			p.discard_pile = _deserialize_cards(dp)
 		var hlist: Array = pd.get("heroes", [])
 		for j in min(hlist.size(), p.heroes.size()):
-			p.heroes[j].current_hp = hlist[j].get("hp", p.heroes[j].current_hp)
-			p.heroes[j].state      = hlist[j].get("state", int(p.heroes[j].state))
+			p.heroes[j].current_hp          = hlist[j].get("hp",                p.heroes[j].current_hp)
+			p.heroes[j].state               = hlist[j].get("state",             int(p.heroes[j].state))
+			p.heroes[j].is_backline_revealed = hlist[j].get("backline_revealed", false)
+			p.heroes[j].damage_shield        = hlist[j].get("damage_shield",     0)
 		var active_idx: int = pd.get("active_hero_idx", -1)
 		p.active_hero  = p.heroes[active_idx] if active_idx >= 0 else null
 		p.sleeve_key   = pd.get("sleeve_key",  p.sleeve_key)
 		p.playmat_key  = pd.get("playmat_key", p.playmat_key)
+	# mulligan de abertura — cliente precisa saber quando já confirmou
+	var omd: Array = snap.get("opening_mulligan_done", [])
+	if omd.size() >= 2:
+		_opening_mulligan_done[0] = omd[0]
+		_opening_mulligan_done[1] = omd[1]
 	# estado da escolha de herói — necessário para o cliente saber de quem é a vez
 	_next_hero_pick_player = snap.get("next_hero_pick_player", _next_hero_pick_player)
 	var hs: Array = snap.get("hero_submitted", [])
@@ -1030,14 +1578,22 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		_end_submitted[0] = es[0]
 		_end_submitted[1] = es[1]
 	# estado de pick pendente
-	_pending_pick_player     = snap.get("pending_pick_player",     -1)
-	_pending_pick_source     = snap.get("pending_pick_source",     int(PickSource.DECK)) as PickSource
-	_pending_pick_count      = snap.get("pending_pick_count",      1)
-	_pending_pick_draw_after = snap.get("pending_pick_draw_after", 0)
+	_pending_pick_player      = snap.get("pending_pick_player",      -1)
+	_pending_pick_source      = snap.get("pending_pick_source",      int(PickSource.DECK)) as PickSource
+	_pending_pick_count       = snap.get("pending_pick_count",       1)
+	_pending_pick_draw_after  = snap.get("pending_pick_draw_after",  0)
+	_pending_pick_instruction = snap.get("pending_pick_instruction", "")
 	if not multiplayer.is_server():
 		_pending_pick_cards_display = _deserialize_cards(snap.get("pending_pick_cards", []))
+	_pending_ally_pick_player = snap.get("pending_ally_pick_player", -1)
+	_pending_ally_pick_action = snap.get("pending_ally_pick_action", "")
+	_pending_ally_pick_amount = snap.get("pending_ally_pick_amount", 0)
 	_pending_symbol_player = snap.get("pending_symbol_player", -1)
 	_pending_symbol_count  = snap.get("pending_symbol_count",  0)
+	_backline_awaiting_response = snap.get("backline_awaiting_response", false)
+	_backline_awaiting_target   = snap.get("backline_awaiting_target",   false)
+	_backline_current_player    = snap.get("backline_current_player",    -1)
+	_backline_current_hero_idx  = snap.get("backline_current_hero_idx",  -1)
 
 static func _deserialize_cards(arr: Array) -> Array[Card]:
 	var out: Array[Card] = []
@@ -1050,6 +1606,7 @@ static func _phase_from_string(s: String) -> TurnManager.Phase:
 		"OPENING_MULLIGAN": return TurnManager.Phase.OPENING_MULLIGAN
 		"DRAW":             return TurnManager.Phase.DRAW
 		"HERO_SELECTION":   return TurnManager.Phase.HERO_SELECTION
+		"BACKLINE_ABILITY": return TurnManager.Phase.BACKLINE_ABILITY
 		"ACTION":           return TurnManager.Phase.ACTION
 		"COMBAT":           return TurnManager.Phase.COMBAT
 		"END":              return TurnManager.Phase.END
@@ -1058,11 +1615,44 @@ static func _phase_from_string(s: String) -> TurnManager.Phase:
 # ── helper ───────────────────────────────────────────────
 
 func _peer_to_player_index(peer_id: int) -> int:
-	# Chamadas locais (host → si mesmo) chegam com peer_id = 0.
-	# O servidor em si tem peer_id = 1.
-	# Ambos os casos são o host → player 0.
-	# Qualquer outro peer_id é o cliente → player 1.
+	# Modelo A (mundo): o servidor define explicitamente quem é player 0 e player 1.
+	# Nesse fluxo o servidor (peer 1) NÃO é jogador, então o fallback abaixo não vale.
+	if not _match_peer_to_idx.is_empty():
+		return int(_match_peer_to_idx.get(peer_id, -1))
+	# Fallback (lobby/standalone): chamadas locais (host → si) chegam com peer_id = 0;
+	# o servidor tem peer_id = 1; ambos são o host → player 0. Qualquer outro → player 1.
 	return 0 if peer_id <= 1 else 1
+
+## Servidor define quais peers são player 0 e player 1 nesta partida (Modelo A).
+## Também zera a submissão de deck para não herdar estado de uma partida anterior.
+func set_match_participants(p_peer0: int, p_peer1: int) -> void:
+	_match_peer_to_idx = { p_peer0: 0, p_peer1: 1 }
+	_deck_submitted = [false, false]
+	_submitted_deck = [{}, {}]
+
+## Limpa o mapeamento ao fim da partida (volta ao fallback lobby/standalone).
+func clear_match_participants() -> void:
+	_match_peer_to_idx = {}
+
+## Aplica dano direto ao herói ativo do jogador alvo, fora do fluxo de combat_resolver.
+## Usado por efeitos como Tiro de Oportunidade e Ricochetear.
+func _deal_direct_damage(target_player_idx: int, amount: int) -> void:
+	if amount <= 0 or target_player_idx < 0 or target_player_idx > 1:
+		return
+	var tp: Player = players[target_player_idx]
+	var hero: Hero = tp.active_hero
+	if hero == null or not hero.is_alive():
+		return
+	var ctx := BattleContext.new()
+	ctx.defender = hero
+	ctx.defender_player = tp
+	hero.take_damage(amount, ctx)
+	GameBus.hero_damaged.emit(hero, amount)
+	var w := _evaluate_winner()
+	if w >= 0:
+		_winner_index = w
+		GameBus.game_over.emit(w)
+		_rpc_notify_game_over.rpc(w)
 	
 static func _debug_force_card_to_hand(p: Player, card_name: String) -> void:
 	for i in p.deck.size():
@@ -1070,3 +1660,35 @@ static func _debug_force_card_to_hand(p: Player, card_name: String) -> void:
 			p.hand.append(p.deck[i])
 			p.deck.remove_at(i)
 			return
+
+## DEBUG — força a carta com `card_id` para a posição `hand_slot` da mão do jogador.
+## Busca no deck; se não encontrar, não faz nada.
+## hand_slot = 0 → primeira carta da mão | hand_slot = -1 → última carta da mão.
+func _debug_force_card_in_hand(player_idx: int, card_id: int, hand_slot: int = 0) -> void:
+	var p := players[player_idx]
+	for i in p.deck.size():
+		if p.deck[i].id == card_id:
+			var card := p.deck[i]
+			p.deck.remove_at(i)
+			var insert_pos := hand_slot if hand_slot >= 0 else p.hand.size()
+			insert_pos = clampi(insert_pos, 0, p.hand.size())
+			p.hand.insert(insert_pos, card)
+			print("[DEBUG] Carta '%s' (id:%d) inserida na posição %d da mão do Jogador %d" % [
+				card.card_name, card_id, insert_pos, player_idx
+			])
+			return
+	print("[DEBUG] Carta id:%d não encontrada no deck do Jogador %d" % [card_id, player_idx])
+
+## DEBUG — move a carta com `card_id` para a frente do deck ANTES da distribuição inicial.
+## Assim ela será a primeira carta sacada e vai para a mão automaticamente.
+static func _debug_move_card_to_deck_front(p: Player, card_id: int) -> void:
+	for i in p.deck.size():
+		if p.deck[i].id == card_id:
+			var card := p.deck[i]
+			p.deck.remove_at(i)
+			p.deck.push_front(card)
+			print("[DEBUG] Carta '%s' (id:%d) movida para a frente do deck — será sacada na mão" % [
+				card.card_name, card_id
+			])
+			return
+	print("[DEBUG] Carta id:%d não encontrada no deck" % card_id)

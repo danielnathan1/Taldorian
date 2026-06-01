@@ -8,6 +8,8 @@
 
 config_version=5
 
+"ï»¿config_version"=5
+
 [application]
 
 config/name="Taldorian"
@@ -22,6 +24,12 @@ NetworkState="*uid://tn8f3we8cliq"
 GameState="*uid://dtqbfrlqlcsia"
 WorldState="*res://src/world/world_state.gd"
 WorldServer="*res://src/world/world_server.gd"
+Collection="*res://src/autoload/collection.gd"
+DeckStore="*res://src/autoload/deck_store.gd"
+CosmeticsStore="*res://src/autoload/cosmetics_store.gd"
+CharacterStore="*res://src/autoload/character_store.gd"
+RoomService="*res://src/world/room_service.gd"
+MatchService="*res://src/world/match_service.gd"
 
 [display]
 

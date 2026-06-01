@@ -1,15 +1,20 @@
 extends Control
 
 const PORT              := 7000
-const BOARD_SCENE       := "res://scenes/ui/boardv2/board.tscn"
-const WORLD_CONNECT_SCENE := "res://scenes/world/world_connect.tscn"
+const BOARD_SCENE              := "res://scenes/ui/boardv2/board.tscn"
+const WORLD_CONNECT_SCENE      := "res://scenes/world/world_connect.tscn"
+const DECK_BUILDER_SCENE       := "res://scenes/ui/deck_builder/deck_builder.tscn"
+const BOOSTER_SHOP_SCENE       := "res://scenes/ui/booster_shop/booster_shop.tscn"
+const CHARACTER_CREATOR_SCENE  := "res://scenes/ui/character_creator/character_creator.tscn"
 
 # ── Node references ────────────────────────────────────────────────────────────
 @onready var address_input   : LineEdit       = %AddressInput
 @onready var join_button     : Button         = %JoinButton
 @onready var host_button     : Button         = %HostButton
 @onready var help_button     : Button         = %HelpButton
-@onready var world_button    : Button         = %WorldButton
+@onready var world_button         : Button = %WorldButton
+@onready var deck_builder_button  : Button = %DeckBuilderButton
+@onready var booster_shop_button  : Button = %BoosterShopButton
 @onready var status_label    : Label          = %StatusLabel
 @onready var toast_label     : Label          = %ToastLabel
 @onready var help_dialog     : Control        = %HelpDialog
@@ -31,6 +36,15 @@ var _toast_tween : Tween
 var _music       : AudioStreamPlayer
 
 func _ready() -> void:
+	# Servidor dedicado do mundo (--world-server): o lobby é a cena principal, mas
+	# não deve rodar aqui — sairia zerando o peer do servidor e conectando os sinais
+	# de matchmaking do TCG. Bail imediato, deixando o WorldServer no comando.
+	if WorldServer.is_dedicated:
+		set_process(false)
+		set_process_input(false)
+		hide()
+		return
+
 	# Garante que nenhum peer antigo (TCG ou mundo) interfere ao voltar para o lobby
 	multiplayer.multiplayer_peer = null
 	position = Vector2.ZERO
@@ -100,6 +114,26 @@ func _apply_styles() -> void:
 	world_button.add_theme_color_override("font_color",         Color(0.45, 0.80, 0.60))
 	world_button.add_theme_color_override("font_hover_color",   Color(0.60, 1.00, 0.78))
 	world_button.add_theme_color_override("font_pressed_color", Color(0.40, 0.70, 0.55))
+
+	var db_normal := _make_button_style(Color(0.08, 0.06, 0.03), C_GOLD, 0.45)
+	var db_hover  := _make_button_style(Color(0.12, 0.09, 0.04), C_GOLD_GLOW, 0.80)
+	var db_press  := _make_button_style(Color(0.06, 0.04, 0.02), C_GOLD, 1.0)
+	deck_builder_button.add_theme_stylebox_override("normal",  db_normal)
+	deck_builder_button.add_theme_stylebox_override("hover",   db_hover)
+	deck_builder_button.add_theme_stylebox_override("pressed", db_press)
+	deck_builder_button.add_theme_color_override("font_color",         C_GOLD_DIM)
+	deck_builder_button.add_theme_color_override("font_hover_color",   C_GOLD_GLOW)
+	deck_builder_button.add_theme_color_override("font_pressed_color", C_GOLD)
+
+	var bs_normal := _make_button_style(Color(0.10, 0.07, 0.02), C_GOLD, 0.50)
+	var bs_hover  := _make_button_style(Color(0.16, 0.11, 0.03), C_GOLD_GLOW, 0.85)
+	var bs_press  := _make_button_style(Color(0.07, 0.05, 0.01), C_GOLD, 1.0)
+	booster_shop_button.add_theme_stylebox_override("normal",  bs_normal)
+	booster_shop_button.add_theme_stylebox_override("hover",   bs_hover)
+	booster_shop_button.add_theme_stylebox_override("pressed", bs_press)
+	booster_shop_button.add_theme_color_override("font_color",         C_GOLD_DIM)
+	booster_shop_button.add_theme_color_override("font_hover_color",   C_GOLD_GLOW)
+	booster_shop_button.add_theme_color_override("font_pressed_color", C_GOLD)
 
 	var input_normal := StyleBoxFlat.new()
 	input_normal.bg_color = Color(0.031, 0.043, 0.110, 0.75)
@@ -171,6 +205,8 @@ func _connect_signals() -> void:
 	host_button.pressed.connect(_on_host_pressed)
 	help_button.pressed.connect(_on_help_pressed)
 	world_button.pressed.connect(_on_world_pressed)
+	deck_builder_button.pressed.connect(_on_deck_builder_pressed)
+	booster_shop_button.pressed.connect(_on_booster_shop_pressed)
 	address_input.text_submitted.connect(_on_address_submitted)
 	%HelpCloseButton.pressed.connect(func(): help_dialog.hide())
 	%HelpDialog.get_node("DimBG").gui_input.connect(func(event):
@@ -213,7 +249,16 @@ func _on_address_submitted(_text: String) -> void:
 	_on_join_pressed()
 
 func _on_world_pressed() -> void:
+	if not CharacterStore.has_character():
+		_show_no_character_dialog()
+		return
 	get_tree().change_scene_to_file(WORLD_CONNECT_SCENE)
+
+func _on_deck_builder_pressed() -> void:
+	get_tree().change_scene_to_file(DECK_BUILDER_SCENE)
+
+func _on_booster_shop_pressed() -> void:
+	get_tree().change_scene_to_file(BOOSTER_SHOP_SCENE)
 
 
 # ── Callbacks de rede ──────────────────────────────────────────────────────────
@@ -246,8 +291,97 @@ func _start_music() -> void:
 @rpc("authority", "call_local", "reliable")
 func _start_game() -> void:
 	_music.stop()
+	# Partida via lobby (LAN 1×1): ao terminar volta ao lobby, não ao mundo.
+	NetworkState.match_origin_world = false
 	get_tree().change_scene_to_file(BOARD_SCENE)
 
+
+# ── Dialog: sem personagem ────────────────────────────────────────────────────
+func _show_no_character_dialog() -> void:
+	# Remove dialog anterior se existir
+	var old := get_node_or_null("NoCharacterDialog")
+	if old:
+		old.queue_free()
+
+	# Overlay escuro
+	var overlay := ColorRect.new()
+	overlay.name = "NoCharacterDialog"
+	overlay.color = Color(0, 0, 0, 0.65)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(overlay)
+
+	# Painel central
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color     = Color(0.063, 0.082, 0.149, 0.97)
+	panel_style.border_color = Color(C_GOLD, 0.40)
+	panel_style.set_border_width_all(1)
+	panel_style.set_content_margin_all(36)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480, 0)
+	panel.add_theme_stylebox_override("panel", panel_style)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 16)
+	panel.add_child(vbox)
+
+	# Ícone + Título
+	var title := Label.new()
+	title.text = "Personagem não encontrado"
+	title.add_theme_color_override("font_color", C_GOLD)
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	# Descrição
+	var desc := Label.new()
+	desc.text = "Você ainda não criou seu personagem para o\nmundo aberto. Crie agora para explorar!"
+	desc.add_theme_color_override("font_color", C_PARCHMENT_D)
+	desc.add_theme_font_size_override("font_size", 13)
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(desc)
+
+	# Botões
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(btn_row)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancelar"
+	cancel_btn.custom_minimum_size = Vector2(140, 40)
+	cancel_btn.add_theme_color_override("font_color", C_PARCHMENT_D)
+	cancel_btn.pressed.connect(func() -> void: overlay.queue_free())
+	btn_row.add_child(cancel_btn)
+
+	var create_btn := Button.new()
+	create_btn.text = "✦ CRIAR PERSONAGEM"
+	create_btn.custom_minimum_size = Vector2(200, 40)
+	create_btn.add_theme_color_override("font_color", C_GOLD_GLOW)
+	create_btn.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file(CHARACTER_CREATOR_SCENE)
+	)
+	btn_row.add_child(create_btn)
+
+	center.add_child(panel)
+
+	# Fecha ao clicar fora do painel
+	overlay.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			if not panel.get_global_rect().has_point(event.global_position):
+				overlay.queue_free()
+	)
+
+	# Animação de entrada
+	overlay.modulate.a = 0.0
+	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tween.tween_property(overlay, "modulate:a", 1.0, 0.25)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 func _set_buttons_enabled(value: bool) -> void:

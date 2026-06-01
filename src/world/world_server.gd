@@ -9,9 +9,14 @@ extends Node
 
 const WORLD_PORT := 7001
 
+## true quando esta instância foi lançada com --world-server (servidor dedicado).
+## Lido por outras cenas (ex.: lobby) para não interferir no peer do servidor.
+var is_dedicated: bool = false
+
 func _ready() -> void:
 	if not "--world-server" in OS.get_cmdline_user_args():
 		return
+	is_dedicated = true
 	_start()
 
 func _start() -> void:
@@ -23,6 +28,7 @@ func _start() -> void:
 		return
 	multiplayer.multiplayer_peer = peer
 	print("[WorldServer] Servidor do mundo rodando na porta %d" % WORLD_PORT)
-	WorldState.activate()
+	# Servidor dedicado não é um jogador — não se registra em _players.
+	WorldState.activate({}, false)
 	multiplayer.peer_connected.connect(func(id): print("[WorldServer] Jogador conectado: %d" % id))
 	multiplayer.peer_disconnected.connect(func(id): print("[WorldServer] Jogador desconectado: %d" % id))
