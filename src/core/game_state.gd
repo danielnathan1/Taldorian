@@ -1,73 +1,230 @@
 # src/core/game_state.gd
 extends Node
 
-var players: Array[Player] = []
-var turn: TurnManager = TurnManager.new()
+# ── Estado da partida (Modelo A — Fase 2.1) ──────────────────────────────────
+# Todo o estado mutável de UMA partida vive em Match (`_m`). As propriedades
+# abaixo são proxies que leem/escrevem em `_m`, mantendo a API GameState.players/
+# turn para as cenas e TODOS os corpos de método inalterados. Na Fase 2.2 o
+# servidor troca `_m` pela partida do remetente do RPC (multi-sala).
+var _m: MatchState = MatchState.new()
 
-var _opening_mulligan_done: Array[bool] = [false, false]
-var _hero_submitted: Array[bool] = [false, false]
-var _next_hero_pick_player: int = 0
-var _winner_index: int = -1
-
-# ── estado da fase ACTION ────────────────────────────────
-var _active_segment_player: int       = 0
-var _round_first_player: int          = 0    # quem abriu a rodada atual
-var _segment_action_done: Array[bool] = [false, false]
-var _segment_bonus_done:  Array[bool] = [false, false]
-var _reaction_window_for: int         = -1   # -1=fechada; 0|1=quem pode reagir
-var _consecutive_empty_rounds: int    = 0    # rodadas sem ACTION jogado
-var _hero_revealed: Array[bool]       = [false, false]  # herói revelado ao oponente
-var _end_submitted: Array[bool]       = [false, false]  # jogador confirmou arsenal na fase END
-
-# Efeito pendente — disparado após a janela de reação fechar.
-# Garante que reação resolve antes da ação/ação-bônus.
-var _pending_effect_card: Card          = null
-var _pending_effect_player: int         = -1
-var _pending_effect_from_arsenal: bool  = false
-
-# Pick de herói aliado pendente — aguarda o jogador escolher um herói via PickAlly overlay.
-var _pending_ally_pick_player: int  = -1
-var _pending_ally_pick_action: String = ""   # "heal" etc.
-var _pending_ally_pick_amount: int  = 0
-
-# Pick de símbolo pendente — aguarda o jogador escolher elementos via PickSymbol overlay.
-var _pending_symbol_player: int            = -1
-var _pending_symbol_count: int             = 0
-var _pending_symbol_card: Card             = null   # carta que receberá os símbolos (servidor)
-var _pending_symbol_after_reaction: bool   = false  # se true, chama _on_reaction_window_closed() após resolver
-
-# Pick de carta pendente — aguarda o jogador escolher uma carta via PickCard overlay.
+# Enum mantido no GameState: os corpos usam PickSource.X sem qualificar.
 enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD, HAND_ARSENAL, GRAVEYARD_ARSENAL, DECK_PEEK }
-var _pending_pick_player: int                = -1
-var _pending_pick_source: PickSource         = PickSource.DECK
-var _pending_pick_count: int                 = 1    # quantas cartas o jogador deve selecionar
-var _pending_pick_draw_after: int            = 0    # comprar N cartas após resolver o pick
-var _pending_pick_indices: Array[int]        = []   # índices na fonte (deck, graveyard ou mão)
-var _pending_pick_cards_display: Array[Card] = []   # cópias p/ exibição (cliente)
-var _pending_pick_instruction: String        = ""   # texto exibido no topo do overlay PickCard
-# Para Ecos do Passado: após o pick do jogador 0, inicia pick para o jogador 1
-var _pending_both_recycle_followup: int = -1
-# Estado do herói no momento em que a carta foi jogada (antes de revelar)
-var _hero_was_hidden_at_play: Array[bool] = [false, false]
 
-# ── habilidades de retaguarda interativas ───────────────
-# Fila de habilidades pendentes (heróis com has_backline_ability()==true).
-# Cada entrada: { "player_idx": int, "hero_idx": int }
-var _backline_queue:            Array[Dictionary] = []
-var _backline_awaiting_response: bool = false
-var _backline_awaiting_target:   bool = false
-var _backline_current_player:    int  = -1
-var _backline_current_hero_idx:  int  = -1
+var players: Array[Player]:
+	get:
+		return _m.players
+	set(value):
+		_m.players = value
+var turn: TurnManager:
+	get:
+		return _m.turn
+	set(value):
+		_m.turn = value
 
-# ── submissão de deck (multiplayer) ─────────────────────────────────────────
-var _deck_submitted: Array[bool]  = [false, false]
-var _submitted_deck: Array[Dictionary] = [{}, {}]
+var _opening_mulligan_done: Array[bool]:
+	get:
+		return _m._opening_mulligan_done
+	set(value):
+		_m._opening_mulligan_done = value
+var _hero_submitted: Array[bool]:
+	get:
+		return _m._hero_submitted
+	set(value):
+		_m._hero_submitted = value
+var _next_hero_pick_player: int:
+	get:
+		return _m._next_hero_pick_player
+	set(value):
+		_m._next_hero_pick_player = value
+var _winner_index: int:
+	get:
+		return _m._winner_index
+	set(value):
+		_m._winner_index = value
 
-# ── mapeamento de peers (Modelo A — partida no servidor do mundo) ────────────
-# peer_id → player_index (0/1). Vazio no fluxo lobby/standalone, onde vale o
-# fallback histórico (peer<=1 = host = player 0). Definido pelo servidor ao
-# iniciar uma partida entre dois clientes do mundo.
-var _match_peer_to_idx: Dictionary = {}
+var _active_segment_player: int:
+	get:
+		return _m._active_segment_player
+	set(value):
+		_m._active_segment_player = value
+var _round_first_player: int:
+	get:
+		return _m._round_first_player
+	set(value):
+		_m._round_first_player = value
+var _segment_action_done: Array[bool]:
+	get:
+		return _m._segment_action_done
+	set(value):
+		_m._segment_action_done = value
+var _segment_bonus_done: Array[bool]:
+	get:
+		return _m._segment_bonus_done
+	set(value):
+		_m._segment_bonus_done = value
+var _reaction_window_for: int:
+	get:
+		return _m._reaction_window_for
+	set(value):
+		_m._reaction_window_for = value
+var _consecutive_empty_rounds: int:
+	get:
+		return _m._consecutive_empty_rounds
+	set(value):
+		_m._consecutive_empty_rounds = value
+var _hero_revealed: Array[bool]:
+	get:
+		return _m._hero_revealed
+	set(value):
+		_m._hero_revealed = value
+var _end_submitted: Array[bool]:
+	get:
+		return _m._end_submitted
+	set(value):
+		_m._end_submitted = value
+
+var _pending_effect_card: Card:
+	get:
+		return _m._pending_effect_card
+	set(value):
+		_m._pending_effect_card = value
+var _pending_effect_player: int:
+	get:
+		return _m._pending_effect_player
+	set(value):
+		_m._pending_effect_player = value
+var _pending_effect_from_arsenal: bool:
+	get:
+		return _m._pending_effect_from_arsenal
+	set(value):
+		_m._pending_effect_from_arsenal = value
+
+var _pending_ally_pick_player: int:
+	get:
+		return _m._pending_ally_pick_player
+	set(value):
+		_m._pending_ally_pick_player = value
+var _pending_ally_pick_action: String:
+	get:
+		return _m._pending_ally_pick_action
+	set(value):
+		_m._pending_ally_pick_action = value
+var _pending_ally_pick_amount: int:
+	get:
+		return _m._pending_ally_pick_amount
+	set(value):
+		_m._pending_ally_pick_amount = value
+
+var _pending_symbol_player: int:
+	get:
+		return _m._pending_symbol_player
+	set(value):
+		_m._pending_symbol_player = value
+var _pending_symbol_count: int:
+	get:
+		return _m._pending_symbol_count
+	set(value):
+		_m._pending_symbol_count = value
+var _pending_symbol_card: Card:
+	get:
+		return _m._pending_symbol_card
+	set(value):
+		_m._pending_symbol_card = value
+var _pending_symbol_after_reaction: bool:
+	get:
+		return _m._pending_symbol_after_reaction
+	set(value):
+		_m._pending_symbol_after_reaction = value
+
+var _pending_pick_player: int:
+	get:
+		return _m._pending_pick_player
+	set(value):
+		_m._pending_pick_player = value
+var _pending_pick_source: PickSource:
+	get:
+		return _m._pending_pick_source
+	set(value):
+		_m._pending_pick_source = value
+var _pending_pick_count: int:
+	get:
+		return _m._pending_pick_count
+	set(value):
+		_m._pending_pick_count = value
+var _pending_pick_draw_after: int:
+	get:
+		return _m._pending_pick_draw_after
+	set(value):
+		_m._pending_pick_draw_after = value
+var _pending_pick_indices: Array[int]:
+	get:
+		return _m._pending_pick_indices
+	set(value):
+		_m._pending_pick_indices = value
+var _pending_pick_cards_display: Array[Card]:
+	get:
+		return _m._pending_pick_cards_display
+	set(value):
+		_m._pending_pick_cards_display = value
+var _pending_pick_instruction: String:
+	get:
+		return _m._pending_pick_instruction
+	set(value):
+		_m._pending_pick_instruction = value
+var _pending_both_recycle_followup: int:
+	get:
+		return _m._pending_both_recycle_followup
+	set(value):
+		_m._pending_both_recycle_followup = value
+var _hero_was_hidden_at_play: Array[bool]:
+	get:
+		return _m._hero_was_hidden_at_play
+	set(value):
+		_m._hero_was_hidden_at_play = value
+
+var _backline_queue: Array[Dictionary]:
+	get:
+		return _m._backline_queue
+	set(value):
+		_m._backline_queue = value
+var _backline_awaiting_response: bool:
+	get:
+		return _m._backline_awaiting_response
+	set(value):
+		_m._backline_awaiting_response = value
+var _backline_awaiting_target: bool:
+	get:
+		return _m._backline_awaiting_target
+	set(value):
+		_m._backline_awaiting_target = value
+var _backline_current_player: int:
+	get:
+		return _m._backline_current_player
+	set(value):
+		_m._backline_current_player = value
+var _backline_current_hero_idx: int:
+	get:
+		return _m._backline_current_hero_idx
+	set(value):
+		_m._backline_current_hero_idx = value
+
+var _deck_submitted: Array[bool]:
+	get:
+		return _m._deck_submitted
+	set(value):
+		_m._deck_submitted = value
+var _submitted_deck: Array[Dictionary]:
+	get:
+		return _m._submitted_deck
+	set(value):
+		_m._submitted_deck = value
+
+var _match_peer_to_idx: Dictionary:
+	get:
+		return _m._match_peer_to_idx
+	set(value):
+		_m._match_peer_to_idx = value
 
 func _ready() -> void:
 	pass
