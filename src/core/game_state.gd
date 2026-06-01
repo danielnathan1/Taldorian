@@ -8,6 +8,14 @@ extends Node
 # servidor troca `_m` pela partida do remetente do RPC (multi-sala).
 var _m: MatchState = MatchState.new()
 
+# ── Router multi-sala (Fase 2.2 — só servidor) ───────────────────────────────
+# O servidor mantém N partidas isoladas. Cada RPC de cliente roteia `_m` para a
+# partida do remetente (via _peer_to_player_index). No cliente há só uma partida
+# (o próprio `_m`), então estes ficam vazios.
+var _matches: Dictionary = {}        # match_id:int -> MatchState
+var _peer_to_match: Dictionary = {}  # peer_id:int -> match_id
+var _next_match_id: int = 1
+
 # Enum mantido no GameState: os corpos usam PickSource.X sem qualificar.
 enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD, HAND_ARSENAL, GRAVEYARD_ARSENAL, DECK_PEEK }
 
@@ -383,13 +391,13 @@ func _begin_turn_for_active_player() -> void:
 		var hn := player.hand.size()
 		player.send_cards_to_bottom([player.hand[hn - 1], player.hand[hn - 2]])
 	player._check_rotation()
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 	# 2. Fase HERO_SELECTION
 	turn.current_phase = TurnManager.Phase.HERO_SELECTION
 	_hero_submitted = [false, false]
 	_next_hero_pick_player = idx
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 	if _winner_index >= 0:
@@ -433,7 +441,7 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 		_process_next_backline_ability()
 	else:
 		# Apenas sincroniza — o outro jogador ainda verá a tela de seleção
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 	return true
 
 # ── habilidades de retaguarda interativas ───────────────────────────────────
@@ -444,7 +452,7 @@ func _process_next_backline_ability() -> void:
 	if _backline_queue.is_empty():
 		turn.current_phase = TurnManager.Phase.ACTION
 		_reset_action_phase_state()
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 		return
 	var entry: Dictionary = _backline_queue.pop_front()
 	_backline_current_player    = entry["player_idx"]
@@ -452,7 +460,7 @@ func _process_next_backline_ability() -> void:
 	_backline_awaiting_response = true
 	_backline_awaiting_target   = false
 	turn.current_phase = TurnManager.Phase.BACKLINE_ABILITY
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 ## Jogador responde se quer usar a habilidade de retaguarda (Sim/Não).
 @rpc("any_peer", "call_local", "reliable")
@@ -472,7 +480,7 @@ func rpc_respond_backline_ability(use: bool) -> void:
 	_backline_awaiting_target = true
 	GameBus.skill_activated.emit(hero, hero.passive_desc)
 	_rpc_notify_skill_activated.rpc(_backline_current_player, _backline_current_hero_idx, hero.passive_desc)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 ## Jogador escolheu o herói alvo para a habilidade de retaguarda.
 @rpc("any_peer", "call_local", "reliable")
@@ -552,7 +560,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			else:
 				_reaction_window_for = 1 - player_idx
 				GameBus.reaction_window_opened.emit(1 - player_idx)
-				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+				_emit_sync()
 			return true
 
 		Card.TimingType.BONUS_ACTION:
@@ -576,7 +584,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			_emit_card_played(player_idx, card)
 			_reaction_window_for = 1 - player_idx
 			GameBus.reaction_window_opened.emit(1 - player_idx)
-			_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+			_emit_sync()
 			return true
 
 		Card.TimingType.REACTION:
@@ -595,7 +603,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			_emit_card_played(player_idx, card)
 			# Se o efeito abriu um pick (carta ou símbolo), pausar — o pick resolverá o fluxo
 			if _pending_symbol_player >= 0 or _pending_pick_player >= 0 or _pending_ally_pick_player >= 0:
-				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+				_emit_sync()
 				return true
 			_on_reaction_window_closed()
 			return true
@@ -637,7 +645,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			else:
 				_reaction_window_for = 1 - player_idx
 				GameBus.reaction_window_opened.emit(1 - player_idx)
-				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+				_emit_sync()
 			return true
 		Card.TimingType.BONUS_ACTION:
 			if player_idx != _active_segment_player: return false
@@ -660,7 +668,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			_emit_card_played(player_idx, card)
 			_reaction_window_for = 1 - player_idx
 			GameBus.reaction_window_opened.emit(1 - player_idx)
-			_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+			_emit_sync()
 			return true
 		Card.TimingType.REACTION:
 			if _reaction_window_for != player_idx: return false
@@ -677,7 +685,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			_fire_on_card_played(player_idx, card)
 			_emit_card_played(player_idx, card)
 			if _pending_symbol_player >= 0 or _pending_pick_player >= 0 or _pending_ally_pick_player >= 0:
-				_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+				_emit_sync()
 				return true
 			_on_reaction_window_closed()
 			return true
@@ -943,7 +951,7 @@ func rpc_submit_ally_pick(hero_idx: int) -> void:
 		if _segment_action_done[active] and _segment_bonus_done[active]:
 			_finish_segment(active)
 			return
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 ## Inicia um peek do topo do deck (Dois Passos à Frente).
 ## Mostra a carta do topo sem removê-la. Jogador escolhe: manter no topo (enviar [])
@@ -980,13 +988,13 @@ func _on_reaction_window_closed() -> void:
 	_execute_pending_effect()
 	# If an effect triggered a pick, pause here — _continue_after_pick() resumes the flow.
 	if _pending_pick_player >= 0 or _pending_symbol_player >= 0 or _pending_ally_pick_player >= 0:
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 		return
 	var active := _active_segment_player
 	if _segment_action_done[active] and _segment_bonus_done[active]:
 		_finish_segment(active)
 	else:
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 
 func _finish_segment(player_idx: int) -> void:
 	if not _segment_action_done[player_idx]:
@@ -998,7 +1006,7 @@ func _finish_segment(player_idx: int) -> void:
 	if player_idx == _round_first_player:
 		# Primeiro segmento da rodada concluído → passa para o oponente
 		_active_segment_player = 1 - player_idx
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 	else:
 		# Segundo segmento concluído → rodada terminou
 		# Se qualquer carta foi jogada nesta rodada o combate SEMPRE resolve,
@@ -1065,7 +1073,7 @@ func _resolve_round_combat() -> void:
 	_segment_action_done   = [false, false]
 	_segment_bonus_done    = [false, false]
 	_reaction_window_for   = -1
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 func _any_active_hero_defeated() -> bool:
 	for p in players:
@@ -1118,7 +1126,7 @@ func _run_combat_and_enter_end() -> void:
 	players[1].active_hero = null
 	turn.current_phase = TurnManager.Phase.END
 	_end_submitted = [false, false]
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 	# Jogadores sem cartas na mão pulam o arsenal automaticamente
 	for _auto_i in 2:
 		if players[_auto_i].hand.is_empty() and not _end_submitted[_auto_i]:
@@ -1146,7 +1154,7 @@ func finish_end_turn(player_idx: int, arsenal_hand_index: int) -> bool:
 		p.store_in_arsenal(p.hand[arsenal_hand_index])
 	print("[TCG] Jogador %d (%s): encerrou turno — %s" % [player_idx, p.player_name, _arsenal_log])
 	_end_submitted[player_idx] = true
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 	if _end_submitted[0] and _end_submitted[1]:
 		var active_idx := turn.current_player_index
 		players[active_idx].draw_up_to(Player.HAND_SIZE_REFILL_DRAW)
@@ -1259,10 +1267,10 @@ func rpc_submit_deck(deck_dict: Dictionary) -> void:
 	# Em standalone (sem peers conectados) inicia assim que o host submete
 	if multiplayer.get_peers().is_empty():
 		start_match(_submitted_deck[0], {})
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 	elif _deck_submitted[0] and _deck_submitted[1]:
 		start_match(_submitted_deck[0], _submitted_deck[1])
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 
 
 func _make_effect_ctx(player_idx: int, card: Card, from_arsenal: bool = false) -> CardEffectContext:
@@ -1330,7 +1338,7 @@ func _rpc_notify_combat_preview(data: Dictionary) -> void:
 func broadcast_state() -> void:
 	if not multiplayer.is_server():
 		return
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_submit_mulligan(idx_a: int, idx_b: int) -> void:
@@ -1339,7 +1347,7 @@ func rpc_submit_mulligan(idx_a: int, idx_b: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	var player_idx := _peer_to_player_index(sender)
 	submit_opening_mulligan(player_idx, idx_a, idx_b)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_submit_hero(hero_slot: int) -> void:
@@ -1348,7 +1356,7 @@ func rpc_submit_hero(hero_slot: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	var player_idx := _peer_to_player_index(sender)
 	submit_hero_pick(player_idx, hero_slot)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_play_card(hand_idx: int) -> void:
@@ -1357,7 +1365,7 @@ func rpc_play_card(hand_idx: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	var player_idx := _peer_to_player_index(sender)
 	action_play_card(player_idx, hand_idx)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_play_from_arsenal() -> void:
@@ -1365,7 +1373,7 @@ func rpc_play_from_arsenal() -> void:
 		return
 	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
 	action_play_from_arsenal(player_idx)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_pass() -> void:
@@ -1374,7 +1382,7 @@ func rpc_pass() -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	var player_idx := _peer_to_player_index(sender)
 	action_pass(player_idx)
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_submit_card_pick(pick_indices: Array) -> void:
@@ -1484,7 +1492,7 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 		if _segment_action_done[active] and _segment_bonus_done[active]:
 			_finish_segment(active)
 			return
-	_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+	_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_submit_symbol_pick(chosen_symbols: Array) -> void:
@@ -1514,7 +1522,7 @@ func rpc_submit_symbol_pick(chosen_symbols: Array) -> void:
 	if continue_reaction:
 		_on_reaction_window_closed()
 	else:
-		_sync_state.rpc(turn.phase_to_string(turn.current_phase), _build_snapshot())
+		_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_finish_turn(arsenal_idx: int) -> void:
@@ -1771,25 +1779,69 @@ static func _phase_from_string(s: String) -> TurnManager.Phase:
 
 # ── helper ───────────────────────────────────────────────
 
+# Resolve o player_index do remetente do RPC E, no servidor multi-sala, roteia
+# `_m` para a partida desse peer. Chamado no topo de todos os handlers rpc_*, o
+# que garante que o restante do corpo opere sobre a partida correta.
 func _peer_to_player_index(peer_id: int) -> int:
-	# Modelo A (mundo): o servidor define explicitamente quem é player 0 e player 1.
-	# Nesse fluxo o servidor (peer 1) NÃO é jogador, então o fallback abaixo não vale.
+	# Modelo A multi-sala: roteia _m para a partida do peer (servidor).
+	if multiplayer.is_server() and _peer_to_match.has(peer_id):
+		var mid: int = _peer_to_match[peer_id]
+		if _matches.has(mid):
+			_m = _matches[mid]
+			return int(_m._match_peer_to_idx.get(peer_id, -1))
+	# Mapeamento explícito da partida atual (já roteada, ou lobby com participantes).
 	if not _match_peer_to_idx.is_empty():
 		return int(_match_peer_to_idx.get(peer_id, -1))
-	# Fallback (lobby/standalone): chamadas locais (host → si) chegam com peer_id = 0;
-	# o servidor tem peer_id = 1; ambos são o host → player 0. Qualquer outro → player 1.
+	# Fallback (lobby/standalone): peer<=1 = host = player 0; qualquer outro = player 1.
 	return 0 if peer_id <= 1 else 1
 
-## Servidor define quais peers são player 0 e player 1 nesta partida (Modelo A).
-## Também zera a submissão de deck para não herdar estado de uma partida anterior.
+## Servidor: registra uma nova partida entre dois peers e a torna a partida ativa.
+## Cria um MatchState isolado, mapeia peer→player_index e peer→match_id. Retorna
+## o id da partida. Usado pelo MatchService quando uma sala enche (Modelo A).
+func register_match(p_peer0: int, p_peer1: int) -> int:
+	var mid := _next_match_id
+	_next_match_id += 1
+	var m := MatchState.new()
+	m._match_peer_to_idx = { p_peer0: 0, p_peer1: 1 }
+	_matches[mid] = m
+	_peer_to_match[p_peer0] = mid
+	_peer_to_match[p_peer1] = mid
+	_m = m
+	return mid
+
+## Encerra uma partida e libera seu roteamento (servidor).
+func end_match(p_match_id: int) -> void:
+	if not _matches.has(p_match_id):
+		return
+	for peer in _peer_to_match.keys():
+		if _peer_to_match[peer] == p_match_id:
+			_peer_to_match.erase(peer)
+	_matches.erase(p_match_id)
+
+## Servidor define quais peers são player 0 e player 1 na partida ATUAL (_m).
+## Mantido para o fluxo lobby/standalone (host-as-player), que não usa salas.
 func set_match_participants(p_peer0: int, p_peer1: int) -> void:
 	_match_peer_to_idx = { p_peer0: 0, p_peer1: 1 }
 	_deck_submitted = [false, false]
 	_submitted_deck = [{}, {}]
 
-## Limpa o mapeamento ao fim da partida (volta ao fallback lobby/standalone).
+## Limpa o mapeamento da partida atual (volta ao fallback lobby/standalone).
 func clear_match_participants() -> void:
 	_match_peer_to_idx = {}
+
+## Envia o estado autoritativo da partida atual (_m). No servidor multi-sala,
+## direciona só aos 2 peers da partida; no lobby/standalone, broadcast (call_local).
+func _emit_sync() -> void:
+	var phase := turn.phase_to_string(turn.current_phase)
+	var snap := _build_snapshot()
+	if multiplayer.is_server() and not _m._match_peer_to_idx.is_empty():
+		for peer in _m._match_peer_to_idx.keys():
+			_sync_state.rpc_id(peer, phase, snap)
+		# Replica o antigo call_local: o servidor aplica em si mesmo também,
+		# preservando exatamente a evolução de estado da Fase 2.1.
+		_sync_state(phase, snap)
+	else:
+		_sync_state.rpc(phase, snap)
 
 ## Aplica dano direto ao herói ativo do jogador alvo, fora do fluxo de combat_resolver.
 ## Usado por efeitos como Tiro de Oportunidade e Ricochetear.

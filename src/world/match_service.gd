@@ -77,8 +77,8 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func begin_match_between(p_a: int, p_b: int) -> void:
 	if not multiplayer.is_server():
 		return
-	GameState.clear_match_participants()
-	GameState.set_match_participants(p_a, p_b)
+	# Registra uma partida isolada (sala) no servidor e roteia ambos ao board.
+	GameState.register_match(p_a, p_b)
 	_rpc_begin_match.rpc_id(p_a, 0)
 	_rpc_begin_match.rpc_id(p_b, 1)
 
