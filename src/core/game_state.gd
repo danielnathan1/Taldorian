@@ -266,7 +266,7 @@ func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
 	# Envia os decks ao(s) cliente(s) para que construam seus próprios players
 	# antes do primeiro _sync_state chegar.
 	if multiplayer.is_server() and not multiplayer.get_peers().is_empty():
-		_rpc_init_players.rpc(deck0, deck1)
+		_notify_init_players(deck0, deck1)
 	turn.emit_phase_changed()
 
 @rpc("authority", "call_remote", "reliable")
@@ -436,7 +436,7 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 						if not desc.is_empty():
 							var hero_idx := sp.heroes.find(h)
 							GameBus.skill_activated.emit(h, desc)
-							_rpc_notify_skill_activated.rpc(i, hero_idx, desc)
+							_notify_skill_activated(i, hero_idx, desc)
 		_backline_queue = interactive
 		_process_next_backline_ability()
 	else:
@@ -479,7 +479,7 @@ func rpc_respond_backline_ability(use: bool) -> void:
 	hero.is_backline_revealed = true
 	_backline_awaiting_target = true
 	GameBus.skill_activated.emit(hero, hero.passive_desc)
-	_rpc_notify_skill_activated.rpc(_backline_current_player, _backline_current_hero_idx, hero.passive_desc)
+	_notify_skill_activated(_backline_current_player, _backline_current_hero_idx, hero.passive_desc)
 	_emit_sync()
 
 ## Jogador escolheu o herói alvo para a habilidade de retaguarda.
@@ -502,11 +502,11 @@ func rpc_submit_backline_target(target_player_idx: int, target_hero_idx: int) ->
 	var backline_hero := sp.heroes[_backline_current_hero_idx]
 	# Notifica ambos os clientes para que animem a flecha antes de aplicar o efeito
 	GameBus.backline_arrow_fired.emit(_backline_current_player, _backline_current_hero_idx, target_player_idx, target_hero_idx)
-	_rpc_notify_backline_arrow.rpc(_backline_current_player, _backline_current_hero_idx, target_player_idx, target_hero_idx)
+	_notify_backline_arrow(_backline_current_player, _backline_current_hero_idx, target_player_idx, target_hero_idx)
 	var desc := backline_hero.apply_backline_ability(sp, opp, target_hero)
 	if not desc.is_empty():
 		GameBus.skill_activated.emit(backline_hero, desc)
-		_rpc_notify_skill_activated.rpc(_backline_current_player, _backline_current_hero_idx, desc)
+		_notify_skill_activated(_backline_current_player, _backline_current_hero_idx, desc)
 	_backline_awaiting_target  = false
 	_backline_current_player   = -1
 	_backline_current_hero_idx = -1
@@ -514,7 +514,7 @@ func rpc_submit_backline_target(target_player_idx: int, target_hero_idx: int) ->
 	if w >= 0:
 		_winner_index = w
 		GameBus.game_over.emit(w)
-		_rpc_notify_game_over.rpc(w)
+		_notify_game_over(w)
 	_process_next_backline_ability()
 
 func action_play_card(player_idx: int, hand_idx: int) -> bool:
@@ -742,7 +742,7 @@ func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 		if SymbolChain.matches_chain(chain, active.symbols_required):
 			active.on_skill_activated(pl)
 			var hero_idx := pl.heroes.find(active)
-			_rpc_notify_skill_activated.rpc(pl.player_index, hero_idx, active.skill_desc)
+			_notify_skill_activated(pl.player_index, hero_idx, active.skill_desc)
 			# Sintonia Primordial — compra 1 se habilidade ativa disparou
 			if pl.pending_skill_draw:
 				pl.pending_skill_draw = false
@@ -1026,7 +1026,7 @@ func _both_hands_empty() -> bool:
 func _resolve_round_combat() -> void:
 	var preview := _build_combat_preview()
 	if not preview.is_empty():
-		_rpc_notify_combat_preview.rpc(preview)
+		_notify_combat_preview(preview)
 	# Captura os valores de dano para replicar combat_resolved ao(s) cliente(s).
 	# A lambda dispara sincronamente dentro de CombatResolver.resolve_round().
 	var _cap := [0, 0]
@@ -1037,7 +1037,7 @@ func _resolve_round_combat() -> void:
 	CombatResolver.resolve_round(players[0], players[1])
 	# Propaga o sinal ao cliente (servidor já recebeu acima via CombatResolver).
 	if multiplayer.has_multiplayer_peer() and not multiplayer.get_peers().is_empty():
-		_rpc_notify_combat_resolved.rpc(_cap[0], _cap[1])
+		_notify_combat_resolved(_cap[0], _cap[1])
 	# Execução Silenciosa: se marcado, oculta herói para o próximo combate
 	for i in 2:
 		if players[i].next_round_stealth:
@@ -1053,7 +1053,7 @@ func _resolve_round_combat() -> void:
 	if w >= 0:
 		_winner_index = w
 		GameBus.game_over.emit(w)
-		_rpc_notify_game_over.rpc(w)
+		_notify_game_over(w)
 		_run_combat_and_enter_end()
 		return
 
@@ -1117,7 +1117,7 @@ func _run_combat_and_enter_end() -> void:
 			if not desc.is_empty():
 				var hero_idx := players[i].heroes.find(h)
 				GameBus.skill_activated.emit(h, desc)
-				_rpc_notify_skill_activated.rpc(i, hero_idx, desc)
+				_notify_skill_activated(i, hero_idx, desc)
 
 	# Exausta heróis e devolve aos slots
 	players[0].exhaust_active_hero()
@@ -1413,7 +1413,7 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 				GameBus.card_drawn.emit(player_idx)
 			_shuffle_deck(p.deck)
 			GameBus.deck_shuffled.emit(player_idx)
-			_rpc_notify_deck_shuffled.rpc(player_idx)
+			_notify_deck_shuffled(player_idx)
 		PickSource.GRAVEYARD:
 			# Carta escolhida vai ao fundo do deck; compra draw_after cartas
 			var source_idx: int = _pending_pick_indices[pick_indices[0]]
@@ -1555,7 +1555,7 @@ func rpc_forfeit() -> void:
 	var winner_idx := 1 - forfeiting_idx
 	_winner_index = winner_idx
 	GameBus.game_over.emit(winner_idx)
-	_rpc_notify_game_over.rpc(winner_idx)
+	_notify_game_over(winner_idx)
 
 # Notifica apenas o cliente (host já emitiu diretamente).
 @rpc("authority", "call_remote", "reliable")
@@ -1578,7 +1578,7 @@ func _rpc_notify_card_played(player_idx: int, card_data: Dictionary) -> void:
 
 func _emit_card_played(player_idx: int, card: Card) -> void:
 	GameBus.card_played.emit(player_idx, card)
-	_rpc_notify_card_played.rpc(player_idx, _serialize_cards([card])[0])
+	_notify_card_played(player_idx, _serialize_cards([card])[0])
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_notify_skill_activated(player_idx: int, hero_idx: int, skill_name: String) -> void:
@@ -1843,6 +1843,80 @@ func _emit_sync() -> void:
 	else:
 		_sync_state.rpc(phase, snap)
 
+# ── Notificações visuais direcionadas (Fase 2.2b) ────────────────────────────
+# Eventos transientes (VFX, fim de jogo, preview) vão SÓ aos 2 peers da partida
+# atual (_m). No lobby host-as-player (_match_peer_to_idx vazio) faz broadcast,
+# preservando o comportamento anterior. Estes RPCs são call_remote: o servidor
+# não os executa em si mesmo.
+func _match_targets() -> Array:
+	if multiplayer.is_server() and not _m._match_peer_to_idx.is_empty():
+		return _m._match_peer_to_idx.keys()
+	return []
+
+func _notify_init_players(deck0: Dictionary, deck1: Dictionary) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_init_players", deck0, deck1)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_init_players", deck0, deck1)
+
+func _notify_skill_activated(player_idx: int, hero_idx: int, skill_name: String) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_skill_activated", player_idx, hero_idx, skill_name)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_skill_activated", player_idx, hero_idx, skill_name)
+
+func _notify_backline_arrow(source_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_backline_arrow", source_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_backline_arrow", source_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
+func _notify_game_over(winner_idx: int) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_game_over", winner_idx)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_game_over", winner_idx)
+
+func _notify_combat_preview(data: Dictionary) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_combat_preview", data)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_combat_preview", data)
+
+func _notify_combat_resolved(dmg_p0: int, dmg_p1: int) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_combat_resolved", dmg_p0, dmg_p1)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_combat_resolved", dmg_p0, dmg_p1)
+
+func _notify_deck_shuffled(player_idx: int) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_deck_shuffled", player_idx)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_deck_shuffled", player_idx)
+
+func _notify_card_played(player_idx: int, card_data: Dictionary) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_card_played", player_idx, card_data)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_card_played", player_idx, card_data)
+
 ## Aplica dano direto ao herói ativo do jogador alvo, fora do fluxo de combat_resolver.
 ## Usado por efeitos como Tiro de Oportunidade e Ricochetear.
 func _deal_direct_damage(target_player_idx: int, amount: int) -> void:
@@ -1861,7 +1935,7 @@ func _deal_direct_damage(target_player_idx: int, amount: int) -> void:
 	if w >= 0:
 		_winner_index = w
 		GameBus.game_over.emit(w)
-		_rpc_notify_game_over.rpc(w)
+		_notify_game_over(w)
 	
 static func _debug_force_card_to_hand(p: Player, card_name: String) -> void:
 	for i in p.deck.size():
