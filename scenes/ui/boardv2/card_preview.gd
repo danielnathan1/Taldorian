@@ -18,8 +18,10 @@ func _on_card_hovered(data: Dictionary) -> void:
 			_hero_slot.bind(data["hero"])
 			_hero_slot.visible = true
 			_card_slot.visible = false
+			_hero_slot.apply_scale.call_deferred(2.0)
 		"card":
 			_card_slot.bind(data["card"])
+			_card_slot.apply_scale(2.0)
 			_card_slot.visible = true
 			_hero_slot.visible = false
 	visible = true

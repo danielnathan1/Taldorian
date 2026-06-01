@@ -1,0 +1,101 @@
+[gd_scene format=3 uid="uid://avframe_whud"]
+
+[ext_resource type="Script" path="res://scenes/ui/worldhud/avatar_frame.gd" id="1_af"]
+
+[node name="AvatarFrame" type="Control"]
+custom_minimum_size = Vector2(60, 60)
+script = ExtResource("1_af")
+
+[node name="FrameBg" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.2902, 0.3176, 0.3725, 1)
+
+[node name="PhotoClip" type="Control" parent="."]
+clip_contents = true
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Photo" type="TextureRect" parent="PhotoClip"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 6
+
+[node name="CornerTL" type="ColorRect" parent="."]
+layout_mode = 1
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 5.0
+offset_bottom = 5.0
+z_index = 3
+color = Color(0.5451, 0.5725, 0.6275, 1)
+
+[node name="CornerTR" type="ColorRect" parent="."]
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -5.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 5.0
+z_index = 3
+color = Color(0.5451, 0.5725, 0.6275, 1)
+
+[node name="CornerBL" type="ColorRect" parent="."]
+layout_mode = 1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -2.0
+offset_top = -5.0
+offset_right = 5.0
+offset_bottom = 2.0
+z_index = 3
+color = Color(0.5451, 0.5725, 0.6275, 1)
+
+[node name="CornerBR" type="ColorRect" parent="."]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -5.0
+offset_right = 2.0
+offset_bottom = 2.0
+z_index = 3
+color = Color(0.5451, 0.5725, 0.6275, 1)
+
+[node name="LevelBadge" type="Label" parent="."]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -22.0
+offset_top = -12.0
+offset_right = 22.0
+offset_bottom = 2.0
+z_index = 4
+theme_override_colors/font_color = Color(0.1, 0.07, 0.02, 1)
+theme_override_font_sizes/font_size = 9
+text = "LV 1"
+horizontal_alignment = 1

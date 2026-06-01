@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCG — Chuva de Flechas</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050a;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Stage scaling ── */
+  #stage-wrap {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative;
+    overflow: hidden;
+    background: #0a0a12;
+  }
+
+  /* ── Board halves ── */
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.28 0.10 15 / 0.22) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.09 0.05 12) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.28 0.10 200 / 0.18) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.09 0.05 220) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.73 0.13 78 / 0.25) 20%,
+      oklch(0.73 0.13 78 / 0.50) 50%,
+      oklch(0.73 0.13 78 / 0.25) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.025; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  /* ── Half labels ── */
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.65 0.18 15); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.65 0.14 200); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.14 200 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 220 / 0.60);
+    --slot-label-color: oklch(0.65 0.14 200);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.20 15 / 0.40);
+    --slot-bg:          oklch(0.10 0.04 15 / 0.55);
+    --slot-label-color: oklch(0.60 0.18 15);
+  }
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 268);
+  }
+  .hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, oklch(0.55 0.22 15), oklch(0.72 0.18 15));
+    transition: width 0.4s ease-out;
+  }
+
+  /* ── Archer card highlight states ── */
+  .archer-card {
+    transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+  }
+  .archer-charging {
+    border-color: oklch(0.82 0.16 80) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.82 0.16 80 / 0.85),
+      0 0 24px oklch(0.82 0.16 80 / 0.55),
+      0 0 60px oklch(0.82 0.16 80 / 0.30);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .archer-firing {
+    border-color: oklch(0.92 0.18 85) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.92 0.18 85),
+      0 0 36px oklch(0.92 0.18 85 / 0.7),
+      0 0 90px oklch(0.92 0.18 85 / 0.45);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: calc(50% - 22px);
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; z-index: 50;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .ability-banner.show { opacity: 1; }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 28px; font-weight: 700;
+    color: oklch(0.92 0.16 82);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    text-shadow:
+      0 0 18px oklch(0.82 0.16 80 / 0.85),
+      0 2px 0 oklch(0.20 0.06 40 / 0.7);
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.45em; text-transform: uppercase;
+    color: oklch(0.73 0.13 78); opacity: 0.85;
+  }
+  .ability-rule {
+    width: 280px; height: 1px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.73 0.13 78 / 0.7), transparent);
+    margin-top: 4px;
+  }
+
+  /* ── Target area aura (opponent side) ── */
+  .target-aura {
+    position: absolute;
+    border: 1px solid oklch(0.65 0.22 15 / 0.4);
+    background:
+      radial-gradient(ellipse at center,
+        oklch(0.55 0.22 15 / 0.16) 0%,
+        oklch(0.55 0.22 15 / 0.04) 60%,
+        transparent 100%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .target-aura.show { opacity: 1; }
+  .target-aura::before,
+  .target-aura::after {
+    content: ''; position: absolute;
+    width: 14px; height: 14px;
+    border: 1px solid oklch(0.65 0.22 15 / 0.85);
+  }
+  .target-aura::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .target-aura::after  { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+  .target-aura .corner-tr,
+  .target-aura .corner-bl {
+    position: absolute; width: 14px; height: 14px;
+    border: 1px solid oklch(0.65 0.22 15 / 0.85);
+  }
+  .target-aura .corner-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+  .target-aura .corner-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+
+  /* Sweep scan line over target area */
+  .target-scan {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.75 0.22 22 / 0.45), oklch(0.75 0.22 22 / 0.9),
+      oklch(0.75 0.22 22 / 0.45), transparent);
+    box-shadow: 0 0 12px oklch(0.75 0.22 22 / 0.6);
+    pointer-events: none;
+  }
+
+  /* ── Arrow trails layer ── */
+  .fx-layer {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── Impact marks on the ground ── */
+  .impact {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  /* ── Stuck arrow ── */
+  .stuck-arrow {
+    position: absolute;
+    transform-origin: center;
+    pointer-events: none;
+  }
+
+  /* ── Bow charge effect from archer ── */
+  .charge-glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle,
+      oklch(0.92 0.18 85 / 0.55) 0%,
+      oklch(0.82 0.16 80 / 0.30) 35%,
+      transparent 70%);
+    transform: translate(-50%, -50%);
+    mix-blend-mode: screen;
+  }
+
+  /* ── Damage popups ── */
+  .dmg {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 22px; font-weight: 700;
+    color: oklch(0.92 0.18 85);
+    text-shadow:
+      0 0 12px oklch(0.82 0.16 80),
+      0 2px 0 oklch(0.20 0.06 40);
+    pointer-events: none;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Screen flash on volley ── */
+  .screen-flash {
+    position: absolute; inset: 0;
+    background: oklch(0.95 0.05 85);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: oklch(0.10 0.03 268 / 0.85);
+    border: 1px solid oklch(0.73 0.13 78 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 268 / 0.9);
+    color: oklch(0.82 0.16 80);
+    border: 1px solid oklch(0.73 0.13 78 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 268 / 0.95);
+    border-color: oklch(0.73 0.13 78 / 0.8);
+    box-shadow: 0 0 14px oklch(0.73 0.13 78 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.30 0.12 40 / 0.9), oklch(0.18 0.08 40 / 0.9));
+    color: oklch(0.95 0.05 85);
+    border-color: oklch(0.65 0.22 15 / 0.7);
+  }
+  .ctrl-btn.primary:hover {
+    box-shadow: 0 0 18px oklch(0.65 0.22 15 / 0.5);
+  }
+  .ctrl-scrub {
+    width: 220px; accent-color: oklch(0.73 0.13 78);
+  }
+  .ctrl-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: oklch(0.65 0.10 78);
+  }
+  .ctrl-time {
+    color: oklch(0.82 0.16 80);
+    font-size: 10px;
+    min-width: 48px;
+  }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Geometry
+// ───────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+
+// Player active hero card (the archer) — center-ish on bottom half
+const ARCHER = { x: 720, y: 540 };       // tip of bow / launch origin
+const ARCHER_CARD = { x: 720, y: 540, w: 90, h: 126 }; // active slot size
+
+// Target zone over opponent area (where arrows rain)
+const TARGET = {
+  x: 240, y: 110, w: 820, h: 230   // covers opponent bench + active hero
+};
+
+// Opponent hero positions (approx, used for damage popups)
+const OPP_HEROES = [
+  { x: 380, y: 200, hp: 30, key: 'h3' },   // bench Herói 3 (left, since opponent is mirrored)
+  { x: 470, y: 200, hp: 55, key: 'h2' },
+  { x: 560, y: 200, hp: 80, key: 'h1' },
+  { x: 720, y: 200, hp: 70, key: 'active' }, // active
+];
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Animation timing (in seconds)
+// ───────────────────────────────────────────────────────────────────────────────
+const T = {
+  CHARGE_START : 0.0,
+  CHARGE_END   : 1.1,
+  BANNER_IN    : 0.2,
+  BANNER_OUT   : 2.6,
+  TARGET_IN    : 0.55,
+  TARGET_OUT   : 3.6,
+  VOLLEY_START : 1.1,
+  VOLLEY_END   : 2.1,   // last arrow launches here
+  ARROW_FLIGHT : 1.2,   // time of flight per arrow
+  HOLD_END     : 4.6,   // entire scene length
+};
+
+const NUM_ARROWS = 22;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  RNG / Easing utilities
+// ───────────────────────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const easeOutCubic  = t => 1 - Math.pow(1 - t, 3);
+const easeInQuad    = t => t * t;
+const easeInOutCubic= t => t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2,3)/2;
+
+// Quadratic bezier (start, control, end)
+function bezier(p0, p1, p2, t) {
+  const u = 1 - t;
+  return {
+    x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+    y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y,
+  };
+}
+// derivative for tangent angle
+function bezierTangent(p0, p1, p2, t) {
+  const u = 1 - t;
+  return {
+    x: 2*u*(p1.x - p0.x) + 2*t*(p2.x - p1.x),
+    y: 2*u*(p1.y - p0.y) + 2*t*(p2.y - p1.y),
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Pre-compute arrow trajectories
+// ───────────────────────────────────────────────────────────────────────────────
+const arrows = (() => {
+  const rng = mulberry32(7); // deterministic
+  const list = [];
+  for (let i = 0; i < NUM_ARROWS; i++) {
+    // launch time staggered across volley window
+    const launchT = T.VOLLEY_START + (T.VOLLEY_END - T.VOLLEY_START) * (i / (NUM_ARROWS - 1));
+    // target somewhere inside the TARGET rect, biased toward opponent heroes a bit
+    const targetX = TARGET.x + rng() * TARGET.w;
+    const targetY = TARGET.y + 30 + rng() * (TARGET.h - 40);
+
+    // Control point high above midpoint -> creates the arc.
+    // Higher arcs for arrows that land farther
+    const midX = (ARCHER.x + targetX) / 2;
+    const peakY = Math.min(ARCHER.y, targetY) - 220 - rng() * 110;
+    // tiny lateral wobble in control to add variety
+    const ctrlX = midX + (rng() - 0.5) * 80;
+
+    list.push({
+      id: i,
+      launchT,
+      p0: { x: ARCHER.x + (rng() - 0.5) * 4, y: ARCHER.y - 40 + (rng() - 0.5) * 6 },
+      p1: { x: ctrlX, y: peakY },
+      p2: { x: targetX, y: targetY },
+      // which opponent hero (if any) catches the arrow's damage popup
+      hitHeroIdx: i % OPP_HEROES.length,
+    });
+  }
+  return list;
+})();
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Static slot markup (board context)
+// ───────────────────────────────────────────────────────────────────────────────
+function StaticBoard({ heroHps }) {
+  // Layout coordinates (top half: opponent, bottom: player)
+  // Opponent (mirrored: deck/grave LEFT, arsenal RIGHT)
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: heroHps.h3 },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: heroHps.h2 },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: heroHps.h1 },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: heroHps.active },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    // bench
+    { x: 360, y: 540, size: 'std',    label: 'Cavaleiro', hp: 90 },
+    { x: 450, y: 540, size: 'std',    label: 'Sacerdote', hp: 60 },
+    { x: 540, y: 540, size: 'std',    label: 'Maga', hp: 40 },
+    // active = archer
+    { x: 720, y: 540, size: 'active', label: 'Arqueiro',  hp: 65, isArcher: true },
+    // deck + grave
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+
+  return (
+    <>
+      {opp.map((s, i) => (
+        <Slot key={'o'+i} theme="opponent" {...s} />
+      ))}
+      {player.map((s, i) => (
+        <Slot key={'p'+i} theme="player" {...s} />
+      ))}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, hp, isArcher }) {
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className={`slot-card archer-card ${isArcher ? 'archer-slot' : ''}`}>
+        <CardArt theme={theme} size={size} label={label} />
+        {hp !== undefined && (
+          <div className="hp-bar"><div className="hp-fill" style={{ width: `${hp}%` }} /></div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+// Card face art — minimal placeholder ornament so the board reads
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player'
+    ? 'oklch(0.55 0.14 200 / 0.55)'
+    : 'oklch(0.55 0.20 15 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+
+  // Special archer icon for the active player card
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6" />
+        {/* bow */}
+        <path d={`M ${w/2 - 16} ${h/2 - 22} Q ${w/2 - 30} ${h/2}, ${w/2 - 16} ${h/2 + 22}`}
+              stroke="oklch(0.82 0.16 80 / 0.85)" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+        {/* string */}
+        <path d={`M ${w/2 - 16} ${h/2 - 22} L ${w/2 - 6} ${h/2} L ${w/2 - 16} ${h/2 + 22}`}
+              stroke="oklch(0.85 0.05 85 / 0.7)" strokeWidth="0.5" fill="none"/>
+        {/* arrow nocked */}
+        <line x1={w/2 - 6} y1={h/2} x2={w/2 + 22} y2={h/2}
+              stroke="oklch(0.85 0.10 78 / 0.95)" strokeWidth="1.2"/>
+        <path d={`M ${w/2 + 22} ${h/2} l -4 -3 l 0 6 z`} fill="oklch(0.85 0.10 78)"/>
+        {/* fletching */}
+        <path d={`M ${w/2 - 6} ${h/2 - 3} l -4 -2 l 0 4 z`} fill="oklch(0.65 0.18 25 / 0.9)"/>
+        <path d={`M ${w/2 - 6} ${h/2 + 3} l -4 -2 l 0 4 z M ${w/2 - 6} ${h/2 + 3} l -4 2 l 0 -4 z`}
+              fill="oklch(0.65 0.18 25 / 0.9)"/>
+        {/* name plate */}
+        <rect x="6" y={h - 22} width={w-12} height="12" fill="oklch(0.08 0.04 260 / 0.7)"
+              stroke="oklch(0.73 0.13 78 / 0.4)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+
+  // Generic ornament
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Arrow SVG (in-flight)
+// ───────────────────────────────────────────────────────────────────────────────
+function ArrowInFlight({ x, y, angle, opacity = 1 }) {
+  // angle in radians; arrow points along +x in local space
+  const deg = angle * 180 / Math.PI;
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${deg})`} style={{ opacity }}>
+      {/* motion blur trail */}
+      <line x1="-46" y1="0" x2="-12" y2="0"
+            stroke="oklch(0.92 0.16 82 / 0.45)" strokeWidth="0.7"
+            strokeLinecap="round" />
+      <line x1="-30" y1="0" x2="-10" y2="0"
+            stroke="oklch(0.92 0.16 82 / 0.75)" strokeWidth="1.0"
+            strokeLinecap="round" />
+      {/* shaft */}
+      <line x1="-14" y1="0" x2="10" y2="0"
+            stroke="oklch(0.78 0.06 70)" strokeWidth="1.4"
+            strokeLinecap="round" />
+      {/* head */}
+      <path d="M 10 0 L 4 -2.6 L 6 0 L 4 2.6 Z"
+            fill="oklch(0.92 0.10 78)"
+            stroke="oklch(0.55 0.10 70)" strokeWidth="0.3"/>
+      {/* fletching */}
+      <path d="M -14 0 L -19 -2.4 L -16 0 L -19 2.4 Z"
+            fill="oklch(0.55 0.20 22 / 0.95)"/>
+      <path d="M -11 0 L -16 -1.8 L -13 0 L -16 1.8 Z"
+            fill="oklch(0.42 0.18 22 / 0.95)"/>
+    </g>
+  );
+}
+
+// Stuck arrow at impact site
+function StuckArrow({ x, y, angle, life }) {
+  // life: 0..1 of stuck duration (for fade out at end optional)
+  const deg = angle * 180 / Math.PI;
+  // wobble after impact (first 200ms)
+  const wob = life < 0.15 ? Math.sin(life * 60) * (1 - life/0.15) * 4 : 0;
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${deg + wob})`}>
+      <line x1="-18" y1="0" x2="2" y2="0"
+            stroke="oklch(0.78 0.06 70)" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M 2 0 L -3 -2 L -1 0 L -3 2 Z"
+            fill="oklch(0.45 0.05 60)" />
+      <path d="M -18 0 L -22 -2 L -19 0 L -22 2 Z"
+            fill="oklch(0.55 0.20 22 / 0.9)"/>
+    </g>
+  );
+}
+
+// Impact splash mark (ground)
+function ImpactMark({ x, y, life }) {
+  // life 0..1
+  const r = 2 + life * 22;
+  const op = (1 - life) * 0.9;
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.85 0.18 60 / ${op})`} strokeWidth="1.2"/>
+      <circle r={r * 0.55} fill="none"
+              stroke={`oklch(0.92 0.20 80 / ${op * 0.8})`} strokeWidth="0.7"/>
+      {/* central flash */}
+      {life < 0.3 && (
+        <circle r={6 * (1 - life/0.3)}
+                fill={`oklch(0.95 0.10 85 / ${(1 - life/0.3) * 0.85})`}/>
+      )}
+      {/* dust particles */}
+      {[0,1,2,3,4,5].map(i => {
+        const ang = (i / 6) * Math.PI * 2;
+        const d = life * 18;
+        return (
+          <circle key={i}
+                  cx={Math.cos(ang) * d}
+                  cy={Math.sin(ang) * d}
+                  r={(1 - life) * 1.2 + 0.4}
+                  fill={`oklch(0.75 0.08 50 / ${(1 - life) * 0.6})`}/>
+        );
+      })}
+    </g>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Animation core — given t (seconds), derive everything
+// ───────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // 1) Archer state
+  let archerState = 'idle';
+  if (t >= T.CHARGE_START && t < T.CHARGE_END)     archerState = 'charging';
+  else if (t >= T.CHARGE_END && t < T.VOLLEY_END)  archerState = 'firing';
+  else if (t >= T.VOLLEY_END && t < T.HOLD_END - 1) archerState = 'firing';
+
+  // 2) Charge glow scale
+  let chargeGlow = 0;
+  if (t >= T.CHARGE_START && t < T.CHARGE_END) {
+    const u = (t - T.CHARGE_START) / (T.CHARGE_END - T.CHARGE_START);
+    chargeGlow = easeInQuad(u);
+  } else if (t >= T.CHARGE_END && t < T.CHARGE_END + 0.25) {
+    chargeGlow = 1 - (t - T.CHARGE_END) / 0.25;
+  }
+
+  // 3) Banner visibility
+  const bannerShow = t >= T.BANNER_IN && t < T.BANNER_OUT;
+  const bannerFadeIn  = Math.min(1, Math.max(0, (t - T.BANNER_IN) / 0.35));
+  const bannerFadeOut = Math.min(1, Math.max(0, (T.BANNER_OUT - t) / 0.4));
+  const bannerOpacity = bannerShow ? Math.min(bannerFadeIn, bannerFadeOut) : 0;
+  // banner subtitle: charging vs unleashed
+  const bannerLabel = t < T.CHARGE_END ? 'Preparando o disparo' : 'Volley em alvo';
+
+  // 4) Target aura visibility
+  const targetShow = t >= T.TARGET_IN && t < T.TARGET_OUT;
+  const targetFadeIn  = Math.min(1, Math.max(0, (t - T.TARGET_IN) / 0.4));
+  const targetFadeOut = Math.min(1, Math.max(0, (T.TARGET_OUT - t) / 0.5));
+  const targetOpacity = targetShow ? Math.min(targetFadeIn, targetFadeOut) : 0;
+
+  // 5) Scan line position over target rectangle (sweep top->bottom during volley)
+  let scanY = null;
+  if (t >= T.CHARGE_END - 0.2 && t < T.VOLLEY_END + 0.2) {
+    const u = Math.min(1, Math.max(0, (t - (T.CHARGE_END - 0.2)) / ((T.VOLLEY_END + 0.2) - (T.CHARGE_END - 0.2))));
+    scanY = TARGET.y + easeInOutCubic(u) * TARGET.h;
+  }
+
+  // 6) Per-arrow state
+  const flyingArrows = [];
+  const stuckArrows = [];
+  const impacts = [];
+  const damages = [];
+
+  for (const a of arrows) {
+    const local = (t - a.launchT) / T.ARROW_FLIGHT;
+    if (local <= 0) continue;
+    if (local < 1) {
+      // in flight — ease in (gravity accel) at end
+      const u = easeInQuad(local) * 0.45 + local * 0.55; // mostly linear with slight gravity accel
+      const p = bezier(a.p0, a.p1, a.p2, u);
+      const tang = bezierTangent(a.p0, a.p1, a.p2, u);
+      const ang = Math.atan2(tang.y, tang.x);
+      flyingArrows.push({ id: a.id, x: p.x, y: p.y, angle: ang });
+    } else {
+      // landed
+      const stuckTime = t - (a.launchT + T.ARROW_FLIGHT);
+      // angle at landing
+      const tang = bezierTangent(a.p0, a.p1, a.p2, 1);
+      const ang = Math.atan2(tang.y, tang.x);
+      // keep stuck until end
+      if (stuckTime < 3.0) {
+        stuckArrows.push({ id: a.id, x: a.p2.x, y: a.p2.y, angle: ang, life: stuckTime });
+      }
+      // impact lasts 0.6s
+      if (stuckTime < 0.7) {
+        impacts.push({ id: a.id, x: a.p2.x, y: a.p2.y, life: stuckTime / 0.7 });
+      }
+      // damage popup if hits a hero (roughly)
+      const hero = OPP_HEROES[a.hitHeroIdx];
+      const dist = Math.hypot(a.p2.x - hero.x, a.p2.y - hero.y);
+      if (dist < 60 && stuckTime < 0.9 && stuckTime > 0.05) {
+        damages.push({
+          id: a.id,
+          x: hero.x + (a.id % 3 - 1) * 12,
+          y: hero.y - 10 - stuckTime * 36,
+          opacity: 1 - stuckTime / 0.9,
+          val: 3 + (a.id % 3),
+        });
+      }
+    }
+  }
+
+  // 7) Compute opponent HP based on impacts so far
+  const heroHps = { h1: 80, h2: 55, h3: 30, active: 70 };
+  const idxToKey = ['h3', 'h2', 'h1', 'active'];
+  for (const a of arrows) {
+    if (t >= a.launchT + T.ARROW_FLIGHT) {
+      // arrow landed — deduct a tiny bit if near hero
+      const key = idxToKey[a.hitHeroIdx];
+      const hero = OPP_HEROES[a.hitHeroIdx];
+      const dist = Math.hypot(a.p2.x - hero.x, a.p2.y - hero.y);
+      if (dist < 60) {
+        heroHps[key] = Math.max(0, heroHps[key] - 3);
+      }
+    }
+  }
+
+  // 8) Screen flash on first volley launch
+  let flashOpacity = 0;
+  if (t >= T.CHARGE_END - 0.05 && t < T.CHARGE_END + 0.25) {
+    const u = Math.max(0, (t - (T.CHARGE_END - 0.05)) / 0.3);
+    flashOpacity = (1 - u) * 0.35;
+  }
+
+  return {
+    archerState,
+    chargeGlow,
+    bannerOpacity,
+    bannerLabel,
+    targetOpacity,
+    scanY,
+    flyingArrows,
+    stuckArrows,
+    impacts,
+    damages,
+    heroHps,
+    flashOpacity,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  App
+// ───────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+  // Stage scaling is handled by the IIFE at the bottom that scales #stage directly.
+
+  // Tick
+  useEffect(() => {
+    function tick(now) {
+      const dt = (now - lastRef.current) / 1000;
+      lastRef.current = now;
+      if (playing) {
+        setT(prev => {
+          const next = prev + dt;
+          if (next >= T.HOLD_END) {
+            // hold last frame for a moment then loop
+            if (next >= T.HOLD_END + 1.4) return 0;
+            return next;
+          }
+          return next;
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  // Scene derivation
+  const scene = deriveScene(t);
+
+  // ── Archer card class state injection ──
+  // We can't put class on Slot directly without re-styling, so target via ref
+  // Instead, render archer with extra className inline.
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente — Alvo</div>
+        <div className="half-label pl">Sua Área</div>
+
+        {/* Static board context */}
+        <StaticBoard heroHps={scene.heroHps} />
+
+        {/* Archer overlay: glow + override on archer card */}
+        <ArcherOverlay state={scene.archerState} chargeGlow={scene.chargeGlow} />
+
+        {/* Target aura over opponent area */}
+        <div
+          className={`target-aura ${scene.targetOpacity > 0 ? 'show' : ''}`}
+          style={{
+            left: TARGET.x, top: TARGET.y,
+            width: TARGET.w, height: TARGET.h,
+            opacity: scene.targetOpacity,
+          }}>
+          <div className="corner-tr"/>
+          <div className="corner-bl"/>
+        </div>
+
+        {/* Target sweep scan */}
+        {scene.scanY !== null && scene.targetOpacity > 0.2 && (
+          <div className="target-scan"
+               style={{
+                 top: scene.scanY,
+                 left: TARGET.x, width: TARGET.w,
+                 opacity: scene.targetOpacity,
+               }}/>
+        )}
+
+        {/* Ability banner */}
+        <div className="ability-banner" style={{ opacity: scene.bannerOpacity }}>
+          <div className="ability-sub">Habilidade Definitiva</div>
+          <div className="ability-name">Chuva de Flechas</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>
+            {scene.bannerLabel}
+          </div>
+        </div>
+
+        {/* FX layer — arrows + impacts */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {/* impact marks (under arrows so arrow stays on top) */}
+          {scene.impacts.map(im => (
+            <ImpactMark key={'imp'+im.id} x={im.x} y={im.y} life={im.life}/>
+          ))}
+          {/* stuck arrows */}
+          {scene.stuckArrows.map(sa => (
+            <StuckArrow key={'st'+sa.id} x={sa.x} y={sa.y} angle={sa.angle} life={sa.life}/>
+          ))}
+          {/* flying arrows */}
+          {scene.flyingArrows.map(fa => (
+            <ArrowInFlight key={'fly'+fa.id} x={fa.x} y={fa.y} angle={fa.angle}/>
+          ))}
+        </svg>
+
+        {/* Damage popups */}
+        {scene.damages.map(d => (
+          <div key={'dmg'+d.id} className="dmg"
+               style={{ left: d.x, top: d.y, opacity: d.opacity }}>
+            −{d.val}
+          </div>
+        ))}
+
+        {/* Screen flash */}
+        {scene.flashOpacity > 0 && (
+          <div className="screen-flash" style={{ opacity: scene.flashOpacity }}/>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>
+          ↻ Repetir
+        </button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>
+          {playing ? '❚❚ Pausar' : '▶ Tocar'}
+        </button>
+        <span className="ctrl-label">Tempo</span>
+        <input
+          type="range"
+          className="ctrl-scrub"
+          min="0" max={T.HOLD_END + 1.4} step="0.01"
+          value={t}
+          onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}
+        />
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+// Archer overlay — finds the archer card by position and applies glow + state class
+function ArcherOverlay({ state, chargeGlow }) {
+  // Use a separate element absolutely-positioned over the archer card to draw glow.
+  const x = ARCHER_CARD.x, y = ARCHER_CARD.y;
+  const glowSize = 60 + chargeGlow * 130;
+
+  return (
+    <>
+      {/* Charge glow behind/around the archer card */}
+      {chargeGlow > 0.01 && (
+        <div className="charge-glow"
+             style={{
+               left: x, top: y - 12,
+               width: glowSize, height: glowSize,
+               opacity: 0.85 * chargeGlow,
+             }}/>
+      )}
+
+      {/* Highlight ring on archer card */}
+      <div style={{
+        position: 'absolute',
+        left: x, top: y,
+        width: ARCHER_CARD.w + 6,
+        height: ARCHER_CARD.h + 6,
+        transform: 'translate(-50%, -50%)',
+        border: state === 'charging'
+          ? '1px solid oklch(0.82 0.16 80 / 0.85)'
+          : state === 'firing'
+            ? '1px solid oklch(0.92 0.18 85)'
+            : '1px solid transparent',
+        boxShadow:
+          state === 'charging'
+            ? '0 0 24px oklch(0.82 0.16 80 / 0.55), 0 0 60px oklch(0.82 0.16 80 / 0.30), inset 0 0 18px oklch(0.82 0.16 80 / 0.20)'
+            : state === 'firing'
+              ? '0 0 36px oklch(0.92 0.18 85 / 0.70), 0 0 100px oklch(0.92 0.18 85 / 0.45), inset 0 0 24px oklch(0.92 0.18 85 / 0.25)'
+              : 'none',
+        transition: 'border-color 0.25s, box-shadow 0.25s',
+        pointerEvents: 'none',
+      }}/>
+
+      {/* Faint upward streak when firing — arrows launching */}
+      {state === 'firing' && (
+        <div style={{
+          position: 'absolute',
+          left: x, top: y - 40,
+          width: 2, height: 70,
+          transform: 'translate(-50%, -50%)',
+          background: 'linear-gradient(0deg, transparent, oklch(0.92 0.18 85 / 0.7), transparent)',
+          filter: 'blur(1px)',
+          opacity: 0.7,
+          pointerEvents: 'none',
+        }}/>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

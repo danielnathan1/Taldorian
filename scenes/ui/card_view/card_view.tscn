@@ -1,6 +1,12 @@
 [gd_scene format=3 uid="uid://bl76o06r6asji"]
 
 [ext_resource type="Script" uid="uid://dvw3acighgrvu" path="res://scenes/ui/card_view/card_view.gd" id="1_82ftr"]
+[ext_resource type="Texture2D" uid="uid://cij2jf6i2vgn7" path="res://assets/card/base_card.png" id="2_base"]
+[ext_resource type="Texture2D" uid="uid://d085uh6ce1pgy" path="res://assets/icons/attack_icon.png" id="3_atk"]
+[ext_resource type="Texture2D" uid="uid://b2dl1kvf103x" path="res://assets/icons/defense_icon.png" id="4_def"]
+[ext_resource type="FontFile" uid="uid://bm23jumepppl1" path="res://assets/fonts/palatino/palr45w.ttf" id="5_font_reg"]
+[ext_resource type="FontFile" uid="uid://oe74r7bbi6u8" path="res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf" id="6_font_bold"]
+[ext_resource type="FontFile" uid="uid://dxi5fbo2jhp36" path="res://assets/fonts/KNYuanmo-Regular.ttf" id="7_font_num"]
 
 [node name="CardView" type="Control" unique_id=1754183775]
 custom_minimum_size = Vector2(160, 240)
@@ -12,17 +18,199 @@ size_flags_horizontal = 4
 size_flags_vertical = 8
 script = ExtResource("1_82ftr")
 
-[node name="Art" type="TextureRect" parent="." unique_id=487949840]
+[node name="CardContent" type="Control" parent="." unique_id=487949850]
+clip_contents = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-expand_mode = 5
+mouse_filter = 2
+
+[node name="Art" type="TextureRect" parent="CardContent" unique_id=487949840]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
 stretch_mode = 5
+
+[node name="CardLayoutBase" type="TextureRect" parent="CardContent" unique_id=487949851]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_base")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="CardContent" unique_id=487949862]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.025
+anchor_right = 0.9
+anchor_bottom = 0.075
+offset_left = 19.0
+offset_top = 2.0
+offset_right = -19.0
+offset_bottom = 5.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("6_font_bold")
+theme_override_font_sizes/font_size = 1
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
+[node name="ElementSymbol" type="TextureRect" parent="CardContent" unique_id=487949864]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.422
+anchor_top = 0.567
+anchor_right = 0.578
+anchor_bottom = 0.671
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DescLabel" type="Label" parent="CardContent" unique_id=487949865]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.06
+anchor_top = 0.66
+anchor_right = 0.94
+anchor_bottom = 0.9
+offset_left = 5.4000006
+offset_top = 9.599991
+offset_right = -5.399994
+offset_bottom = 9.600006
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("5_font_reg")
+theme_override_font_sizes/font_size = 1
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="AtkIcon" type="TextureRect" parent="CardContent" unique_id=487949870]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.91
+anchor_right = 0.22
+anchor_bottom = 0.99
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_atk")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="AtkValueLabel" type="Label" parent="CardContent" unique_id=487949866]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.91
+anchor_right = 0.22
+anchor_bottom = 0.99
+offset_bottom = 0.80000305
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("7_font_num")
+theme_override_font_sizes/font_size = 1
+text = "+0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DefIcon" type="TextureRect" parent="CardContent" unique_id=487949871]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.78
+anchor_top = 0.91
+anchor_right = 0.98
+anchor_bottom = 0.99
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_def")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DefValueLabel" type="Label" parent="CardContent" unique_id=487949867]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.78
+anchor_top = 0.91
+anchor_right = 0.98
+anchor_bottom = 0.99
+offset_left = 0.7000046
+offset_top = -1.5258789e-05
+offset_right = 0.70002747
+offset_bottom = -1.5258789e-05
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("7_font_num")
+theme_override_font_sizes/font_size = 1
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RarityBg" type="Panel" parent="CardContent" unique_id=487949880]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.251
+anchor_top = 0.936
+anchor_right = 0.314
+anchor_bottom = 0.977
+offset_top = 3.3600006
+offset_bottom = 3.3600006
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RarityLabel" type="Label" parent="CardContent" unique_id=487949868]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.251
+anchor_top = 0.936
+anchor_right = 0.314
+anchor_bottom = 0.977
+offset_top = 4.3600006
+offset_bottom = 4.3600006
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("6_font_bold")
+theme_override_font_sizes/font_size = 1
+text = "C"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardTypeFooter" type="Label" parent="CardContent" unique_id=487949881]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.936
+anchor_right = 1.0
+anchor_bottom = 0.977
+offset_top = 3.3600006
+offset_bottom = 3.3600006
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("6_font_bold")
+theme_override_font_sizes/font_size = 1
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Back" type="TextureRect" parent="." unique_id=487949841]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,22 +219,3 @@ grow_horizontal = 2
 grow_vertical = 2
 expand_mode = 5
 stretch_mode = 5
-visible = false
-
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=980379256]
-visible = false
-layout_mode = 0
-offset_right = 160.0
-offset_bottom = 240.0
-
-[node name="TypeLabel" type="Label" parent="VBoxContainer" unique_id=335753521]
-visible = false
-layout_mode = 2
-
-[node name="ValueLabel" type="Label" parent="VBoxContainer" unique_id=1705841940]
-visible = false
-layout_mode = 2
-
-[node name="SymbolsLabel" type="Label" parent="VBoxContainer" unique_id=157813279]
-visible = false
-layout_mode = 2

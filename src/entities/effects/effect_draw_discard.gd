@@ -26,4 +26,5 @@ func execute(ctx: CardEffectContext) -> void:
 	for i in p.hand.size():
 		indices.append(i)
 
-	GameState.begin_hand_discard(p.player_index, indices, _discard_count, _draw_count)
+	GameState.begin_hand_discard(p.player_index, indices, _discard_count, _draw_count,
+		"Descarte %d carta(s) para comprar %d nova(s)" % [_discard_count, _draw_count])

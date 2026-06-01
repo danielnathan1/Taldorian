@@ -15,10 +15,13 @@ const SLOT_COLORS = {
 	"combat_opp":  Color(0.165, 0.29, 0.541, 0.45),
 }
 
+signal graveyard_clicked(side: String)
+
 var _hero_slots:           Array = []
 var _active_hero_view:     Node  = null  # HeroSlot
 var _arsenal_texture_rect: TextureRect   = null
-var _grave_texture_rect:   TextureRect   = null
+var _arsenal_card_view:    CardView      = null   # usado quando face_up = true
+var _grave_card_view:      CardView      = null
 var _glow_tween: Tween
 
 @onready var _bg               := $PlaymatBackground
@@ -30,7 +33,6 @@ var _glow_tween: Tween
 @onready var _main_row         := $HalfInner/MainRow
 @onready var _heroes_row       := $HalfInner/MainRow/ColC_Heroes/HeroesRow
 @onready var _hp_bar           := $HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/HPContainer/HPBar
-@onready var _hp_label         := $HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/HPContainer/HPLabel
 @onready var _arsenal_slot_container     := $HalfInner/MainRow/ColB_Arsenal/ArsenalWrap/ArsenalSlot
 @onready var _active_hero_slot_container := $HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/ActiveHeroSlot
 @onready var _deck_count_badge := $HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot/CountBadge
@@ -63,14 +65,33 @@ func _setup_dynamic_nodes() -> void:
 	_arsenal_texture_rect.visible = false
 	_arsenal_slot_container.add_child(_arsenal_texture_rect)
 
-	_grave_texture_rect = TextureRect.new()
-	_grave_texture_rect.layout_mode = 1
-	_grave_texture_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_grave_texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_grave_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_grave_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_grave_texture_rect.visible = false
-	_grave_slot.add_child(_grave_texture_rect)
+	# CardView completa para quando a carta está virada para cima (ex: Ecos do Passado)
+	_arsenal_card_view = CardViewScene.instantiate()
+	_arsenal_card_view.layout_mode = 1
+	_arsenal_card_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_arsenal_card_view.custom_minimum_size = Vector2(62, 87)
+	_arsenal_card_view.set_interactable(false, false)
+	_arsenal_card_view.visible = false
+	_arsenal_slot_container.add_child(_arsenal_card_view)
+	_arsenal_card_view.apply_scale(0.5)
+	_set_mouse_ignore_recursive(_arsenal_card_view)
+
+	# CardView for the top card — all children set to IGNORE so clicks fall through to _grave_slot
+	_grave_card_view = CardViewScene.instantiate()
+	_grave_card_view.layout_mode = 1
+	_grave_card_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_grave_card_view.custom_minimum_size = Vector2(62, 87)
+	_grave_card_view.set_interactable(false, false)
+	_grave_card_view.visible = false
+	_grave_slot.add_child(_grave_card_view)
+	_grave_card_view.apply_scale(0.5)
+	_set_mouse_ignore_recursive(_grave_card_view)
+
+	# GraveSlot (PanelContainer) owns the click — CardView never blocks it
+	_grave_slot.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and not event.double_click:
+			graveyard_clicked.emit(player_side)
+	)
 
 
 func _apply_side_config() -> void:
@@ -95,7 +116,6 @@ func _apply_side_config() -> void:
 
 func _apply_opponent_mirror() -> void:
 	_half_inner.scale = Vector2(-1, -1)
-	_hp_label.scale        = Vector2(-1, -1)
 	_deck_count_badge.scale = Vector2(-1, -1)
 	# call_deferred ensures pivot is set AFTER the first layout pass,
 	# when size is already correct (is_node_ready() alone is not enough).
@@ -103,7 +123,6 @@ func _apply_opponent_mirror() -> void:
 
 func _update_mirror_pivot() -> void:
 	_half_inner.pivot_offset       = size / 2.0
-	_hp_label.pivot_offset         = _hp_label.size / 2.0
 	_deck_count_badge.pivot_offset = _deck_count_badge.size / 2.0
 
 func _notification(what: int) -> void:
@@ -129,7 +148,6 @@ func set_turn_active(active: bool) -> void:
 func set_hp(current: int, maximum: int) -> void:
 	_hp_bar.max_value = maximum
 	_hp_bar.value = current
-	_hp_label.text = "%d / %d" % [current, maximum]
 
 # ── API pública para boardv2 ──────────────────────────────────────────────────
 
@@ -155,16 +173,30 @@ func get_arsenal_panel() -> Control:
 
 func set_arsenal_visible(is_visible: bool) -> void:
 	_arsenal_texture_rect.visible = is_visible
+	_arsenal_card_view.visible    = false
 
-func set_arsenal_texture(texture: Texture2D) -> void:
+func set_arsenal_sleeve(texture: Texture2D) -> void:
+	# Exibe o verso da carta (sleeve) — comportamento padrão
 	_arsenal_texture_rect.texture = texture
 	_arsenal_texture_rect.visible = texture != null
+	_arsenal_card_view.visible    = false
+
+func set_arsenal_face_up(card: Card) -> void:
+	# Exibe a CardView completa (face-up) — apenas quando efeito explicitamente define isso
+	_arsenal_card_view.bind(card)
+	_arsenal_card_view.visible    = true
+	_arsenal_texture_rect.visible = false
+
+# Mantido por compatibilidade — redireciona para sleeve
+func set_arsenal_texture(texture: Texture2D) -> void:
+	set_arsenal_sleeve(texture)
 
 func add_combat_card_view(card, sleeve: Texture2D, is_opp_card: bool) -> Node:
 	var view = CardViewScene.instantiate()
-	view.custom_minimum_size = Vector2(62, 87)
+	view.custom_minimum_size = Vector2(68, 96)
 	_combat_cards.add_child(view)
 	view.bind(card)
+	view.apply_scale(0.55)
 	if sleeve:
 		view.set_sleeve(sleeve)
 	if is_opp_card:
@@ -178,9 +210,12 @@ func clear_combat_cards() -> void:
 func set_deck_count(count: int) -> void:
 	_deck_count_badge.text = str(count)
 
-func set_graveyard_texture(texture: Texture2D) -> void:
-	_grave_texture_rect.texture = texture
-	_grave_texture_rect.visible = texture != null
+func set_graveyard_card(card: Card) -> void:
+	if card == null:
+		_grave_card_view.visible = false
+		return
+	_grave_card_view.bind(card)
+	_grave_card_view.visible = true
 
 func set_deck_sleeve(texture: Texture2D) -> void:
 	_deck_sleeve.texture = texture
@@ -199,9 +234,15 @@ func get_combat_cards_global_center() -> Vector2:
 func get_arsenal_global_center() -> Vector2:
 	return _arsenal_slot_container.get_global_rect().get_center() as Vector2
 
+func _set_mouse_ignore_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_set_mouse_ignore_recursive(child)
+
 func add_combat_slot(is_opponent: bool) -> PanelContainer:
 	var slot := PanelContainer.new()
-	slot.custom_minimum_size = Vector2(62, 87)
+	slot.custom_minimum_size = Vector2(68, 96)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0, 0.039, 0, 0.18) if not is_opponent else Color(0, 0, 0.055, 0.20)
 	style.set_border_width_all(2)

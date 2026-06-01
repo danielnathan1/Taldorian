@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Sword 1: top-left to bottom-right -->
+  <rect x="11" y="1" width="2" height="15" rx="0.5" fill="white" transform="rotate(45 12 12)"/>
+  <!-- Guard 1 -->
+  <rect x="3" y="11" width="8" height="2.5" rx="0.5" fill="white" transform="rotate(45 7 12)"/>
+  <!-- Pommel 1 -->
+  <rect x="1" y="18" width="4" height="4" rx="0.5" fill="white" transform="rotate(45 3 20)"/>
+  <!-- Sword 2: top-right to bottom-left -->
+  <rect x="11" y="1" width="2" height="15" rx="0.5" fill="white" transform="rotate(-45 12 12)"/>
+  <!-- Guard 2 -->
+  <rect x="13" y="11" width="8" height="2.5" rx="0.5" fill="white" transform="rotate(-45 17 12)"/>
+  <!-- Pommel 2 -->
+  <rect x="19" y="18" width="4" height="4" rx="0.5" fill="white" transform="rotate(-45 21 20)"/>
+</svg>

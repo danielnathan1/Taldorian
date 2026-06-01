@@ -10,6 +10,7 @@ signal phase_changed(new_phase: String)
 signal hero_chosen(player_index: int, hero: Hero)
 signal hero_revealed(player_index: int, hero: Hero)
 signal hero_damaged(hero: Hero, amount: int)
+signal hero_healed(hero: Hero, amount: int)
 signal hero_defeated(hero: Hero)
 
 # Carta
@@ -28,11 +29,17 @@ signal combat_preview_ready(data: Dictionary)
 # Janela de reação aberta — UI do jogador deve exibir opção de reagir
 signal reaction_window_opened(player_index: int)
 
+# Retaguarda de Ieldor disparou flecha contra um herói inimigo
+signal backline_arrow_fired(source_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int)
+
 # Fim de jogo
 signal game_over(winner_index: int)
 
 # Rede
 signal state_synced
+
+# Deck embaralhado (ex: após Planos Futuros)
+signal deck_shuffled(player_index: int)
 
 # Preview de carta/herói
 signal card_hovered(data: Dictionary)

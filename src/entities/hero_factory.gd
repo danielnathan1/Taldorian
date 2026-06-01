@@ -5,5 +5,8 @@ static func make_team() -> Array[Hero]:
 	return [
 		HeroPoppy.new(),
 		HeroHakai.new(),
-		HeroPoppy.new(),
+		HeroIrena.new(),
+		HeroIeldor.new(),
+		HeroNissin.new(),
+		HeroValkar.new(),
 	]

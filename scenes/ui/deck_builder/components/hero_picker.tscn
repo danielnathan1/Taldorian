@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3 uid="uid://hero_picker"]
+
+[ext_resource type="Script" path="res://scenes/ui/deck_builder/components/hero_picker.gd" id="1"]
+
+[node name="HeroPicker" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="SearchRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="SearchInput" type="LineEdit" parent="VBox/SearchRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "🔍  Buscar herói..."
+
+[node name="ChipRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Scroll" type="ScrollContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="List" type="HFlowContainer" parent="VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

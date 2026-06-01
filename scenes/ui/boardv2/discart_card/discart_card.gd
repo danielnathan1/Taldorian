@@ -42,6 +42,7 @@ func _rebuild() -> void:
 		var view: CardView = CardViewScene.instantiate()
 		_cards_container.add_child(view)
 		view.bind(cards[i])
+		view.apply_scale(1.0)
 		view.card_clicked.connect(_on_card_clicked.bind(i))
 		_card_views.append(view)
 

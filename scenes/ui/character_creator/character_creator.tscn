@@ -1,0 +1,401 @@
+[gd_scene format=3 uid="uid://cnbca3gildhte"]
+
+[ext_resource type="Script" uid="uid://bpdrxjohxmugs" path="res://scenes/ui/character_creator/character_creator.gd" id="1_cc"]
+[ext_resource type="Texture2D" uid="uid://bikn3m6uusfiw" path="res://assets/character/body/human/male/white/walk.png" id="2_v23dh"]
+[ext_resource type="Texture2D" uid="uid://bd3j4cs4fvjuc" path="res://assets/character/pants/male/basic_pants/walk.png" id="5_fblkx"]
+[ext_resource type="Texture2D" uid="uid://dgrqyys5vom3y" path="res://assets/character/shoes/male/basic_shoes/walk.png" id="6_hbvp1"]
+
+[node name="CharacterCreator" type="Control" unique_id=683493334]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_cc")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1406219951]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RootLayout" type="VBoxContainer" parent="." unique_id=266990243]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="PanelContainer" parent="RootLayout" unique_id=1223155470]
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+
+[node name="HeaderBox" type="HBoxContainer" parent="RootLayout/Header" unique_id=1768720439]
+layout_mode = 2
+
+[node name="HeaderLeft" type="HBoxContainer" parent="RootLayout/Header/HeaderBox" unique_id=1049066189]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackBtn" type="Button" parent="RootLayout/Header/HeaderBox/HeaderLeft" unique_id=547206859]
+unique_name_in_owner = true
+layout_mode = 2
+text = "← VOLTAR"
+flat = true
+
+[node name="HeaderCenter" type="VBoxContainer" parent="RootLayout/Header/HeaderBox" unique_id=2021986608]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Eyebrow" type="Label" parent="RootLayout/Header/HeaderBox/HeaderCenter" unique_id=1510254214]
+layout_mode = 2
+text = "— FORJA DE HERÓIS —"
+horizontal_alignment = 1
+
+[node name="Title" type="Label" parent="RootLayout/Header/HeaderBox/HeaderCenter" unique_id=710635883]
+layout_mode = 2
+text = "Criação de Personagem"
+horizontal_alignment = 1
+
+[node name="HeaderRight" type="HBoxContainer" parent="RootLayout/Header/HeaderBox" unique_id=1904608263]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="RandomTopBtn" type="Button" parent="RootLayout/Header/HeaderBox/HeaderRight" unique_id=1114176939]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🎲 ALEATÓRIO"
+flat = true
+
+[node name="BodyRow" type="HBoxContainer" parent="RootLayout" unique_id=1191682071]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="LeftPanel" type="PanelContainer" parent="RootLayout/BodyRow" unique_id=1830548727]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftInner" type="VBoxContainer" parent="RootLayout/BodyRow/LeftPanel" unique_id=1491666662]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="NameSection" type="VBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner" unique_id=1567968747]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NameLabel" type="Label" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection" unique_id=960158572]
+layout_mode = 2
+text = "NOME"
+
+[node name="NameInputRow" type="PanelContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection" unique_id=1293952324]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="NameInputBox" type="HBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection/NameInputRow" unique_id=1043986485]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="NamePad" type="Control" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection/NameInputRow/NameInputBox" unique_id=1657424960]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+
+[node name="NameInput" type="LineEdit" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection/NameInputRow/NameInputBox" unique_id=1171913665]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Nomeie seu herói"
+max_length = 18
+flat = true
+
+[node name="DiceBtn" type="Button" parent="RootLayout/BodyRow/LeftPanel/LeftInner/NameSection/NameInputRow/NameInputBox" unique_id=2060120571]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "🎲"
+flat = true
+
+[node name="RaceSection" type="VBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner" unique_id=101668314]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RaceLabel" type="Label" parent="RootLayout/BodyRow/LeftPanel/LeftInner/RaceSection" unique_id=1316791430]
+layout_mode = 2
+text = "RAÇA"
+
+[node name="RaceRow" type="HBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner/RaceSection" unique_id=1678109940]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SexSection" type="VBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner" unique_id=2023475631]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SexLabel" type="Label" parent="RootLayout/BodyRow/LeftPanel/LeftInner/SexSection" unique_id=1610850554]
+layout_mode = 2
+text = "SEXO"
+
+[node name="SexRow" type="HBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner/SexSection" unique_id=687451807]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CategoryNav" type="VBoxContainer" parent="RootLayout/BodyRow/LeftPanel/LeftInner" unique_id=1516301156]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="CenterMargin" type="MarginContainer" parent="RootLayout/BodyRow" unique_id=442095799]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 28
+
+[node name="CenterInner" type="VBoxContainer" parent="RootLayout/BodyRow/CenterMargin" unique_id=342204084]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="PreviewFrame" type="PanelContainer" parent="RootLayout/BodyRow/CenterMargin/CenterInner" unique_id=233559207]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+
+[node name="Skeleton" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame" unique_id=301580918]
+scale = Vector2(4, 4)
+
+[node name="Body" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton" unique_id=1823007607]
+
+[node name="Sprite2D" type="Sprite2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton/Body" unique_id=1275634562]
+texture = ExtResource("2_v23dh")
+hframes = 9
+vframes = 4
+region_rect = Rect2(0, 0, 64, 64)
+
+[node name="Chest" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton" unique_id=913458941]
+
+[node name="Sprite2D" type="Sprite2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton/Chest" unique_id=1731465908]
+hframes = 9
+vframes = 4
+
+[node name="Hair" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton" unique_id=1502367909]
+
+[node name="Sprite2D" type="Sprite2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton/Hair" unique_id=1669046503]
+hframes = 9
+vframes = 4
+
+[node name="Pants" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton" unique_id=1816261316]
+
+[node name="Sprite2D" type="Sprite2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton/Pants" unique_id=590493247]
+texture = ExtResource("5_fblkx")
+hframes = 9
+vframes = 4
+
+[node name="Shoes" type="Node2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton" unique_id=95109882]
+
+[node name="Sprite2D" type="Sprite2D" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/Skeleton/Shoes" unique_id=853019546]
+texture = ExtResource("6_hbvp1")
+hframes = 9
+vframes = 4
+
+[node name="PreviewLayers" type="Control" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame" unique_id=1205268220]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BodyLayer" type="TextureRect" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/PreviewLayers" unique_id=92305328]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ChestLayer" type="TextureRect" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/PreviewLayers" unique_id=146112945]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="PantsLayer" type="TextureRect" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/PreviewLayers" unique_id=1221575034]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ShoesLayer" type="TextureRect" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/PreviewLayers" unique_id=1042492459]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="HairLayer" type="TextureRect" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewFrame/PreviewLayers" unique_id=512438482]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 3
+stretch_mode = 5
+
+[node name="PreviewInfo" type="VBoxContainer" parent="RootLayout/BodyRow/CenterMargin/CenterInner" unique_id=1836408033]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="PreviewName" type="Label" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewInfo" unique_id=1422937727]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Aventureiro"
+horizontal_alignment = 1
+
+[node name="PreviewRace" type="Label" parent="RootLayout/BodyRow/CenterMargin/CenterInner/PreviewInfo" unique_id=1019762764]
+unique_name_in_owner = true
+layout_mode = 2
+text = "HUMANO"
+horizontal_alignment = 1
+
+[node name="RightPanel" type="PanelContainer" parent="RootLayout/BodyRow" unique_id=1009825396]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RightInner" type="VBoxContainer" parent="RootLayout/BodyRow/RightPanel" unique_id=2345066]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="PanelHead" type="HBoxContainer" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=556052963]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PanelTitle" type="Label" parent="RootLayout/BodyRow/RightPanel/RightInner/PanelHead" unique_id=288628731]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "CABELO"
+
+[node name="PanelCount" type="Label" parent="RootLayout/BodyRow/RightPanel/RightInner/PanelHead" unique_id=1552114770]
+unique_name_in_owner = true
+layout_mode = 2
+text = "22 ESTILOS"
+
+[node name="PanelSep" type="HSeparator" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=2104906541]
+layout_mode = 2
+
+[node name="StyleLabel" type="Label" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=889132366]
+layout_mode = 2
+text = "ESTILO"
+
+[node name="StyleScroll" type="ScrollContainer" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=767248142]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StyleGrid" type="GridContainer" parent="RootLayout/BodyRow/RightPanel/RightInner/StyleScroll" unique_id=1734515405]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 4
+
+[node name="ColorLabel" type="Label" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=1923671733]
+layout_mode = 2
+text = "COR"
+
+[node name="PaletteRow" type="HBoxContainer" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=582348280]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SwatchGrid" type="GridContainer" parent="RootLayout/BodyRow/RightPanel/RightInner" unique_id=1568175837]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 6
+
+[node name="Footer" type="PanelContainer" parent="RootLayout" unique_id=127106164]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+
+[node name="FooterBox" type="HBoxContainer" parent="RootLayout/Footer" unique_id=155098804]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="FooterStatus" type="HBoxContainer" parent="RootLayout/Footer/FooterBox" unique_id=331855662]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="StatusName" type="Label" parent="RootLayout/Footer/FooterBox/FooterStatus" unique_id=1011961393]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Aventureiro"
+
+[node name="StatusSep" type="Label" parent="RootLayout/Footer/FooterBox/FooterStatus" unique_id=14302760]
+layout_mode = 2
+text = "·"
+
+[node name="StatusRace" type="Label" parent="RootLayout/Footer/FooterBox/FooterStatus" unique_id=1866261049]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Humano"
+
+[node name="StatusDim" type="Label" parent="RootLayout/Footer/FooterBox/FooterStatus" unique_id=2044756169]
+unique_name_in_owner = true
+layout_mode = 2
+text = "· cabelo · blusa · calça · sapatos"
+
+[node name="FooterActions" type="HBoxContainer" parent="RootLayout/Footer/FooterBox" unique_id=6371857]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RandomBtn" type="Button" parent="RootLayout/Footer/FooterBox/FooterActions" unique_id=1279600771]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🎲 ALEATÓRIO"
+flat = true
+
+[node name="ConfirmBtn" type="Button" parent="RootLayout/Footer/FooterBox/FooterActions" unique_id=1683064507]
+unique_name_in_owner = true
+layout_mode = 2
+text = "✓ CRIAR PERSONAGEM"
+flat = true

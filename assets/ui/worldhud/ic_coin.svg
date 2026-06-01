@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Coin body -->
+  <circle cx="12" cy="12" r="9" fill="#e0b04a"/>
+  <!-- Inner ring -->
+  <circle cx="12" cy="12" r="7" fill="none" stroke="#f5cf6a" stroke-width="1.5"/>
+  <!-- G symbol -->
+  <text x="12" y="16" text-anchor="middle" font-family="monospace" font-size="8"
+        font-weight="bold" fill="#8a6a1e">G</text>
+</svg>

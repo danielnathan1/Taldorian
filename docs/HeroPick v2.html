@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCG — Seleção de Herói</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet"/>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold:       oklch(0.75 0.13 78);
+  --gold-dim:   oklch(0.55 0.10 78);
+  --gold-glow:  oklch(0.84 0.16 80);
+  --gold-deep:  oklch(0.40 0.10 75);
+  --crimson:    oklch(0.45 0.20 18);
+  --crimson-br: oklch(0.58 0.22 18);
+  --parchment:  oklch(0.93 0.025 78);
+  --parchment-d:oklch(0.72 0.03 78);
+  --bg-deep:    oklch(0.07 0.04 60);
+  --panel-bg:   oklch(0.11 0.03 60 / 0.85);
+  --line:       oklch(0.73 0.13 78 / 0.18);
+  --line-soft:  oklch(0.73 0.13 78 / 0.10);
+}
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:var(--bg-deep);
+  font-family:'Crimson Pro',serif;
+  color:var(--parchment);
+}
+
+/* ── Stage ── */
+#stage-wrap {
+  width:100vw; height:100vh;
+  display:flex; align-items:center; justify-content:center;
+}
+#stage {
+  width:1280px; height:800px;
+  position:relative;
+  transform-origin:center center;
+  overflow:hidden;
+}
+
+/* ── BG ── */
+.bg {
+  position:absolute; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%,   oklch(0.18 0.07 30 / 0.4) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, oklch(0.12 0.06 250 / 0.30) 0%, transparent 65%),
+    linear-gradient(175deg, oklch(0.09 0.04 50) 0%, oklch(0.07 0.04 30) 60%, oklch(0.06 0.03 20) 100%);
+}
+.bg-noise {
+  position:absolute; inset:0; z-index:1; pointer-events:none; opacity:0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px;
+}
+
+/* Slow rune ring centered behind everything */
+.bg-rune {
+  position:absolute; left:50%; top:42%;
+  transform:translate(-50%,-50%);
+  z-index:1;
+  opacity:0.06;
+  pointer-events:none;
+  animation: runeSpin 120s linear infinite;
+}
+@keyframes runeSpin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+
+/* ── Layout ── */
+.screen {
+  position:relative; z-index:5;
+  width:100%; height:100%;
+  display:grid;
+  grid-template-rows: auto 1fr auto auto;
+}
+
+/* ── HEADER ── */
+.header {
+  text-align:center;
+  padding:28px 40px 14px;
+  border-bottom:1px solid var(--line-soft);
+}
+.header-eyebrow {
+  font-family:'Cinzel',serif;
+  font-size:0.62rem;
+  letter-spacing:0.5em;
+  text-transform:uppercase;
+  color:var(--gold-dim);
+  margin-bottom:8px;
+  opacity:0.75;
+}
+.header-eyebrow::before,
+.header-eyebrow::after {
+  content:'';
+  display:inline-block;
+  width:36px; height:1px;
+  background:var(--gold-dim);
+  vertical-align:middle;
+  margin:0 14px;
+  opacity:0.6;
+}
+.header-title {
+  font-family:'Cinzel Decorative',cursive;
+  font-size:2rem;
+  font-weight:700;
+  letter-spacing:0.06em;
+  background:linear-gradient(165deg, var(--gold-glow) 0%, var(--gold) 50%, var(--gold-deep) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter:drop-shadow(0 0 22px oklch(0.73 0.13 78 / 0.35));
+  margin-bottom:6px;
+}
+.header-sub {
+  font-family:'Crimson Pro',serif;
+  font-style:italic;
+  font-size:1rem;
+  color:var(--parchment-d);
+  opacity:0.75;
+  letter-spacing:0.02em;
+}
+
+/* ── HEROES AREA ── */
+.heroes-area {
+  display:flex; align-items:center; justify-content:center;
+  padding:0 40px;
+}
+.cards-row {
+  display:flex; gap:34px; align-items:flex-start;
+  justify-content:center;
+}
+
+/* ── HERO CARD ── */
+.hero-card {
+  width:230px;
+  background: linear-gradient(170deg, oklch(0.88 0.05 78) 0%, oklch(0.80 0.05 75) 100%);
+  border:1px solid oklch(0.73 0.13 78 / 0.35);
+  cursor:pointer;
+  position:relative;
+  user-select:none;
+  transition:transform 0.25s cubic-bezier(.22,1,.36,1), box-shadow 0.25s, border-color 0.25s;
+  animation: cardIn 0.55s cubic-bezier(.22,1,.36,1) both;
+  box-shadow: 0 8px 24px oklch(0.05 0.03 30 / 0.55);
+}
+.hero-card:nth-child(1) { animation-delay:0.05s; }
+.hero-card:nth-child(2) { animation-delay:0.15s; }
+.hero-card:nth-child(3) { animation-delay:0.25s; }
+@keyframes cardIn {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.hero-card:hover:not(.selected):not(.locked) {
+  transform:translateY(-6px);
+  border-color:oklch(0.73 0.13 78 / 0.7);
+  box-shadow:0 16px 38px oklch(0.05 0.03 30 / 0.7);
+}
+.hero-card.selected {
+  transform:translateY(-10px);
+  border-color:var(--gold-glow);
+  box-shadow:
+    0 20px 48px oklch(0.05 0.03 30 / 0.75),
+    0 0 0 2px var(--gold),
+    0 0 36px oklch(0.73 0.13 78 / 0.30);
+}
+.hero-card.locked { opacity:0.5; filter:grayscale(0.6); cursor:not-allowed; }
+
+/* Selected ribbon */
+.ribbon {
+  position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+  background:linear-gradient(160deg, var(--gold-glow), var(--gold));
+  color:oklch(0.10 0.04 30);
+  font-family:'Cinzel',serif;
+  font-size:0.55rem;
+  font-weight:700;
+  letter-spacing:0.3em;
+  text-transform:uppercase;
+  padding:4px 16px;
+  z-index:10;
+  white-space:nowrap;
+  box-shadow:0 2px 8px oklch(0.73 0.13 78 / 0.5);
+}
+
+/* Card header */
+.card-header {
+  display:flex; align-items:stretch; gap:0;
+  background:oklch(0.18 0.05 30);
+  border-bottom:2px solid oklch(0.73 0.13 78 / 0.45);
+  height:34px;
+}
+.card-hp-badge {
+  background:linear-gradient(160deg, var(--crimson-br), var(--crimson));
+  color:white;
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:0.8rem;
+  padding:0 10px;
+  min-width:42px;
+  display:flex; align-items:center; justify-content:center;
+  border-right:1px solid oklch(0.73 0.13 78 / 0.25);
+}
+.card-name {
+  flex:1;
+  font-family:'Cinzel',serif;
+  font-size:0.85rem;
+  font-weight:600;
+  letter-spacing:0.14em;
+  color:var(--parchment);
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Art */
+.card-art {
+  position:relative;
+  height:170px;
+  overflow:hidden;
+  background:oklch(0.18 0.05 40);
+}
+.class-icon-wrap {
+  position:absolute;
+  bottom:-20px; left:50%;
+  transform:translateX(-50%);
+  width:40px; height:40px;
+  border-radius:50%;
+  background:oklch(0.15 0.05 30);
+  border:2px solid oklch(0.73 0.13 78 / 0.6);
+  display:flex; align-items:center; justify-content:center;
+  z-index:5;
+  box-shadow:0 2px 12px oklch(0.05 0.03 30 / 0.8);
+}
+
+/* Body */
+.card-body {
+  background:oklch(0.92 0.03 75);
+  padding:28px 14px 12px;
+  min-height:130px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.card-class-label {
+  font-family:'Cinzel',serif;
+  font-size:0.58rem;
+  letter-spacing:0.32em;
+  text-transform:uppercase;
+  color:oklch(0.40 0.08 50);
+  text-align:center;
+  opacity:0.75;
+}
+.card-divider {
+  height:1px;
+  background:linear-gradient(90deg, transparent, oklch(0.40 0.08 50 / 0.3), transparent);
+  margin:2px 0;
+}
+.card-passive-label {
+  font-family:'Cinzel',serif;
+  font-size:0.52rem;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:oklch(0.35 0.08 50);
+  opacity:0.65;
+}
+.card-passive-text {
+  font-family:'Crimson Pro',serif;
+  font-size:0.78rem;
+  color:oklch(0.25 0.05 40);
+  line-height:1.35;
+}
+
+/* Footer */
+.card-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  background:oklch(0.18 0.05 30);
+  padding:8px 14px;
+  border-top:1px solid oklch(0.73 0.13 78 / 0.35);
+}
+.stat-badge {
+  display:flex; align-items:center; gap:6px;
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:0.95rem;
+}
+.stat-badge.atk { color:oklch(0.82 0.16 40); }
+.stat-badge.def { color:oklch(0.78 0.10 200); }
+.stat-icon { opacity:0.85; }
+
+/* Locked card overlay */
+.locked-overlay {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:oklch(0.06 0.03 30 / 0.55);
+  z-index:6;
+}
+.locked-overlay span {
+  font-family:'Cinzel',serif;
+  font-size:0.6rem;
+  letter-spacing:0.35em;
+  text-transform:uppercase;
+  color:var(--parchment-d);
+  background:oklch(0.10 0.03 30 / 0.85);
+  border:1px solid var(--line);
+  padding:6px 14px;
+}
+
+/* ── HAND STRIP (player's current cards) ── */
+.hand-section {
+  border-top:1px solid var(--line-soft);
+  padding:14px 40px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  background:linear-gradient(180deg, transparent, oklch(0.05 0.03 30 / 0.4));
+}
+.hand-header {
+  display:flex; align-items:center; gap:14px;
+  width:100%;
+  max-width:1000px;
+}
+.hand-label {
+  font-family:'Cinzel',serif;
+  font-size:0.62rem;
+  letter-spacing:0.4em;
+  text-transform:uppercase;
+  color:var(--gold-dim);
+  opacity:0.75;
+  white-space:nowrap;
+}
+.hand-line {
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg, var(--line), transparent);
+}
+.hand-count {
+  font-family:'Cinzel',serif;
+  font-size:0.62rem;
+  letter-spacing:0.2em;
+  color:var(--parchment-d);
+  opacity:0.6;
+}
+.hand-row {
+  display:flex; gap:10px; align-items:center;
+  justify-content:center;
+}
+
+/* mini card preview */
+.mini-card {
+  width:78px; height:112px;
+  background:linear-gradient(170deg, oklch(0.86 0.05 75), oklch(0.78 0.05 70));
+  border:1px solid oklch(0.73 0.13 78 / 0.35);
+  display:flex; flex-direction:column;
+  position:relative;
+  overflow:hidden;
+  transition:transform 0.18s, box-shadow 0.18s;
+  cursor:default;
+}
+.mini-card:hover { transform:translateY(-4px); box-shadow:0 8px 20px oklch(0.05 0.03 30 / 0.6); z-index:2; }
+.mini-top {
+  background:oklch(0.18 0.05 30);
+  color:var(--parchment);
+  font-family:'Cinzel',serif;
+  font-size:0.5rem;
+  letter-spacing:0.1em;
+  font-weight:600;
+  text-align:center;
+  padding:3px 2px;
+  border-bottom:1px solid oklch(0.73 0.13 78 / 0.4);
+}
+.mini-art {
+  flex:1;
+  background: var(--mini-art-bg, oklch(0.55 0.10 50));
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+}
+.mini-art-glyph {
+  font-family:'Cinzel Decorative',cursive;
+  font-size:1.1rem;
+  color:white;
+  opacity:0.5;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+.mini-bottom {
+  display:flex; justify-content:space-between;
+  padding:2px 5px;
+  background:oklch(0.18 0.05 30);
+  border-top:1px solid oklch(0.73 0.13 78 / 0.3);
+}
+.mini-stat {
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:0.55rem;
+}
+.mini-stat.atk { color:oklch(0.82 0.16 40); }
+.mini-stat.def { color:oklch(0.78 0.10 200); }
+
+/* deck stack visual */
+.deck-stack {
+  width:78px; height:112px;
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+}
+.deck-stack::before,
+.deck-stack::after {
+  content:'';
+  position:absolute;
+  width:100%; height:100%;
+  background:oklch(0.13 0.04 30);
+  border:1px solid oklch(0.73 0.13 78 / 0.3);
+}
+.deck-stack::before { transform:translate(3px, 3px); opacity:0.5; }
+.deck-stack::after  { transform:translate(6px, 6px); opacity:0.25; }
+.deck-stack-face {
+  width:100%; height:100%;
+  background:
+    linear-gradient(140deg, oklch(0.15 0.05 30), oklch(0.10 0.04 25));
+  border:1px solid oklch(0.73 0.13 78 / 0.5);
+  position:relative; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+}
+.deck-stack-face svg { opacity:0.55; }
+.deck-stack-label {
+  font-family:'Cinzel',serif;
+  font-size:0.5rem;
+  letter-spacing:0.25em;
+  color:var(--gold-dim);
+  text-transform:uppercase;
+}
+.deck-stack-count {
+  font-family:'Cinzel Decorative',cursive;
+  font-size:1.1rem;
+  color:var(--gold);
+}
+
+/* ── FOOTER (confirm) ── */
+.footer {
+  padding:14px 40px 22px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px;
+  border-top:1px solid var(--line-soft);
+  background:oklch(0.05 0.03 30 / 0.5);
+}
+.footer-status {
+  font-family:'Crimson Pro',serif;
+  font-style:italic;
+  font-size:0.95rem;
+  color:var(--parchment-d);
+  opacity:0.55;
+  transition:opacity 0.25s, color 0.25s;
+  min-width:280px;
+}
+.footer-status.active { opacity:1; color:var(--gold-dim); }
+.footer-status .name { color:var(--gold); font-style:normal; font-family:'Cinzel',serif; letter-spacing:0.1em; }
+
+.footer-timer {
+  font-family:'Cinzel',serif;
+  font-size:0.8rem;
+  letter-spacing:0.25em;
+  color:var(--crimson-br);
+  display:flex; align-items:center; gap:8px;
+}
+.footer-timer .dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--crimson-br);
+  box-shadow:0 0 8px var(--crimson-br);
+  animation:dotPulse 1.4s ease-in-out infinite;
+}
+@keyframes dotPulse { 50% { opacity:0.3; } }
+.footer-timer.urgent { color:oklch(0.7 0.25 18); }
+.footer-timer.urgent .dot { background:oklch(0.7 0.25 18); animation-duration:0.6s; }
+
+.btn-confirm {
+  position:relative;
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:0.92rem;
+  letter-spacing:0.32em;
+  text-transform:uppercase;
+  padding:16px 56px;
+  border:none; cursor:pointer; outline:none;
+  overflow:hidden;
+  transition:transform 0.18s, box-shadow 0.25s, filter 0.25s, opacity 0.3s;
+}
+.btn-confirm:disabled {
+  opacity:0.32; cursor:not-allowed;
+  background:oklch(0.15 0.04 30);
+  color:var(--parchment-d);
+  border:1px solid var(--line-soft);
+}
+.btn-confirm:not(:disabled) {
+  background:linear-gradient(160deg, oklch(0.30 0.14 22) 0%, oklch(0.18 0.10 15) 100%);
+  color:oklch(0.94 0.05 78);
+  border:1px solid oklch(0.55 0.20 18 / 0.7);
+  box-shadow:
+    0 4px 24px oklch(0.45 0.20 18 / 0.25),
+    inset 0 1px 0 oklch(0.73 0.13 78 / 0.18);
+}
+.btn-confirm:not(:disabled):hover {
+  transform:translateY(-2px);
+  filter:brightness(1.15);
+  box-shadow:
+    0 10px 36px oklch(0.55 0.22 18 / 0.4),
+    inset 0 1px 0 oklch(0.73 0.13 78 / 0.25);
+}
+.btn-confirm:not(:disabled):active { transform:translateY(0); }
+.btn-shimmer {
+  position:absolute; top:0; left:-80%; width:55%; height:100%;
+  background:linear-gradient(105deg, transparent, oklch(1 0 0 / 0.12), transparent);
+  transform:skewX(-20deg);
+  transition:left 0.6s ease;
+}
+.btn-confirm:hover .btn-shimmer { left:160%; }
+
+</style>
+</head>
+<body>
+
+<div id="stage-wrap">
+  <div id="stage">
+    <div class="bg"></div>
+    <svg class="bg-rune" width="900" height="900" viewBox="0 0 900 900" fill="none">
+      <circle cx="450" cy="450" r="420" stroke="oklch(0.73 0.13 78)" stroke-width="0.6" stroke-dasharray="5 16"/>
+      <circle cx="450" cy="450" r="395" stroke="oklch(0.73 0.13 78)" stroke-width="0.35"/>
+      <circle cx="450" cy="450" r="320" stroke="oklch(0.73 0.13 78)" stroke-width="0.35" stroke-dasharray="2 10"/>
+      <polygon points="450,40 800,580 100,580" stroke="oklch(0.73 0.13 78)" stroke-width="0.5" fill="none" opacity="0.4"/>
+      <polygon points="450,860 100,320 800,320" stroke="oklch(0.73 0.13 78)" stroke-width="0.5" fill="none" opacity="0.25"/>
+    </svg>
+    <div class="bg-noise"></div>
+    <div id="root"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ── Hero art placeholder (NOT recreating commercial art) ────────────────────
+const HeroArtPlaceholder = ({ hue, glyph, label }) => (
+  <div style={{
+    width:'100%', height:'100%',
+    background:`
+      radial-gradient(ellipse 80% 70% at 50% 35%, oklch(0.55 0.12 ${hue} / 0.55) 0%, transparent 70%),
+      linear-gradient(180deg, oklch(0.28 0.10 ${hue}) 0%, oklch(0.15 0.06 ${hue}) 100%)`,
+    position:'relative', overflow:'hidden',
+  }}>
+    {/* subtle stripes for placeholder */}
+    <div style={{
+      position:'absolute', inset:0,
+      backgroundImage:`repeating-linear-gradient(135deg, transparent 0 14px, oklch(1 0 0 / 0.025) 14px 15px)`,
+    }}/>
+    {/* glyph */}
+    <div style={{
+      position:'absolute', inset:0,
+      display:'flex', alignItems:'center', justifyContent:'center',
+      fontFamily:'Cinzel Decorative, cursive',
+      fontSize:'3.2rem',
+      color:`oklch(0.85 0.10 ${hue} / 0.65)`,
+      textShadow:`0 2px 12px oklch(0.10 0.06 ${hue} / 0.9)`,
+    }}>{glyph}</div>
+    {/* label */}
+    <div style={{
+      position:'absolute', bottom:6, left:0, right:0,
+      textAlign:'center',
+      fontFamily:'Cinzel, serif',
+      fontSize:'0.5rem',
+      letterSpacing:'0.3em',
+      color:'oklch(1 0 0 / 0.4)',
+      textTransform:'uppercase',
+    }}>{label}</div>
+  </div>
+);
+
+// ── Class icon ──────────────────────────────────────────────────────────────
+const ClassIcon = ({ kind }) => {
+  if (kind === 'BARBARIAN') return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M3 4 L7 8 M21 4 L17 8 M12 4 L12 6 M5 19 L19 19 L17 21 L7 21 Z"
+            stroke="oklch(0.75 0.13 78)" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M8 8 L12 14 L16 8 L14 18 L10 18 Z" fill="oklch(0.55 0.10 78 / 0.7)" stroke="oklch(0.75 0.13 78)" strokeWidth="1"/>
+    </svg>
+  );
+  if (kind === 'ARCHER') return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M4 20 Q12 4 20 20" stroke="oklch(0.75 0.13 78)" strokeWidth="1.4" fill="none"/>
+      <path d="M4 20 L20 20" stroke="oklch(0.75 0.13 78)" strokeWidth="0.8" strokeDasharray="2 2"/>
+      <path d="M12 4 L12 22 M8 8 L12 4 L16 8" stroke="oklch(0.75 0.13 78)" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+    </svg>
+  );
+  if (kind === 'CLERIC') return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M12 3 L12 21 M5 10 L19 10" stroke="oklch(0.75 0.13 78)" strokeWidth="1.6" strokeLinecap="round"/>
+      <circle cx="12" cy="10" r="6" stroke="oklch(0.75 0.13 78 / 0.5)" strokeWidth="0.8" fill="none"/>
+    </svg>
+  );
+  return null;
+};
+
+// ── Deck stack icon ─────────────────────────────────────────────────────────
+const DeckGlyph = () => (
+  <svg width="26" height="26" viewBox="0 0 40 40" fill="none">
+    <path d="M20 4 L34 12 L34 28 L20 36 L6 28 L6 12 Z"
+      stroke="oklch(0.73 0.13 78)" strokeWidth="1.2" fill="oklch(0.13 0.05 30)"/>
+    <path d="M20 10 L28 14 L28 26 L20 30 L12 26 L12 14 Z"
+      stroke="oklch(0.73 0.13 78 / 0.5)" strokeWidth="0.7" fill="none"/>
+    <circle cx="20" cy="20" r="3" fill="oklch(0.73 0.13 78 / 0.4)"/>
+  </svg>
+);
+
+// ── Data ────────────────────────────────────────────────────────────────────
+const HEROES = [
+  {
+    id:'thorne',
+    name:'Thorne',
+    heroClass:'BARBARIAN',
+    classLabel:'Bárbaro',
+    hp:10,
+    attack:3, defense:1,
+    passive:'Fúria Crescente: enquanto não aumentar sua defesa, seu ataque recebe +1.',
+    art:{ hue:40, glyph:'⚔', label:'Bárbaro' },
+  },
+  {
+    id:'ielwen',
+    name:'Ielwen',
+    heroClass:'ARCHER',
+    classLabel:'Arqueiro',
+    hp:9,
+    attack:2, defense:2,
+    passive:'Tiro Preciso: dispara uma flecha que causa 1 de dano a um herói inimigo.',
+    art:{ hue:155, glyph:'⟶', label:'Arqueiro' },
+  },
+  {
+    id:'aurelia',
+    name:'Aurelia',
+    heroClass:'CLERIC',
+    classLabel:'Clériga',
+    hp:9,
+    attack:1, defense:3,
+    passive:'Bênção: ao final de cada turno, restaura 1 de vida a si mesma e a um aliado.',
+    art:{ hue:75, glyph:'✦', label:'Clériga' },
+  },
+];
+
+// Player's current hand
+const HAND_CARDS = [
+  { id:'c1', name:'Lâmina Bruta',  atk:2, def:0, hue:18,  glyph:'⚔' },
+  { id:'c2', name:'Escudo Antigo', atk:0, def:2, hue:210, glyph:'⛨' },
+  { id:'c3', name:'Chama Voraz',   atk:3, def:0, hue:35,  glyph:'✺' },
+  { id:'c4', name:'Cura Menor',    atk:0, def:1, hue:140, glyph:'✚' },
+  { id:'c5', name:'Vento Cortante',atk:1, def:1, hue:195, glyph:'≈' },
+];
+
+// ── Timer ───────────────────────────────────────────────────────────────────
+function useTimer(seconds) {
+  const [t, setT] = useState(seconds);
+  useEffect(() => {
+    const id = setInterval(() => setT(v => Math.max(0, v - 1)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return t;
+}
+const fmt = t => `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+
+// ── Hero Card ───────────────────────────────────────────────────────────────
+const HeroCard = ({ hero, selected, onClick, locked }) => (
+  <div
+    className={`hero-card ${selected ? 'selected' : ''} ${locked ? 'locked' : ''}`}
+    onClick={locked ? undefined : onClick}
+  >
+    {selected && <div className="ribbon">✦ Selecionado</div>}
+
+    <div className="card-header">
+      <div className="card-hp-badge">{hero.hp}</div>
+      <div className="card-name">{hero.name}</div>
+    </div>
+
+    <div className="card-art">
+      <HeroArtPlaceholder hue={hero.art.hue} glyph={hero.art.glyph} label={hero.art.label}/>
+      <div className="class-icon-wrap">
+        <ClassIcon kind={hero.heroClass}/>
+      </div>
+    </div>
+
+    <div className="card-body">
+      <div className="card-class-label">{hero.classLabel}</div>
+      <div className="card-divider"/>
+      <div className="card-passive-label">Passiva</div>
+      <div className="card-passive-text">{hero.passive}</div>
+    </div>
+
+    <div className="card-footer">
+      <div className="stat-badge atk">
+        <svg className="stat-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 14 L6 14 L14 6 L12 4 L4 12 Z M3 13 L1 15 M11 5 L13 3"/></svg>
+        <span>{hero.attack}</span>
+      </div>
+      <div className="stat-badge def">
+        <svg className="stat-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1 L14 3 L14 8 Q14 13 8 15 Q2 13 2 8 L2 3 Z"/></svg>
+        <span>{hero.defense}</span>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Mini card (hand) ────────────────────────────────────────────────────────
+const MiniCard = ({ card }) => (
+  <div className="mini-card" title={card.name}>
+    <div className="mini-top">{card.name.length > 14 ? card.name.slice(0, 12) + '…' : card.name}</div>
+    <div className="mini-art" style={{
+      background:`
+        radial-gradient(ellipse 80% 70% at 50% 35%, oklch(0.55 0.12 ${card.hue} / 0.6) 0%, transparent 70%),
+        linear-gradient(180deg, oklch(0.30 0.10 ${card.hue}) 0%, oklch(0.16 0.06 ${card.hue}) 100%)`,
+    }}>
+      <span className="mini-art-glyph">{card.glyph}</span>
+    </div>
+    <div className="mini-bottom">
+      <span className="mini-stat atk">{card.atk}</span>
+      <span className="mini-stat def">{card.def}</span>
+    </div>
+  </div>
+);
+
+// ── App ─────────────────────────────────────────────────────────────────────
+function App() {
+  const [selected, setSelected] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const timeLeft = useTimer(74);
+  const urgent = timeLeft <= 10;
+
+  const hero = HEROES.find(h => h.id === selected);
+
+  const status = confirmed
+    ? <>Herói <span className="name">{hero?.name}</span> confirmado — aguardando oponente…</>
+    : selected
+      ? <>Herói <span className="name">{hero?.name}</span> selecionado — pronto para confirmar.</>
+      : <>Nenhum herói selecionado.</>;
+
+  return (
+    <div className="screen">
+      {/* HEADER */}
+      <div className="header">
+        <div className="header-eyebrow">Fase de preparação</div>
+        <div className="header-title">Seleção de Herói</div>
+        <div className="header-sub">Escolha um herói para ser o herói ativo nesta partida.</div>
+      </div>
+
+      {/* HEROES */}
+      <div className="heroes-area">
+        <div className="cards-row">
+          {HEROES.map(h => (
+            <HeroCard
+              key={h.id}
+              hero={h}
+              selected={selected === h.id}
+              locked={confirmed && selected !== h.id}
+              onClick={() => !confirmed && setSelected(h.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* HAND */}
+      <div className="hand-section">
+        <div className="hand-header">
+          <div className="hand-label">◆ Suas Cartas</div>
+          <div className="hand-line"/>
+          <div className="hand-count">Mão · {HAND_CARDS.length}  ·  Deck · 27</div>
+        </div>
+        <div className="hand-row">
+          <div className="deck-stack">
+            <div className="deck-stack-face">
+              <DeckGlyph/>
+              <div className="deck-stack-label">Deck</div>
+              <div className="deck-stack-count">27</div>
+            </div>
+          </div>
+          {HAND_CARDS.map(c => <MiniCard key={c.id} card={c}/>)}
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <div className="footer">
+        <div className={`footer-status ${selected ? 'active' : ''}`}>{status}</div>
+
+        <div className={`footer-timer ${urgent ? 'urgent' : ''}`}>
+          <span className="dot"/>
+          <span>Tempo</span>
+          <span style={{minWidth:48, textAlign:'right'}}>{fmt(timeLeft)}</span>
+        </div>
+
+        <button
+          className="btn-confirm"
+          disabled={!selected || confirmed}
+          onClick={() => selected && setConfirmed(true)}
+        >
+          <span className="btn-shimmer"/>
+          {confirmed ? 'Aguardando…' : 'Confirmar Herói'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+/* Scale to viewport */
+function fitStage(){
+  const s = document.getElementById('stage');
+  const w = window.innerWidth, h = window.innerHeight;
+  const k = Math.min(w/1280, h/800);
+  s.style.transform = `scale(${k})`;
+}
+fitStage();
+window.addEventListener('resize', fitStage);
+</script>
+</body>
+</html>

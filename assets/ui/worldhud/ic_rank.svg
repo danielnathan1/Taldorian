@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Shield -->
+  <path fill="#8b92a0" d="M12 2L4 5v7c0 4.4 3.4 8.5 8 9.9 4.6-1.4 8-5.5 8-9.9V5z"/>
+  <!-- Shield inner -->
+  <path fill="#6b7385" d="M12 4L6 6.5V12c0 3.3 2.5 6.4 6 7.7 3.5-1.3 6-4.4 6-7.7V6.5z"/>
+  <!-- Star -->
+  <path fill="#f5cf6a" d="M12 7l1.2 3.6H17l-3 2.2 1.1 3.5L12 14l-3.1 2.3 1.1-3.5-3-2.2h3.8z"/>
+</svg>

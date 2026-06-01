@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCG — Bênção dos Ancestrais</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050a;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #stage-wrap {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative;
+    overflow: hidden;
+    background: #0a0a12;
+  }
+
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.28 0.10 15 / 0.22) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.09 0.05 12) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.32 0.13 150 / 0.18) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.09 0.05 220) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.73 0.13 78 / 0.25) 20%,
+      oklch(0.73 0.13 78 / 0.50) 50%,
+      oklch(0.73 0.13 78 / 0.25) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.025; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.65 0.18 15); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.70 0.15 150); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.14 200 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 220 / 0.60);
+    --slot-label-color: oklch(0.65 0.14 200);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.20 15 / 0.40);
+    --slot-bg:          oklch(0.10 0.04 15 / 0.55);
+    --slot-label-color: oklch(0.60 0.18 15);
+  }
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 268);
+  }
+  .hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, oklch(0.55 0.22 150), oklch(0.78 0.18 145));
+    transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hp-fill.enemy {
+    background: linear-gradient(90deg, oklch(0.55 0.22 15), oklch(0.72 0.18 15));
+  }
+  /* heal flash bar overlay */
+  .hp-flash {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.95 0.18 145), transparent);
+    pointer-events: none;
+  }
+
+  /* ── Healer card highlight states ── */
+  .healer-charging {
+    border-color: oklch(0.82 0.18 145) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.82 0.18 145 / 0.85),
+      0 0 24px oklch(0.82 0.18 145 / 0.55),
+      0 0 60px oklch(0.82 0.18 145 / 0.30);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .healer-channeling {
+    border-color: oklch(0.92 0.18 140) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.92 0.18 140),
+      0 0 36px oklch(0.92 0.18 140 / 0.7),
+      0 0 90px oklch(0.92 0.18 140 / 0.45);
+    transform: translateY(-2px) scale(1.05);
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: calc(50% - 22px);
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; z-index: 50;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 28px; font-weight: 700;
+    color: oklch(0.94 0.14 140);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    text-shadow:
+      0 0 18px oklch(0.82 0.18 145 / 0.85),
+      0 2px 0 oklch(0.20 0.06 160 / 0.7);
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.45em; text-transform: uppercase;
+    color: oklch(0.78 0.12 145); opacity: 0.85;
+  }
+  .ability-rule {
+    width: 280px; height: 1px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.82 0.18 145 / 0.7), transparent);
+    margin-top: 4px;
+  }
+
+  /* ── Ally area aura (player side) ── */
+  .ally-aura {
+    position: absolute;
+    border: 1px solid oklch(0.78 0.18 145 / 0.42);
+    background:
+      radial-gradient(ellipse at center,
+        oklch(0.78 0.18 145 / 0.14) 0%,
+        oklch(0.78 0.18 145 / 0.04) 60%,
+        transparent 100%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .ally-aura .corner-tl,
+  .ally-aura .corner-tr,
+  .ally-aura .corner-bl,
+  .ally-aura .corner-br {
+    position: absolute; width: 14px; height: 14px;
+    border: 1px solid oklch(0.85 0.18 145 / 0.85);
+  }
+  .ally-aura .corner-tl { top: -1px; left: -1px;     border-right: none; border-bottom: none; }
+  .ally-aura .corner-tr { top: -1px; right: -1px;    border-left: none;  border-bottom: none; }
+  .ally-aura .corner-bl { bottom: -1px; left: -1px;  border-right: none; border-top: none; }
+  .ally-aura .corner-br { bottom: -1px; right: -1px; border-left: none;  border-top: none; }
+
+  .fx-layer {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── Heal popups ── */
+  .heal-pop {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 22px; font-weight: 700;
+    color: oklch(0.95 0.16 145);
+    text-shadow:
+      0 0 14px oklch(0.85 0.20 145),
+      0 2px 0 oklch(0.20 0.06 160);
+    pointer-events: none;
+    letter-spacing: 0.05em;
+  }
+
+  .screen-flash {
+    position: absolute; inset: 0;
+    background: oklch(0.95 0.12 145);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: oklch(0.10 0.03 268 / 0.85);
+    border: 1px solid oklch(0.73 0.13 78 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 268 / 0.9);
+    color: oklch(0.82 0.16 80);
+    border: 1px solid oklch(0.73 0.13 78 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 268 / 0.95);
+    border-color: oklch(0.73 0.13 78 / 0.8);
+    box-shadow: 0 0 14px oklch(0.73 0.13 78 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.30 0.13 150 / 0.9), oklch(0.18 0.08 150 / 0.9));
+    color: oklch(0.95 0.12 145);
+    border-color: oklch(0.65 0.20 145 / 0.7);
+  }
+  .ctrl-btn.primary:hover {
+    box-shadow: 0 0 18px oklch(0.65 0.20 145 / 0.5);
+  }
+  .ctrl-scrub {
+    width: 220px; accent-color: oklch(0.78 0.18 145);
+  }
+  .ctrl-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: oklch(0.65 0.10 78);
+  }
+  .ctrl-time {
+    color: oklch(0.82 0.16 80);
+    font-size: 10px;
+    min-width: 48px;
+  }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Geometry
+// ───────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+
+// Healer = active hero (Sacerdote / Priest) on bottom-center
+const HEALER = { x: 720, y: 540 };
+const HEALER_CARD = { x: 720, y: 540, w: 90, h: 126 };
+
+// Player allies (positions match Arrow Rain layout)
+// max HP for each so we can fill from a wounded amount up to full
+const ALLIES = [
+  { x: 360, y: 540, key: 'cavaleiro', label: 'Cavaleiro', start: 28, max: 100 },
+  { x: 450, y: 540, key: 'arqueiro',  label: 'Arqueiro',  start: 42, max: 100 },
+  { x: 540, y: 540, key: 'maga',      label: 'Maga',      start: 18, max: 100 },
+  { x: 720, y: 540, key: 'healer',    label: 'Sacerdote', start: 55, max: 100, isHealer: true },
+];
+
+// Ally zone over player area (where the wave spreads)
+const ALLY_ZONE = {
+  x: 280, y: 470, w: 520, h: 150
+};
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Timing (seconds)
+// ───────────────────────────────────────────────────────────────────────────────
+const T = {
+  CHARGE_START   : 0.0,
+  CHARGE_END     : 1.1,
+  BANNER_IN      : 0.2,
+  BANNER_OUT     : 3.0,
+  ZONE_IN        : 0.55,
+  ZONE_OUT       : 4.0,
+  WAVE_START     : 1.1,
+  WAVE_END       : 2.6,    // last wave finishes expanding
+  PARTICLE_START : 1.15,
+  PARTICLE_END   : 3.0,    // last particle emitted
+  PARTICLE_FLIGHT: 0.9,
+  HEAL_IMPACT_AT : 0.7,    // each ally heals fully by this point in its particle arrival window
+  HOLD_END       : 5.2,
+};
+
+const NUM_PARTICLES = 60;
+const NUM_WAVES = 3;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Utilities
+// ───────────────────────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const easeOutCubic   = t => 1 - Math.pow(1 - t, 3);
+const easeOutQuart   = t => 1 - Math.pow(1 - t, 4);
+const easeInQuad     = t => t * t;
+const easeInOutCubic = t => t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2,3)/2;
+
+function bezier(p0, p1, p2, t) {
+  const u = 1 - t;
+  return {
+    x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+    y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Pre-compute particles — each travels from healer to a random ally
+// ───────────────────────────────────────────────────────────────────────────────
+const particles = (() => {
+  const rng = mulberry32(13);
+  const list = [];
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    const launchT = T.PARTICLE_START + (T.PARTICLE_END - T.PARTICLE_START) * (i / (NUM_PARTICLES - 1));
+    // pick an ally to target; distribute roughly evenly
+    const ally = ALLIES[i % ALLIES.length];
+    // target spot scattered inside ally card
+    const tx = ally.x + (rng() - 0.5) * 50;
+    const ty = ally.y + (rng() - 0.5) * 80;
+    // launch slightly offset around healer center top
+    const sx = HEALER.x + (rng() - 0.5) * 40;
+    const sy = HEALER.y - 30 + (rng() - 0.5) * 20;
+    // arc UP and then over — control point above midpoint
+    const midX = (sx + tx) / 2;
+    const peakY = Math.min(sy, ty) - 80 - rng() * 90;
+    const ctrlX = midX + (rng() - 0.5) * 60;
+    // particle visual variation
+    const size = 1.6 + rng() * 2.6;          // 1.6..4.2
+    const hueShift = (rng() - 0.5) * 20;     // small green variance
+    const wobble = (rng() - 0.5) * 1.5;
+    list.push({
+      id: i,
+      launchT,
+      allyKey: ally.key,
+      p0: { x: sx, y: sy },
+      p1: { x: ctrlX, y: peakY },
+      p2: { x: tx, y: ty },
+      size, hueShift, wobble,
+    });
+  }
+  return list;
+})();
+
+// per-ally: time of first particle arrival (used to drive HP fill timing)
+const FIRST_ARRIVAL = (() => {
+  const m = {};
+  for (const a of ALLIES) {
+    const matches = particles.filter(p => p.allyKey === a.key);
+    const t = matches.length ? Math.min(...matches.map(p => p.launchT + T.PARTICLE_FLIGHT)) : T.WAVE_END;
+    m[a.key] = t;
+  }
+  return m;
+})();
+// per-ally: full-heal time (so HP fills over a window)
+const FULL_HEAL_AT = (() => {
+  const m = {};
+  for (const a of ALLIES) {
+    m[a.key] = FIRST_ARRIVAL[a.key] + 0.55;
+  }
+  return m;
+})();
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Static slot markup
+// ───────────────────────────────────────────────────────────────────────────────
+function StaticBoard({ heroHps, allyHps }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: heroHps.h3, enemy: true },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: heroHps.h2, enemy: true },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: heroHps.h1, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: heroHps.active, enemy: true },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std',    label: 'Cavaleiro', hp: allyHps.cavaleiro, isCard: 'cavaleiro' },
+    { x: 450, y: 540, size: 'std',    label: 'Arqueiro',  hp: allyHps.arqueiro,  isCard: 'arqueiro' },
+    { x: 540, y: 540, size: 'std',    label: 'Maga',      hp: allyHps.maga,      isCard: 'maga' },
+    { x: 720, y: 540, size: 'active', label: 'Sacerdote', hp: allyHps.healer,    isCard: 'healer', isHealer: true },
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+
+  return (
+    <>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}
+      {player.map((s, i) => <Slot key={'p'+i} theme="player" {...s} />)}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, hp, isHealer, isCard, enemy }) {
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className="slot-card" data-card={isCard || ''}>
+        <CardArt theme={theme} size={size} label={label} />
+        {hp !== undefined && (
+          <div className="hp-bar">
+            <div className={`hp-fill ${enemy ? 'enemy' : ''}`} style={{ width: `${hp}%` }} />
+          </div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+// Card face art — placeholder ornaments + Sacerdote/Arqueiro/etc icons
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player'
+    ? 'oklch(0.55 0.14 200 / 0.55)'
+    : 'oklch(0.55 0.20 15 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+
+  if (label === 'Sacerdote') {
+    const cx = w/2, cy = h/2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.65 0.20 145 / 0.55)" strokeWidth="0.6"/>
+        {/* halo */}
+        <circle cx={cx} cy={cy - 18} r="11" stroke="oklch(0.85 0.18 145 / 0.85)" strokeWidth="0.7" fill="none"/>
+        <circle cx={cx} cy={cy - 18} r="8" stroke="oklch(0.85 0.18 145 / 0.45)" strokeWidth="0.4" fill="none"/>
+        {/* staff */}
+        <line x1={cx} y1={cy - 8} x2={cx} y2={cy + 28}
+              stroke="oklch(0.78 0.10 140 / 0.95)" strokeWidth="1.4" strokeLinecap="round"/>
+        {/* crystal top of staff */}
+        <path d={`M ${cx} ${cy - 12} l 3 4 l -3 5 l -3 -5 z`}
+              fill="oklch(0.88 0.18 145 / 0.95)"
+              stroke="oklch(0.55 0.20 150 / 0.85)" strokeWidth="0.4"/>
+        {/* radiating lines */}
+        {[0,1,2,3,4,5].map(i => {
+          const a = (i / 6) * Math.PI * 2;
+          const r1 = 14, r2 = 19;
+          return (
+            <line key={i}
+                  x1={cx + Math.cos(a) * r1} y1={(cy - 18) + Math.sin(a) * r1}
+                  x2={cx + Math.cos(a) * r2} y2={(cy - 18) + Math.sin(a) * r2}
+                  stroke="oklch(0.85 0.18 145 / 0.65)" strokeWidth="0.5"/>
+          );
+        })}
+        {/* name plate */}
+        <rect x="6" y={h - 22} width={w-12} height="12" fill="oklch(0.08 0.04 260 / 0.7)"
+              stroke="oklch(0.65 0.20 145 / 0.4)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2 - 14} ${h/2 - 18} Q ${w/2 - 26} ${h/2}, ${w/2 - 14} ${h/2 + 18}`}
+              stroke="oklch(0.82 0.16 80 / 0.85)" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+        <line x1={w/2 - 6} y1={h/2} x2={w/2 + 20} y2={h/2}
+              stroke="oklch(0.85 0.10 78 / 0.95)" strokeWidth="1.0"/>
+        <path d={`M ${w/2 + 20} ${h/2} l -3 -2 l 0 4 z`} fill="oklch(0.85 0.10 78)"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Cavaleiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        {/* sword */}
+        <line x1={w/2} y1={h/2 - 22} x2={w/2} y2={h/2 + 18}
+              stroke="oklch(0.80 0.04 240 / 0.95)" strokeWidth="1.4" strokeLinecap="round"/>
+        <line x1={w/2 - 8} y1={h/2 + 18} x2={w/2 + 8} y2={h/2 + 18}
+              stroke="oklch(0.65 0.10 60 / 0.9)" strokeWidth="1.6"/>
+        {/* shield outline */}
+        <path d={`M ${w/2 - 14} ${h/2 - 6} L ${w/2 + 14} ${h/2 - 6} L ${w/2 + 12} ${h/2 + 8} L ${w/2} ${h/2 + 16} L ${w/2 - 12} ${h/2 + 8} Z`}
+              stroke="oklch(0.65 0.14 200 / 0.75)" strokeWidth="0.5" fill="none"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Maga') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        {/* hat triangle */}
+        <path d={`M ${w/2} ${h/2 - 22} L ${w/2 + 12} ${h/2 - 4} L ${w/2 - 12} ${h/2 - 4} Z`}
+              stroke="oklch(0.65 0.18 290 / 0.85)" strokeWidth="0.6" fill="none"/>
+        {/* star */}
+        <path d={`M ${w/2} ${h/2 + 6} l 3 6 l 6 1 l -4.5 4 l 1 6 l -5.5 -3 l -5.5 3 l 1 -6 l -4.5 -4 l 6 -1 z`}
+              fill="none" stroke="oklch(0.85 0.16 290 / 0.85)" strokeWidth="0.5"/>
+      </svg>
+    );
+  }
+
+  // Generic ornament
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Animation derivation
+// ───────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // 1) Healer state
+  let healerState = 'idle';
+  if (t >= T.CHARGE_START && t < T.CHARGE_END)            healerState = 'charging';
+  else if (t >= T.CHARGE_END && t < T.PARTICLE_END + 0.4) healerState = 'channeling';
+
+  // 2) Charge glow scale
+  let chargeGlow = 0;
+  if (t >= T.CHARGE_START && t < T.CHARGE_END) {
+    const u = (t - T.CHARGE_START) / (T.CHARGE_END - T.CHARGE_START);
+    chargeGlow = easeInQuad(u);
+  } else if (t >= T.CHARGE_END && t < T.PARTICLE_END) {
+    // sustain a pulsing glow during channeling
+    chargeGlow = 0.7 + Math.sin((t - T.CHARGE_END) * 6) * 0.15;
+  } else if (t >= T.PARTICLE_END && t < T.PARTICLE_END + 0.5) {
+    chargeGlow = (1 - (t - T.PARTICLE_END) / 0.5) * 0.7;
+  }
+
+  // 3) Banner
+  const bannerShow = t >= T.BANNER_IN && t < T.BANNER_OUT;
+  const bannerFadeIn  = Math.min(1, Math.max(0, (t - T.BANNER_IN) / 0.35));
+  const bannerFadeOut = Math.min(1, Math.max(0, (T.BANNER_OUT - t) / 0.45));
+  const bannerOpacity = bannerShow ? Math.min(bannerFadeIn, bannerFadeOut) : 0;
+  const bannerLabel = t < T.CHARGE_END ? 'Canalizando energia' : 'Cura em onda';
+
+  // 4) Ally zone aura
+  const zoneShow = t >= T.ZONE_IN && t < T.ZONE_OUT;
+  const zoneIn  = Math.min(1, Math.max(0, (t - T.ZONE_IN) / 0.5));
+  const zoneOut = Math.min(1, Math.max(0, (T.ZONE_OUT - t) / 0.55));
+  const zoneOpacity = zoneShow ? Math.min(zoneIn, zoneOut) : 0;
+
+  // 5) Healing waves — concentric rings expanding outward from healer
+  const waves = [];
+  for (let i = 0; i < NUM_WAVES; i++) {
+    const waveStart = T.WAVE_START + i * 0.35;
+    const waveDur = 1.4;
+    const local = (t - waveStart) / waveDur;
+    if (local > 0 && local < 1) {
+      const r = 30 + easeOutQuart(local) * 520;
+      const op = (1 - local) * 0.75;
+      const stroke = 1.5 + (1 - local) * 1.6;
+      waves.push({ id: i, r, op, stroke });
+    }
+  }
+
+  // 6) Particles
+  const flying = [];
+  const landingFlashes = [];
+  for (const p of particles) {
+    const local = (t - p.launchT) / T.PARTICLE_FLIGHT;
+    if (local <= 0) continue;
+    if (local < 1) {
+      const u = easeOutCubic(local) * 0.6 + local * 0.4;
+      const pt = bezier(p.p0, p.p1, p.p2, u);
+      // wobble — small sinusoidal lateral drift
+      const wob = Math.sin(local * 8 + p.id) * p.wobble * (1 - local);
+      flying.push({
+        id: p.id,
+        x: pt.x + wob,
+        y: pt.y,
+        size: p.size * (0.7 + Math.sin(local * 12 + p.id) * 0.2),
+        opacity: local < 0.1 ? local / 0.1 : (local > 0.85 ? (1 - local) / 0.15 : 1),
+        hueShift: p.hueShift,
+      });
+    } else if (local < 1.25) {
+      // brief landing flash
+      const lf = (local - 1) / 0.25;
+      landingFlashes.push({
+        id: p.id,
+        x: p.p2.x, y: p.p2.y,
+        r: 4 + lf * 14,
+        opacity: (1 - lf) * 0.9,
+      });
+    }
+  }
+
+  // 7) Ally HP — interpolate from start to max between first arrival and full heal time
+  const allyHps = {};
+  for (const a of ALLIES) {
+    const t0 = FIRST_ARRIVAL[a.key];
+    const t1 = FULL_HEAL_AT[a.key];
+    let hp;
+    if (t < t0) hp = a.start;
+    else if (t >= t1) hp = a.max;
+    else hp = a.start + (a.max - a.start) * easeOutCubic((t - t0) / (t1 - t0));
+    allyHps[a.key] = hp;
+  }
+
+  // 8) Per-ally pulse halo + heal popup
+  const allyPulses = [];
+  const healPopups = [];
+  for (const a of ALLIES) {
+    const t0 = FIRST_ARRIVAL[a.key];
+    const since = t - t0;
+    if (since > -0.1 && since < 1.4) {
+      // pulse: expanding ring
+      const u = Math.max(0, since / 1.0);
+      allyPulses.push({
+        key: a.key, x: a.x, y: a.y,
+        r: 22 + easeOutQuart(u) * 50,
+        op: Math.max(0, (1 - u)) * 0.85,
+      });
+    }
+    if (since > 0.05 && since < 1.2) {
+      const u = since / 1.2;
+      const amount = Math.round(a.max - a.start);
+      healPopups.push({
+        key: a.key,
+        x: a.x + (a.isHealer ? 36 : 24),
+        y: a.y - 30 - u * 40,
+        opacity: u < 0.15 ? u/0.15 : (1 - (u - 0.15)/0.85),
+        val: amount,
+      });
+    }
+  }
+
+  // 9) Screen flash at unleash moment
+  let flashOpacity = 0;
+  if (t >= T.CHARGE_END - 0.05 && t < T.CHARGE_END + 0.35) {
+    const u = Math.max(0, (t - (T.CHARGE_END - 0.05)) / 0.4);
+    flashOpacity = (1 - u) * 0.30;
+  }
+
+  // 10) Opponent HPs (static — they get scared, not hurt)
+  const heroHps = { h1: 80, h2: 55, h3: 30, active: 70 };
+
+  return {
+    healerState,
+    chargeGlow,
+    bannerOpacity,
+    bannerLabel,
+    zoneOpacity,
+    waves,
+    flying,
+    landingFlashes,
+    allyHps,
+    allyPulses,
+    healPopups,
+    flashOpacity,
+    heroHps,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Visual primitives
+// ───────────────────────────────────────────────────────────────────────────────
+function HealWave({ x, y, r, op, stroke }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {/* outer soft ring */}
+      <circle r={r} fill="none"
+              stroke={`oklch(0.90 0.15 145 / ${op * 0.45})`} strokeWidth={stroke + 4}/>
+      {/* sharp ring */}
+      <circle r={r} fill="none"
+              stroke={`oklch(0.92 0.18 142 / ${op})`} strokeWidth={stroke}/>
+      {/* faint inner ring */}
+      <circle r={r - 6} fill="none"
+              stroke={`oklch(0.80 0.16 148 / ${op * 0.55})`} strokeWidth={stroke * 0.6}/>
+    </g>
+  );
+}
+
+function Particle({ x, y, size, opacity, hueShift }) {
+  const h = 145 + hueShift;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      {/* outer halo */}
+      <circle r={size * 2.2} fill={`oklch(0.92 0.14 ${h} / 0.18)`}/>
+      <circle r={size * 1.4} fill={`oklch(0.92 0.16 ${h} / 0.35)`}/>
+      {/* core */}
+      <circle r={size} fill={`oklch(0.96 0.18 ${h} / 0.95)`}/>
+      <circle r={size * 0.5} fill="oklch(0.99 0.06 145 / 1)"/>
+    </g>
+  );
+}
+
+function LandingFlash({ x, y, r, opacity }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.95 0.18 145 / ${opacity})`} strokeWidth="1.2"/>
+      <circle r={r * 0.4} fill={`oklch(0.97 0.14 145 / ${opacity * 0.6})`}/>
+    </g>
+  );
+}
+
+function AllyPulse({ x, y, r, op }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.92 0.18 145 / ${op * 0.9})`} strokeWidth="1.2"/>
+      <circle r={r * 0.8} fill="none"
+              stroke={`oklch(0.80 0.16 142 / ${op * 0.55})`} strokeWidth="0.6"/>
+    </g>
+  );
+}
+
+// Cross / plus symbol that gently floats around each ally to signal healing
+function HealCross({ x, y, scale, opacity }) {
+  const s = 7 * scale;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      <rect x={-s*0.25} y={-s} width={s*0.5} height={s*2} rx={s*0.12}
+            fill="oklch(0.96 0.18 142 / 0.95)"/>
+      <rect x={-s} y={-s*0.25} width={s*2} height={s*0.5} rx={s*0.12}
+            fill="oklch(0.96 0.18 142 / 0.95)"/>
+      <rect x={-s*0.15} y={-s*0.85} width={s*0.3} height={s*1.7}
+            fill="oklch(0.99 0.04 145 / 1)"/>
+      <rect x={-s*0.85} y={-s*0.15} width={s*1.7} height={s*0.3}
+            fill="oklch(0.99 0.04 145 / 1)"/>
+    </g>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  App
+// ───────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = (now - lastRef.current) / 1000;
+      lastRef.current = now;
+      if (playing) {
+        setT(prev => {
+          const next = prev + dt;
+          if (next >= T.HOLD_END + 1.4) return 0;
+          return next;
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  const scene = deriveScene(t);
+
+  // Floating crosses — small set that orbit allies during heal
+  const floatingCrosses = [];
+  for (const a of ALLIES) {
+    const t0 = FIRST_ARRIVAL[a.key];
+    const since = t - t0;
+    if (since > 0 && since < 1.4) {
+      for (let i = 0; i < 3; i++) {
+        const phase = since * 1.4 + i * (Math.PI * 2 / 3);
+        const drift = since * 26;
+        const cx = a.x + Math.cos(phase) * 22;
+        const cy = a.y - 12 - drift + Math.sin(phase) * 6;
+        const op = (1 - since / 1.4) * 0.85;
+        const sc = 0.5 + Math.min(since * 2, 1) * 0.6;
+        floatingCrosses.push({
+          key: `${a.key}-${i}`,
+          x: cx, y: cy, scale: sc, opacity: op,
+        });
+      }
+    }
+  }
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente</div>
+        <div className="half-label pl">Sua Área — Aliados Curados</div>
+
+        <StaticBoard heroHps={scene.heroHps} allyHps={scene.allyHps} />
+
+        {/* Healer aura/highlight */}
+        <HealerOverlay state={scene.healerState} chargeGlow={scene.chargeGlow} />
+
+        {/* Ally zone aura */}
+        <div
+          className="ally-aura"
+          style={{
+            left: ALLY_ZONE.x, top: ALLY_ZONE.y,
+            width: ALLY_ZONE.w, height: ALLY_ZONE.h,
+            opacity: scene.zoneOpacity,
+          }}>
+          <div className="corner-tl"/>
+          <div className="corner-tr"/>
+          <div className="corner-bl"/>
+          <div className="corner-br"/>
+        </div>
+
+        {/* Ability banner */}
+        <div className="ability-banner" style={{ opacity: scene.bannerOpacity }}>
+          <div className="ability-sub">Habilidade Definitiva</div>
+          <div className="ability-name">Bênção dos Ancestrais</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>
+            {scene.bannerLabel}
+          </div>
+        </div>
+
+        {/* FX layer — waves, particles, pulses */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {/* Healing waves from healer */}
+          {scene.waves.map(w => (
+            <HealWave key={'w'+w.id} x={HEALER.x} y={HEALER.y - 8}
+                      r={w.r} op={w.op} stroke={w.stroke}/>
+          ))}
+
+          {/* Ally pulses */}
+          {scene.allyPulses.map(p => (
+            <AllyPulse key={'ap'+p.key} x={p.x} y={p.y} r={p.r} op={p.op}/>
+          ))}
+
+          {/* Landing flashes */}
+          {scene.landingFlashes.map(lf => (
+            <LandingFlash key={'lf'+lf.id} x={lf.x} y={lf.y} r={lf.r} opacity={lf.opacity}/>
+          ))}
+
+          {/* Flying particles */}
+          {scene.flying.map(f => (
+            <Particle key={'p'+f.id} x={f.x} y={f.y}
+                      size={f.size} opacity={f.opacity} hueShift={f.hueShift}/>
+          ))}
+
+          {/* Floating crosses around healed allies */}
+          {floatingCrosses.map(c => (
+            <HealCross key={c.key} x={c.x} y={c.y} scale={c.scale} opacity={c.opacity}/>
+          ))}
+        </svg>
+
+        {/* Heal +N popups */}
+        {scene.healPopups.map(d => (
+          <div key={'hp'+d.key} className="heal-pop"
+               style={{ left: d.x, top: d.y, opacity: d.opacity }}>
+            +{d.val}
+          </div>
+        ))}
+
+        {/* Screen flash */}
+        {scene.flashOpacity > 0 && (
+          <div className="screen-flash" style={{ opacity: scene.flashOpacity }}/>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>
+          ↻ Repetir
+        </button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>
+          {playing ? '❚❚ Pausar' : '▶ Tocar'}
+        </button>
+        <span className="ctrl-label">Tempo</span>
+        <input
+          type="range"
+          className="ctrl-scrub"
+          min="0" max={T.HOLD_END + 1.4} step="0.01"
+          value={t}
+          onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}
+        />
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+// Healer overlay — charge glow + card highlight on the Sacerdote (active slot)
+function HealerOverlay({ state, chargeGlow }) {
+  const x = HEALER_CARD.x, y = HEALER_CARD.y;
+  const glowSize = 70 + chargeGlow * 160;
+
+  return (
+    <>
+      {/* Vertical light column from healer (channeling beam) */}
+      {state === 'channeling' && (
+        <div style={{
+          position: 'absolute',
+          left: x, top: y - 110,
+          width: 4, height: 100,
+          transform: 'translate(-50%, 0)',
+          background: 'linear-gradient(0deg, oklch(0.92 0.18 142 / 0.7), oklch(0.92 0.18 142 / 0.0))',
+          filter: 'blur(2px)',
+          pointerEvents: 'none',
+          mixBlendMode: 'screen',
+        }}/>
+      )}
+
+      {/* Charge glow halo around healer */}
+      {chargeGlow > 0.01 && (
+        <div style={{
+          position: 'absolute',
+          left: x, top: y - 14,
+          width: glowSize, height: glowSize,
+          transform: 'translate(-50%, -50%)',
+          background: `radial-gradient(circle,
+            oklch(0.95 0.18 145 / 0.55) 0%,
+            oklch(0.82 0.18 145 / 0.30) 35%,
+            transparent 70%)`,
+          opacity: 0.9 * chargeGlow,
+          mixBlendMode: 'screen',
+          pointerEvents: 'none',
+          borderRadius: '50%',
+        }}/>
+      )}
+
+      {/* Highlight ring on healer card */}
+      <div style={{
+        position: 'absolute',
+        left: x, top: y,
+        width: HEALER_CARD.w + 6,
+        height: HEALER_CARD.h + 6,
+        transform: 'translate(-50%, -50%)',
+        border: state === 'charging'
+          ? '1px solid oklch(0.82 0.18 145 / 0.85)'
+          : state === 'channeling'
+            ? '1px solid oklch(0.92 0.18 142)'
+            : '1px solid transparent',
+        boxShadow:
+          state === 'charging'
+            ? '0 0 24px oklch(0.82 0.18 145 / 0.55), 0 0 60px oklch(0.82 0.18 145 / 0.30), inset 0 0 18px oklch(0.82 0.18 145 / 0.20)'
+            : state === 'channeling'
+              ? '0 0 36px oklch(0.92 0.18 142 / 0.70), 0 0 100px oklch(0.92 0.18 142 / 0.45), inset 0 0 24px oklch(0.92 0.18 142 / 0.25)'
+              : 'none',
+        transition: 'border-color 0.25s, box-shadow 0.25s',
+        pointerEvents: 'none',
+      }}/>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+// Scale stage to viewport (same approach as Arrow Rain)
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>

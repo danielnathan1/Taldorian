@@ -1,0 +1,583 @@
+[gd_scene format=3 uid="uid://worldhud_main"]
+
+[ext_resource type="Script"      path="res://scenes/ui/worldhud/world_hud.gd"    id="1_whud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/worldhud/AvatarFrame.tscn" id="2_af"]
+[ext_resource type="PackedScene" path="res://scenes/ui/worldhud/HudButton.tscn"   id="3_btn"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_battle.svg"    id="4_ic_battle"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_inventory.svg" id="5_ic_inv"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_decks.svg"     id="6_ic_decks"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_friends.svg"   id="7_ic_friends"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_logout.svg"    id="8_ic_logout"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_send.svg"      id="9_ic_send"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_coin.svg"      id="10_ic_coin"]
+[ext_resource type="Texture2D"   path="res://assets/ui/worldhud/ic_rank.svg"      id="11_ic_rank"]
+
+; ── Estilos de painel ──────────────────────────────────────────────────────────
+
+[sub_resource type="StyleBoxFlat" id="Style_hud_panel"]
+bg_color = Color(0.0824, 0.0941, 0.1216, 0.86)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2275, 0.2549, 0.3137, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_left = 0
+corner_radius_bottom_right = 0
+expand_margin_top = 1.0
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="Style_xp_track"]
+bg_color = Color(0.0667, 0.0745, 0.102, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+
+[sub_resource type="StyleBoxFlat" id="Style_xp_fill"]
+bg_color = Color(0.5294, 0.8078, 0.8941, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+
+[sub_resource type="StyleBoxFlat" id="Style_tab_inactive"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+
+[sub_resource type="StyleBoxFlat" id="Style_chat_input_bg"]
+bg_color = Color(0.0667, 0.0745, 0.102, 1)
+border_width_left = 0
+border_width_top = 2
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0.2275, 0.2549, 0.3137, 1)
+
+[sub_resource type="StyleBoxFlat" id="Style_badge"]
+bg_color = Color(0.5294, 0.8078, 0.8941, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[sub_resource type="StyleBoxFlat" id="Style_level_badge"]
+bg_color = Color(0.9608, 0.8118, 0.4157, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+
+[sub_resource type="StyleBoxFlat" id="Style_popover"]
+bg_color = Color(0.0824, 0.0941, 0.1216, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2275, 0.2549, 0.3137, 1)
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 10
+shadow_offset = Vector2(0, -4)
+
+; ── Botão Batalha (estilo especial azul) ───────────────────────────────────────
+
+[sub_resource type="StyleBoxFlat" id="Style_btn_battle"]
+bg_color = Color(0.1412, 0.2118, 0.2588, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5294, 0.8078, 0.8941, 1)
+shadow_color = Color(0.5294, 0.8078, 0.8941, 0.25)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+; ── Botão Sair (estilo perigo) ─────────────────────────────────────────────────
+
+[sub_resource type="StyleBoxFlat" id="Style_btn_logout_hover"]
+bg_color = Color(0.137255, 0.152941, 0.2, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8784, 0.4745, 0.3725, 1)
+shadow_color = Color(0.8784, 0.4745, 0.3725, 0.3)
+shadow_size = 5
+
+; ── RAIZ ───────────────────────────────────────────────────────────────────────
+
+[node name="WorldHUD" type="CanvasLayer"]
+layer = 8
+script = ExtResource("1_whud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+; ═══════════════════════════════════════════════════════════════════════════════
+; PLAYER CARD — topo esquerdo
+; ═══════════════════════════════════════════════════════════════════════════════
+
+[node name="PlayerCard" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 276.0
+theme_override_styles/panel = SubResource("Style_hud_panel")
+
+[node name="PC_VBox" type="VBoxContainer" parent="Root/PlayerCard"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+; ── Avatar + Info ──────────────────────────────────────────────────────────────
+
+[node name="PC_Top" type="HBoxContainer" parent="Root/PlayerCard/PC_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+theme_override_constants/margin_left   = 11
+theme_override_constants/margin_top    = 12
+theme_override_constants/margin_right  = 10
+theme_override_constants/margin_bottom = 12
+
+[node name="AvatarFrame" parent="Root/PlayerCard/PC_VBox/PC_Top" instance=ExtResource("2_af")]
+layout_mode = 2
+
+[node name="PC_Info" type="VBoxContainer" parent="Root/PlayerCard/PC_VBox/PC_Top"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 7
+
+[node name="PlayerName" type="Label" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9059, 0.8902, 0.8549, 1)
+theme_override_font_sizes/font_size = 16
+text = "Sagashii"
+
+[node name="PC_Stats" type="HBoxContainer" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+; Ouro
+
+[node name="GoldBox" type="HBoxContainer" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CoinIcon" type="TextureRect" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats/GoldBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(14, 14)
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+texture = ExtResource("10_ic_coin")
+
+[node name="GoldLabel" type="Label" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats/GoldBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9608, 0.8118, 0.4157, 1)
+theme_override_font_sizes/font_size = 11
+text = "1.250"
+
+; Divisor
+
+[node name="StatDivider" type="ColorRect" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats"]
+layout_mode = 2
+custom_minimum_size = Vector2(1, 13)
+size_flags_vertical = 4
+color = Color(0.2275, 0.2549, 0.3137, 1)
+
+; Rank
+
+[node name="RankBox" type="HBoxContainer" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="RankIcon" type="TextureRect" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats/RankBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(13, 13)
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+texture = ExtResource("11_ic_rank")
+
+[node name="RankLabel" type="Label" parent="Root/PlayerCard/PC_VBox/PC_Top/PC_Info/PC_Stats/RankBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7176, 0.7137, 0.6784, 1)
+theme_override_font_sizes/font_size = 11
+text = "Prata II"
+
+; ── Barra de XP ────────────────────────────────────────────────────────────────
+
+[node name="XP_Wrap" type="VBoxContainer" parent="Root/PlayerCard/PC_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+theme_override_constants/margin_left   = 12
+theme_override_constants/margin_right  = 12
+theme_override_constants/margin_bottom = 11
+
+[node name="XP_Meta" type="HBoxContainer" parent="Root/PlayerCard/PC_VBox/XP_Wrap"]
+layout_mode = 2
+
+[node name="XP_Title" type="Label" parent="Root/PlayerCard/PC_VBox/XP_Wrap/XP_Meta"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5451, 0.5608, 0.6118, 1)
+theme_override_font_sizes/font_size = 8
+text = "EXPERIÊNCIA"
+
+[node name="XP_Val" type="Label" parent="Root/PlayerCard/PC_VBox/XP_Wrap/XP_Meta"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5451, 0.5608, 0.6118, 1)
+theme_override_font_sizes/font_size = 8
+text = "3.4k / 5k"
+
+[node name="XpBar" type="ProgressBar" parent="Root/PlayerCard/PC_VBox/XP_Wrap"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 7)
+theme_override_styles/background = SubResource("Style_xp_track")
+theme_override_styles/fill = SubResource("Style_xp_fill")
+show_percentage = false
+max_value = 100.0
+value = 68.0
+
+; ═══════════════════════════════════════════════════════════════════════════════
+; CHAT — fundo esquerdo
+; ═══════════════════════════════════════════════════════════════════════════════
+
+[node name="Chat" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = -278.0
+offset_right = 412.0
+offset_bottom = -18.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("Style_hud_panel")
+
+[node name="Chat_VBox" type="VBoxContainer" parent="Root/Chat"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+; ── Abas ───────────────────────────────────────────────────────────────────────
+
+[node name="Chat_Tabs" type="HBoxContainer" parent="Root/Chat/Chat_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TabGlobal" type="Button" parent="Root/Chat/Chat_VBox/Chat_Tabs"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+size_flags_horizontal = 3
+flat = true
+theme_override_styles/normal = SubResource("Style_tab_inactive")
+theme_override_styles/hover = SubResource("Style_tab_inactive")
+theme_override_styles/pressed = SubResource("Style_tab_inactive")
+theme_override_styles/focus = SubResource("Style_tab_inactive")
+theme_override_colors/font_color = Color(0.5294, 0.8078, 0.8941, 1)
+theme_override_font_sizes/font_size = 9
+text = "GLOBAL"
+
+[node name="BadgeGlobal" type="Label" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabGlobal"]
+visible = false
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -18.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 16.0
+z_index = 2
+theme_override_styles/normal = SubResource("Style_badge")
+theme_override_colors/font_color = Color(0.0784, 0.0863, 0.1098, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "0"
+
+[node name="Underline" type="ColorRect" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabGlobal"]
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -2.0
+color = Color(0.5294, 0.8078, 0.8941, 1)
+
+[node name="TabPrivate" type="Button" parent="Root/Chat/Chat_VBox/Chat_Tabs"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+size_flags_horizontal = 3
+flat = true
+theme_override_styles/normal = SubResource("Style_tab_inactive")
+theme_override_styles/hover = SubResource("Style_tab_inactive")
+theme_override_styles/pressed = SubResource("Style_tab_inactive")
+theme_override_styles/focus = SubResource("Style_tab_inactive")
+theme_override_colors/font_color = Color(0.5451, 0.5608, 0.6118, 1)
+theme_override_font_sizes/font_size = 9
+text = "PRIVADO"
+
+[node name="BadgePrivate" type="Label" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabPrivate"]
+visible = false
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -18.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 16.0
+z_index = 2
+theme_override_styles/normal = SubResource("Style_badge")
+theme_override_colors/font_color = Color(0.0784, 0.0863, 0.1098, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "0"
+
+[node name="Underline" type="ColorRect" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabPrivate"]
+visible = false
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -2.0
+color = Color(0.7216, 0.6118, 1.0, 1)
+
+[node name="TabGuild" type="Button" parent="Root/Chat/Chat_VBox/Chat_Tabs"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+size_flags_horizontal = 3
+flat = true
+theme_override_styles/normal = SubResource("Style_tab_inactive")
+theme_override_styles/hover = SubResource("Style_tab_inactive")
+theme_override_styles/pressed = SubResource("Style_tab_inactive")
+theme_override_styles/focus = SubResource("Style_tab_inactive")
+theme_override_colors/font_color = Color(0.5451, 0.5608, 0.6118, 1)
+theme_override_font_sizes/font_size = 9
+text = "GUILD"
+
+[node name="BadgeGuild" type="Label" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabGuild"]
+visible = false
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -18.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 16.0
+z_index = 2
+theme_override_styles/normal = SubResource("Style_badge")
+theme_override_colors/font_color = Color(0.0784, 0.0863, 0.1098, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "0"
+
+[node name="Underline" type="ColorRect" parent="Root/Chat/Chat_VBox/Chat_Tabs/TabGuild"]
+visible = false
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -2.0
+color = Color(0.5608, 0.851, 0.6039, 1)
+
+; ── Log de mensagens ───────────────────────────────────────────────────────────
+
+[node name="Chat_Log" type="ScrollContainer" parent="Root/Chat/Chat_VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 158)
+size_flags_vertical = 3
+
+[node name="Messages" type="VBoxContainer" parent="Root/Chat/Chat_VBox/Chat_Log"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+theme_override_constants/margin_left   = 9
+theme_override_constants/margin_top    = 9
+theme_override_constants/margin_right  = 9
+theme_override_constants/margin_bottom = 9
+
+; ── Campo de entrada ───────────────────────────────────────────────────────────
+
+[node name="Chat_Input" type="HBoxContainer" parent="Root/Chat/Chat_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+theme_override_styles/panel = SubResource("Style_chat_input_bg")
+
+[node name="ChannelPrefix" type="Label" parent="Root/Chat/Chat_VBox/Chat_Input"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 0)
+theme_override_colors/font_color = Color(0.5294, 0.8078, 0.8941, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "[G]"
+
+[node name="Field" type="LineEdit" parent="Root/Chat/Chat_VBox/Chat_Input"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+placeholder_text = "Pressione Enter para conversar…"
+
+[node name="SendBtn" type="Button" parent="Root/Chat/Chat_VBox/Chat_Input"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 32)
+flat = true
+theme_override_styles/normal = SubResource("Style_tab_inactive")
+theme_override_styles/hover = SubResource("Style_tab_inactive")
+theme_override_styles/pressed = SubResource("Style_tab_inactive")
+theme_override_styles/focus = SubResource("Style_tab_inactive")
+
+[node name="SendIcon" type="TextureRect" parent="Root/Chat/Chat_VBox/Chat_Input/SendBtn"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+modulate = Color(0.5451, 0.5608, 0.6118, 1)
+texture = ExtResource("9_ic_send")
+
+; ═══════════════════════════════════════════════════════════════════════════════
+; ICON BAR — fundo direito
+; ═══════════════════════════════════════════════════════════════════════════════
+
+[node name="IconBar" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -362.0
+offset_top = -66.0
+offset_right = -18.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("Style_hud_panel")
+
+[node name="IB_HBox" type="HBoxContainer" parent="Root/IconBar"]
+layout_mode = 2
+theme_override_constants/separation = 8
+theme_override_constants/margin_left   = 8
+theme_override_constants/margin_top    = 8
+theme_override_constants/margin_right  = 8
+theme_override_constants/margin_bottom = 8
+
+; ── Botão Batalha (destaque azul) ──────────────────────────────────────────────
+
+[node name="BtnBattle" parent="Root/IconBar/IB_HBox" instance=ExtResource("3_btn")]
+layout_mode = 2
+icon_texture = ExtResource("4_ic_battle")
+hud_tooltip = "Batalha"
+theme_override_styles/normal = SubResource("Style_btn_battle")
+theme_override_styles/hover = SubResource("Style_btn_battle")
+theme_override_styles/pressed = SubResource("Style_btn_battle")
+theme_override_styles/focus = SubResource("Style_btn_battle")
+
+[node name="Icon" parent="Root/IconBar/IB_HBox/BtnBattle"]
+modulate = Color(0.5294, 0.8078, 0.8941, 1)
+
+; ── Separador ─────────────────────────────────────────────────────────────────
+
+[node name="IB_Sep" type="ColorRect" parent="Root/IconBar/IB_HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(2, 34)
+size_flags_vertical = 4
+color = Color(0.2275, 0.2549, 0.3137, 1)
+
+; ── Inventário ─────────────────────────────────────────────────────────────────
+
+[node name="BtnInventory" parent="Root/IconBar/IB_HBox" instance=ExtResource("3_btn")]
+layout_mode = 2
+icon_texture = ExtResource("5_ic_inv")
+hud_tooltip = "Inventário"
+
+; ── Decks ──────────────────────────────────────────────────────────────────────
+
+[node name="BtnDecks" parent="Root/IconBar/IB_HBox" instance=ExtResource("3_btn")]
+layout_mode = 2
+icon_texture = ExtResource("6_ic_decks")
+hud_tooltip = "Decks"
+
+; ── Amigos ─────────────────────────────────────────────────────────────────────
+
+[node name="BtnFriends" parent="Root/IconBar/IB_HBox" instance=ExtResource("3_btn")]
+layout_mode = 2
+icon_texture = ExtResource("7_ic_friends")
+hud_tooltip = "Amigos"
+badge_count = 4
+
+; Popover de amigos (filho do botão, posicionado acima)
+
+[node name="FriendsPopover" type="PanelContainer" parent="Root/IconBar/IB_HBox/BtnFriends"]
+visible = false
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = -230.0
+offset_top = -280.0
+offset_right = 10.0
+offset_bottom = -4.0
+z_index = 20
+theme_override_styles/panel = SubResource("Style_popover")
+
+[node name="Popover_VBox" type="VBoxContainer" parent="Root/IconBar/IB_HBox/BtnFriends/FriendsPopover"]
+layout_mode = 2
+theme_override_constants/separation = 4
+theme_override_constants/margin_left   = 10
+theme_override_constants/margin_top    = 10
+theme_override_constants/margin_right  = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Popover_Head" type="HBoxContainer" parent="Root/IconBar/IB_HBox/BtnFriends/FriendsPopover/Popover_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Friends_Title" type="Label" parent="Root/IconBar/IB_HBox/BtnFriends/FriendsPopover/Popover_VBox/Popover_Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.5608, 0.851, 0.6039, 1)
+theme_override_font_sizes/font_size = 9
+text = "AMIGOS"
+
+[node name="Friends_Online" type="Label" parent="Root/IconBar/IB_HBox/BtnFriends/FriendsPopover/Popover_VBox/Popover_Head"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5451, 0.5608, 0.6118, 1)
+theme_override_font_sizes/font_size = 9
+text = "4 online"
+
+[node name="FriendsList" type="VBoxContainer" parent="Root/IconBar/IB_HBox/BtnFriends/FriendsPopover/Popover_VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+; ── Sair ───────────────────────────────────────────────────────────────────────
+
+[node name="BtnLogout" parent="Root/IconBar/IB_HBox" instance=ExtResource("3_btn")]
+layout_mode = 2
+icon_texture = ExtResource("8_ic_logout")
+hud_tooltip = "Sair"
+theme_override_styles/hover = SubResource("Style_btn_logout_hover")

@@ -1,0 +1,13 @@
+{
+  "sleeves": [
+    { "id": "default", "name": "Padrão",  "art_key": "default" },
+    { "id": "ieldor",  "name": "Ieldor",  "art_key": "ieldor"  },
+    { "id": "irena",   "name": "Irena",   "art_key": "irena"   },
+    { "id": "poppy",   "name": "Poppy",   "art_key": "poppy"   }
+  ],
+  "playmats": [
+    { "id": "default",  "name": "Padrão",   "art_key": "default"  },
+    { "id": "catedral", "name": "Catedral", "art_key": "catedral" },
+    { "id": "florest",  "name": "Floresta", "art_key": "florest"  }
+  ]
+}

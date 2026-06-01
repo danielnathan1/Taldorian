@@ -1,9 +1,14 @@
 [gd_scene format=3 uid="uid://bakir3fssl1ip"]
 
 [ext_resource type="Script" uid="uid://cvd6t46y6gu5c" path="res://scenes/ui/hero_slot/hero_slot.gd" id="1_w7hh2"]
-[ext_resource type="Texture2D" uid="uid://c3tahe77jag4g" path="res://assets/heros/hero_poppy.png" id="2_x2f8u"]
+[ext_resource type="Texture2D" uid="uid://bn4427nd8bvul" path="res://assets/heros/base_card.png" id="2_a1emu"]
+[ext_resource type="Texture2D" uid="uid://d085uh6ce1pgy" path="res://assets/icons/attack_icon.png" id="3_atk"]
+[ext_resource type="Texture2D" uid="uid://b2dl1kvf103x" path="res://assets/icons/defense_icon.png" id="4_def"]
+[ext_resource type="FontFile" uid="uid://bm23jumepppl1" path="res://assets/fonts/palatino/palr45w.ttf" id="5_font_reg"]
+[ext_resource type="FontFile" uid="uid://oe74r7bbi6u8" path="res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf" id="6_font_bold"]
+[ext_resource type="FontFile" uid="uid://dxi5fbo2jhp36" path="res://assets/fonts/KNYuanmo-Regular.ttf" id="7_font_num"]
 
-[node name="HeroSlot" type="Control" unique_id=111284081]
+[node name="HeroSlot" type="Control" unique_id=692746026]
 custom_minimum_size = Vector2(160, 240)
 layout_mode = 3
 anchors_preset = 0
@@ -13,7 +18,18 @@ size_flags_horizontal = 4
 size_flags_vertical = 8
 script = ExtResource("1_w7hh2")
 
-[node name="CardArt" type="TextureRect" parent="." unique_id=1724209948]
+[node name="CardZone" type="Control" parent="." unique_id=74751674]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 30.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HeroContent" type="Control" parent="CardZone" unique_id=487960001]
+clip_contents = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,11 +37,19 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("2_x2f8u")
-expand_mode = 5
+
+[node name="Art" type="TextureRect" parent="CardZone/HeroContent" unique_id=507581354]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
 stretch_mode = 5
 
-[node name="StateOverlay" type="Control" parent="." unique_id=517390603]
+[node name="HeroLayoutBase" type="TextureRect" parent="CardZone/HeroContent" unique_id=487960002]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -33,29 +57,155 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("2_a1emu")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="HPBar" type="ProgressBar" parent="StateOverlay" unique_id=365340353]
-visible = false
+[node name="TitleLabel" type="Label" parent="CardZone/HeroContent" unique_id=487960003]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 10.0
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.025
+anchor_right = 0.9
+anchor_bottom = 0.075
+offset_left = 29.0
+offset_top = 0.75
+offset_right = -29.0
+offset_bottom = 2.249999
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("6_font_bold")
+theme_override_font_sizes/font_size = 1
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
+[node name="ClassIcon" type="TextureRect" parent="CardZone/HeroContent" unique_id=487960004]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.444
+anchor_top = 0.571
+anchor_right = 0.556
+anchor_bottom = 0.657
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-show_percentage = false
+expand_mode = 1
+stretch_mode = 5
 
-[node name="HPLabel" type="Label" parent="StateOverlay/HPBar" unique_id=987654321]
+[node name="PassiveLabel" type="Label" parent="CardZone/HeroContent" unique_id=487960005]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+anchors_preset = -1
+anchor_left = 0.06
+anchor_top = 0.625
+anchor_right = 0.94
+anchor_bottom = 0.755
+offset_left = 10.400001
+offset_top = 16.75
+offset_right = -10.399994
+offset_bottom = 16.75
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("5_font_reg")
+theme_override_font_sizes/font_size = 1
+horizontal_alignment = 3
+autowrap_mode = 3
+
+[node name="SkillRow" type="RichTextLabel" parent="CardZone/HeroContent" unique_id=487960006]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.06
+anchor_top = 0.775
+anchor_right = 0.94
+anchor_bottom = 0.91
+offset_left = 10.400001
+offset_top = 11.25
+offset_right = -10.399994
+offset_bottom = 2.899994
+grow_horizontal = 2
+mouse_filter = 2
+bbcode_enabled = true
+scroll_active = false
+
+[node name="AtkIcon" type="TextureRect" parent="CardZone/HeroContent" unique_id=487960009]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.91
+anchor_right = 0.22
+anchor_bottom = 0.99
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_atk")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="AtkValueLabel" type="Label" parent="CardZone/HeroContent" unique_id=487960010]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.91
+anchor_right = 0.22
+anchor_bottom = 0.99
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("7_font_num")
+theme_override_font_sizes/font_size = 1
+text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ExhaustedVeil" type="ColorRect" parent="StateOverlay" unique_id=1849343646]
+[node name="DefIcon" type="TextureRect" parent="CardZone/HeroContent" unique_id=487960011]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.78
+anchor_top = 0.91
+anchor_right = 0.98
+anchor_bottom = 0.99
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_def")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DefValueLabel" type="Label" parent="CardZone/HeroContent" unique_id=487960012]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.78
+anchor_top = 0.91
+anchor_right = 0.98
+anchor_bottom = 0.99
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("7_font_num")
+theme_override_font_sizes/font_size = 1
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Back" type="TextureRect" parent="CardZone" unique_id=382910045]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 5
+stretch_mode = 5
+
+[node name="StateOverlay" type="Control" parent="CardZone" unique_id=680722445]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ExhaustedVeil" type="ColorRect" parent="CardZone/StateOverlay" unique_id=1768817957]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -65,7 +215,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.75)
 
-[node name="StatusLabel" type="Label" parent="StateOverlay" unique_id=135836703]
+[node name="StatusLabel" type="Label" parent="CardZone/StateOverlay" unique_id=1081193959]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -75,3 +225,54 @@ anchor_right = 0.5
 anchor_bottom = 0.5
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=1178609953]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="CardRow" type="HBoxContainer" parent="Layout" unique_id=321654987]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="CardColumn" type="VBoxContainer" parent="Layout/CardRow" unique_id=556677889]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="HPCapsule" type="PanelContainer" parent="Layout/CardRow/CardColumn" unique_id=1687824490]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HPRow" type="HBoxContainer" parent="Layout/CardRow/CardColumn/HPCapsule" unique_id=1970881588]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="HeartIcon" type="Label" parent="Layout/CardRow/CardColumn/HPCapsule/HPRow" unique_id=696140780]
+layout_mode = 2
+text = "♥"
+
+[node name="HPBar" type="ProgressBar" parent="Layout/CardRow/CardColumn/HPCapsule/HPRow" unique_id=211403466]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="Layout/CardRow/CardColumn/HPCapsule/HPRow" unique_id=677725184]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "0/0"

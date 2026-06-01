@@ -1,0 +1,225 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/card/card.gd" id="1_card_script"]
+
+[node name="Card" type="Control"]
+custom_minimum_size = Vector2(600, 900)
+anchors_preset = 0
+offset_right = 600.0
+offset_bottom = 900.0
+mouse_filter = 1
+script = ExtResource("1_card_script")
+
+[node name="ArtTexture" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
+mouse_filter = 2
+
+[node name="FrameTexture" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
+mouse_filter = 2
+
+[node name="FallbackLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CardBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.082, 0.067, 0.043, 1)
+
+[node name="TitleBannerBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.075
+anchor_top = 0.02
+anchor_right = 0.925
+anchor_bottom = 0.106
+grow_horizontal = 2
+color = Color(0.725, 0.643, 0.541, 1)
+
+[node name="ArtAreaBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.023
+anchor_top = 0.106
+anchor_right = 0.977
+anchor_bottom = 0.733
+grow_horizontal = 2
+color = Color(0.102, 0.082, 0.063, 1)
+
+[node name="BottomStripBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.733
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.788, 0.663, 0.471, 1)
+
+[node name="AtkBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.92
+anchor_right = 0.22
+anchor_bottom = 0.995
+grow_horizontal = 2
+color = Color(0.102, 0.086, 0.071, 1)
+
+[node name="DefBg" type="ColorRect" parent="FallbackLayer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.78
+anchor_top = 0.92
+anchor_right = 0.98
+anchor_bottom = 0.995
+grow_horizontal = 2
+color = Color(0.102, 0.086, 0.071, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.10
+anchor_top = 0.025
+anchor_right = 0.90
+anchor_bottom = 0.10
+grow_horizontal = 2
+text = "Título"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_font_sizes/font_size = 40
+
+[node name="TypeTopLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.30
+anchor_top = 0.155
+anchor_right = 0.70
+anchor_bottom = 0.195
+grow_horizontal = 2
+text = "Ação"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 0.85)
+theme_override_font_sizes/font_size = 16
+
+[node name="ElementSymbol" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.42
+anchor_top = 0.69
+anchor_right = 0.58
+anchor_bottom = 0.79
+grow_horizontal = 2
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
+
+[node name="DescLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.08
+anchor_top = 0.81
+anchor_right = 0.92
+anchor_bottom = 0.89
+grow_horizontal = 2
+text = "Descrição da carta."
+horizontal_alignment = 1
+vertical_alignment = 0
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="AtkValueLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.935
+anchor_right = 0.18
+anchor_bottom = 0.985
+grow_horizontal = 2
+text = "+0"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 36
+
+[node name="DefValueLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.82
+anchor_top = 0.935
+anchor_right = 0.95
+anchor_bottom = 0.985
+grow_horizontal = 2
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 36
+
+[node name="RarityLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.27
+anchor_top = 0.945
+anchor_right = 0.355
+anchor_bottom = 0.985
+grow_horizontal = 2
+text = "C"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="TypeBottomLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.36
+anchor_top = 0.945
+anchor_right = 0.72
+anchor_bottom = 0.985
+grow_horizontal = 2
+text = "Ação"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_font_sizes/font_size = 18

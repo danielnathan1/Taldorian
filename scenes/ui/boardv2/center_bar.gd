@@ -11,7 +11,7 @@ var current_turn: String = "opponent"
 @onready var _turn_gem := $HBox/LeftSection/TurnGem
 @onready var _turn_label := $HBox/LeftSection/TurnVBox/TurnLabel
 @onready var _phase_label := $HBox/LeftSection/TurnVBox/PhaseLabel
-@onready var _clock := $HBox/ClockSection/ClockDisplay
+@onready var _clock := $HBox/RightSection/ClockSection/ClockDisplay
 @onready var _clock_sub := $HBox/ClockSection/ClockSub
 @onready var _pass_btn := $HBox/RightSection/PassTurnButton
 @onready var _gem_tween: Tween
@@ -82,6 +82,11 @@ func stop_timer() -> void:
 func set_turn_indicator(is_player_turn: bool) -> void:
 	current_turn = "player" if is_player_turn else "opponent"
 	_update_turn_ui()
+
+func set_turn_label(text: String, color: Color) -> void:
+	_turn_label.text = text
+	_turn_label.add_theme_color_override("font_color", color)
+	_turn_gem.color = color
 
 func set_pass_state(is_visible: bool, label: String = "Passar Turno ▶", enabled: bool = true) -> void:
 	_pass_btn.visible  = is_visible

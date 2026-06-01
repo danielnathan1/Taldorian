@@ -20,14 +20,14 @@ func _ready() -> void:
 	add_child(_layer)
 
 # Carta face-down (sleeve) voando do deck para a mão.
-func fly_draw(from_pos: Vector2, to_pos: Vector2, sleeve: Texture2D) -> void:
-	_fly(from_pos, to_pos, sleeve, _COL_DRAW)
+func fly_draw(from_pos: Vector2, to_pos: Vector2, sleeve: Texture2D, on_done: Callable = Callable()) -> void:
+	_fly(from_pos, to_pos, sleeve, _COL_DRAW, on_done)
 
 # Carta face-up voando da mão para o cemitério / zona de combate.
-func fly_discard(from_pos: Vector2, to_pos: Vector2, card_tex: Texture2D) -> void:
-	_fly(from_pos, to_pos, card_tex, _COL_DISCARD)
+func fly_discard(from_pos: Vector2, to_pos: Vector2, card_tex: Texture2D, on_done: Callable = Callable()) -> void:
+	_fly(from_pos, to_pos, card_tex, _COL_DISCARD, on_done)
 
-func _fly(from_pos: Vector2, to_pos: Vector2, texture: Texture2D, pcolor: Color) -> void:
+func _fly(from_pos: Vector2, to_pos: Vector2, texture: Texture2D, pcolor: Color, on_done: Callable) -> void:
 	var ghost := TextureRect.new()
 	ghost.size         = Vector2(CARD_W, CARD_H)
 	ghost.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
@@ -60,6 +60,8 @@ func _fly(from_pos: Vector2, to_pos: Vector2, texture: Texture2D, pcolor: Color)
 		_burst(to_pos, pcolor, 8)
 		if is_instance_valid(ghost):
 			ghost.queue_free()
+		if on_done.is_valid():
+			on_done.call()
 	)
 
 func _burst(pos: Vector2, color: Color, count: int) -> void:

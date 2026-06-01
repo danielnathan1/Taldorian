@@ -3,7 +3,7 @@ class_name DeckLoader
 extends RefCounted
 
 const MAX_COPIES := 3
-const MAX_DECK_SIZE := 60
+const MAX_DECK_SIZE := 300
 
 ## Lê um JSON de deck e retorna Array[Card] pronta para uso.
 ## Retorna array vazia e loga erro se o arquivo for inválido.

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Card Scene — Preview</title>
+<style>
+  :root {
+    --bg: #15110b;
+    --bg-2: #1f1810;
+    --gold: oklch(0.78 0.10 78);
+    --gold-dim: oklch(0.55 0.08 75);
+    --ink: #0d0a06;
+    --parch: oklch(0.92 0.04 78);
+    --crimson: oklch(0.55 0.16 28);
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at center, #211810 0%, #0b0805 70%);
+    color: var(--parch);
+    font-family: "Crimson Pro", Georgia, serif;
+    min-height: 100vh;
+  }
+  .page {
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 40px;
+  }
+  .stage {
+    display: flex; gap: 48px; align-items: center;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card {
+    position: relative;
+    width: 600px; height: 900px;
+    background: #000;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  /* Both textures fill the whole 600x900 card. The frame PNG must
+     have its art-window region TRANSPARENT for the art to show. */
+  .layer {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+  }
+  .layer.art   { z-index: 1; }
+  .layer.frame { z-index: 2; }
+
+  /* Dynamic text fields — absolute % positions match card.tscn anchors */
+  .field {
+    position: absolute;
+    z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .field.wrap { white-space: normal; }
+
+  .title {
+    left: 10%; right: 10%; top: 2.5%; height: 7.5%;
+    font-family: "Cinzel Decorative", "Cinzel", Georgia, serif;
+    font-weight: 800;
+    color: var(--ink);
+    font-size: 40px;
+  }
+  .type-top {
+    left: 30%; right: 30%; top: 15.5%; height: 4%;
+    font-style: italic;
+    color: rgba(225,225,225,0.85);
+    font-size: 16px;
+  }
+  .element {
+    left: 42%; right: 42%; top: 69%; height: 10%;
+    z-index: 3;
+  }
+  .element img { width: 100%; height: 100%; object-fit: contain; }
+
+  .desc {
+    left: 8%; right: 8%; top: 81%; height: 8%;
+    font-family: "Crimson Pro", Georgia, serif;
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  .atk, .def {
+    top: 93.5%; height: 5%;
+    font-family: "Cinzel Decorative", "Cinzel", Georgia, serif;
+    font-weight: 800;
+    color: #fff;
+    font-size: 36px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .atk { left: 5%; right: 82%; }
+  .def { left: 82%; right: 5%; }
+  .rarity {
+    left: 27%; right: 64.5%; top: 94.5%; height: 4%;
+    color: #8c8c8c;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .type-bottom {
+    left: 36%; right: 28%; top: 94.5%; height: 4%;
+    font-style: italic;
+    color: var(--ink);
+    font-size: 18px;
+  }
+
+  /* Hide art/frame for layer-view */
+  .card[data-view="art-only"]   .layer.frame { display: none; }
+  .card[data-view="art-only"]   .field       { display: none; }
+  .card[data-view="frame-only"] .layer.art   { display: none; }
+  .card[data-view="frame-only"] .field       { display: none; }
+  .card[data-view="text-only"]  .layer       { display: none; }
+
+  /* ── Side panel: layer breakdown ─────────────────────────── */
+  .breakdown {
+    display: flex; flex-direction: column; gap: 14px;
+    width: 320px;
+    color: oklch(0.78 0.03 78);
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+    font-size: 12px;
+  }
+  .breakdown h3 {
+    font-family: "Cinzel", Georgia, serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-size: 13px;
+    margin: 0 0 4px;
+  }
+  .legend {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 10px;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+  }
+  .swatch {
+    width: 14px; height: 14px; border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.15);
+    align-self: center;
+  }
+  .sw-frame { background: oklch(0.55 0.08 75); }
+  .sw-art   { background: oklch(0.65 0.16 50); }
+  .sw-text  { background: oklch(0.85 0.05 95); }
+  .note {
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.02);
+    border-left: 2px solid var(--gold-dim);
+    font-size: 12px;
+    line-height: 1.5;
+    color: oklch(0.75 0.03 78);
+  }
+  .note strong { color: var(--parch); font-weight: 600; }
+  .path {
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+    background: rgba(255,255,255,0.05);
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 11px;
+    color: var(--gold);
+  }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@700;900&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // The frame texture for the preview: same artwork rendered to a
+    // standalone SVG that mimics the layout chrome only (top banner shape,
+    // bottom strip with crossed-swords/shield/type-banner placeholders).
+    // In Godot this is just a PNG you swap into FrameTexture.texture.
+    const FRAME_DATA_URL = (() => {
+      const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" preserveAspectRatio="none">
+  <!-- outer black border -->
+  <rect x="0" y="0" width="600" height="900" fill="none" stroke="#0a0805" stroke-width="14"/>
+  <!-- title banner -->
+  <g>
+    <path d="M 60 25 Q 60 18 80 18 L 520 18 Q 540 18 540 25 L 555 80 Q 555 95 535 95 L 65 95 Q 45 95 45 80 Z"
+          fill="#b9a48a" stroke="#7a6347" stroke-width="2"/>
+    <path d="M 70 28 Q 70 22 86 22 L 514 22 Q 530 22 530 28 L 540 80"
+          fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.5"/>
+  </g>
+  <!-- bottom area parchment fade -->
+  <defs>
+    <linearGradient id="parch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#caa985" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#b89568" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect x="14" y="660" width="572" height="226" fill="url(#parch)"/>
+  <!-- crossed swords (bottom-left) -->
+  <g transform="translate(40 800)" stroke="#1a1612" stroke-width="2" fill="#cfc6b8">
+    <path d="M -8 -36 L 4 -34 L 50 30 L 38 38 L 0 -20 Z"/>
+    <path d="M 60 -36 L 48 -34 L 4 30 L 16 38 L 52 -20 Z"/>
+    <circle cx="-2" cy="-32" r="3"/><circle cx="56" cy="-32" r="3"/>
+  </g>
+  <!-- shield (bottom-right) -->
+  <g transform="translate(530 800)" stroke="#3a352d" stroke-width="2" fill="#6e6a5e">
+    <path d="M -28 -40 L 28 -40 L 28 4 Q 28 30 0 44 Q -28 30 -28 4 Z"/>
+  </g>
+  <!-- type banner (bottom-center) -->
+  <rect x="218" y="838" width="220" height="34" fill="none" stroke="#3a352d" stroke-width="1.5"/>
+  <!-- rarity circle (bottom-center-left) -->
+  <circle cx="180" cy="855" r="16" fill="#d5d0c4" stroke="#3a352d" stroke-width="1.5"/>
+</svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    })();
+
+    // Element symbol generator — SVG circle with a glyph inside
+    const ELEMENTS = {
+      fogo:  { glyph: "🔥", fg: "#d94d2a", bg: "#f6a55a" },
+      agua:  { glyph: "💧", fg: "#2a6db8", bg: "#7ab2e0" },
+      terra: { glyph: "⛰", fg: "#7a5230", bg: "#c79b6b" },
+      ar:    { glyph: "💨", fg: "#7a8a98", bg: "#cdd6dd" },
+      raio:  { glyph: "⚡", fg: "#a07a16", bg: "#f5d469" },
+      sombra:{ glyph: "🌙", fg: "#2b2440", bg: "#6e5e8a" },
+    };
+    function elementSvg(key) {
+      const e = ELEMENTS[key];
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="${e.bg}" stroke="#b8b1a1" stroke-width="4"/>
+        <text x="50" y="62" font-size="48" text-anchor="middle">${e.glyph}</text>
+      </svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    }
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "title": "",
+      "description": "As vezes a melhor resposta é a violência.",
+      "card_type": "Ação",
+      "rarity": "C",
+      "attack": 3,
+      "defense": 0,
+      "element": "fogo",
+      "view": "composite"
+    }/*EDITMODE-END*/;
+
+    function fmtSigned(v) {
+      const n = parseInt(v, 10) || 0;
+      return n >= 0 ? "+" + n : String(n);
+    }
+
+    function CardView({ data, view }) {
+      return (
+        <div className="card" data-view={view}>
+          {/* Layer 1 — Art (ilustração específica da carta) */}
+          <img className="layer art" src="assets/golpe_bruto.png" alt="art" />
+          {/* Layer 2 — Frame (moldura genérica por tipo) */}
+          <img className="layer frame" src={FRAME_DATA_URL} alt="frame" />
+
+          {/* Campos preenchidos pelo código */}
+          <div className="field title">{data.title}</div>
+          <div className="field type-top">{data.card_type}</div>
+          <div className="field element">
+            <img src={elementSvg(data.element)} alt="" />
+          </div>
+          <div className="field wrap desc">{data.description}</div>
+          <div className="field atk">{fmtSigned(data.attack)}</div>
+          <div className="field def">{data.defense}</div>
+          <div className="field rarity">{data.rarity}</div>
+          <div className="field type-bottom">{data.card_type}</div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      return (
+        <div className="page">
+          <div className="stage">
+            <CardView data={t} view={t.view} />
+
+            <div className="breakdown">
+              <h3>Como o Godot compõe</h3>
+              <div className="legend">
+                <div className="swatch sw-art"></div>
+                <div>
+                  <div><strong>ArtTexture</strong> — <span className="path">res://assets/cards/art/&lt;id&gt;.png</span></div>
+                  <div style={{opacity:0.7, marginTop:2}}>Ilustração específica da carta</div>
+                </div>
+                <div className="swatch sw-frame"></div>
+                <div>
+                  <div><strong>FrameTexture</strong> — <span className="path">res://assets/cards/frames/frame_&lt;tipo&gt;.png</span></div>
+                  <div style={{opacity:0.7, marginTop:2}}>Moldura/layout genérico (PNG com transparência sobre o miolo)</div>
+                </div>
+                <div className="swatch sw-text"></div>
+                <div>
+                  <div><strong>Labels & ElementSymbol</strong></div>
+                  <div style={{opacity:0.7, marginTop:2}}>Preenchidos via <code>card.bind(...)</code></div>
+                </div>
+              </div>
+
+              <div className="note">
+                <strong>Cena Godot:</strong>{" "}
+                <span className="path">res://scenes/ui/card/card.tscn</span><br/>
+                <strong>Script:</strong>{" "}
+                <span className="path">card.gd → Card.bind(data)</span><br/>
+                Use o painel <strong>Tweaks</strong> aqui para ver os campos
+                dinâmicos mudando — todos vêm do <code>Dictionary</code> passado
+                pra cena, então nenhuma carta nova exige re-export de imagem.
+              </div>
+            </div>
+          </div>
+
+          <TweaksPanel title="Tweaks" defaultOpen={true}>
+            <TweakSection title="Conteúdo">
+              <TweakText  label="Título"     value={t.title}       onChange={v => setTweak('title', v)} />
+              <TweakText  label="Descrição"  value={t.description} onChange={v => setTweak('description', v)} multiline />
+              <TweakText  label="Tipo"       value={t.card_type}   onChange={v => setTweak('card_type', v)} />
+            </TweakSection>
+
+            <TweakSection title="Valores">
+              <TweakNumber label="Ataque (+N)" value={t.attack}  onChange={v => setTweak('attack',  v)} min={-9} max={20} />
+              <TweakNumber label="Defesa"      value={t.defense} onChange={v => setTweak('defense', v)} min={0}  max={20} />
+              <TweakRadio  label="Raridade"
+                           value={t.rarity}
+                           onChange={v => setTweak('rarity', v)}
+                           options={[
+                             { value: "C", label: "C" },
+                             { value: "U", label: "U" },
+                             { value: "R", label: "R" },
+                             { value: "L", label: "L" },
+                           ]} />
+            </TweakSection>
+
+            <TweakSection title="Elemento">
+              <TweakSelect label="Símbolo"
+                           value={t.element}
+                           onChange={v => setTweak('element', v)}
+                           options={[
+                             { value: "fogo",   label: "Fogo 🔥" },
+                             { value: "agua",   label: "Água 💧" },
+                             { value: "terra",  label: "Terra ⛰" },
+                             { value: "ar",     label: "Ar 💨" },
+                             { value: "raio",   label: "Raio ⚡" },
+                             { value: "sombra", label: "Sombra 🌙" },
+                           ]} />
+            </TweakSection>
+
+            <TweakSection title="Visualização">
+              <TweakSelect label="Camadas"
+                           value={t.view}
+                           onChange={v => setTweak('view', v)}
+                           options={[
+                             { value: "composite",  label: "Composição final" },
+                             { value: "art-only",   label: "Só ArtTexture" },
+                             { value: "frame-only", label: "Só FrameTexture" },
+                             { value: "text-only",  label: "Só Labels/Symbol" },
+                           ]} />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

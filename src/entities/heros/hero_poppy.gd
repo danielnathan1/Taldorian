@@ -5,17 +5,18 @@ var _passive_active: bool = false
 
 func _init() -> void:
 	art_key          = "hero_poppy"
-	hero_name        = "Poppy, Martelo do Destino"
+	hero_name        = "Poppy"
 	hero_class       = HeroClass.BARBARIAN
 	max_hp           = 10
 	current_hp       = 10
-	symbols_required.assign([GameSymbols.TERRA, GameSymbols.TERRA, GameSymbols.FOGO])
+	symbols_required.assign([GameSymbols.TERRA, GameSymbols.FOGO, GameSymbols.FOGO])
 	skill_name       = "Impacto Sísmico"
 	skill_desc       = "+3 de ataque"
 	passive_name     = "Ataque Descuidado"
 	passive_desc     = "Enquanto Poppy não aumentar sua defesa, o ataque dela recebe +1"
 	base_attack      = 2
 	base_defense     = 1
+	skill_animation  = "battle_fury"
 
 ## Herói entrou em campo: nenhuma carta jogada ainda, passiva começa ativa
 func on_turn_start(player: Player) -> void:
@@ -24,6 +25,9 @@ func on_turn_start(player: Player) -> void:
 
 ## Reavalia a passiva a cada carta jogada na rodada
 func on_card_played(_card: Card, player: Player) -> void:
+	if player.pending_bonus_defense > 0:
+		_passive_active = false
+		return
 	for c in player.round_cards:
 		if c.defense_value > 0:
 			_passive_active = false

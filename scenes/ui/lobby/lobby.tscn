@@ -240,6 +240,36 @@ theme_override_fonts/font = ExtResource("4_font_regular")
 theme_override_font_sizes/font_size = 13
 text = "⊕  Explorar Mundo"
 
+[node name="DeckBuilderButton" type="Button" parent="." unique_id=2100000002]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 228.0
+offset_top = -74.0
+offset_right = 420.0
+offset_bottom = -28.0
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 13
+text = "✦  Construir Deck"
+
+[node name="BoosterShopButton" type="Button" parent="." unique_id=2100000003]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 428.0
+offset_top = -74.0
+offset_right = 636.0
+offset_bottom = -28.0
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("4_font_regular")
+theme_override_font_sizes/font_size = 13
+text = "✦  Loja de Boosters"
+
 [node name="HelpButton" type="Button" parent="." unique_id=2017584714]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(46, 46)

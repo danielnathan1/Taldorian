@@ -6,6 +6,7 @@ enum Phase {
 	OPENING_MULLIGAN,
 	DRAW,
 	HERO_SELECTION,
+	BACKLINE_ABILITY,   # fase entre hero selection e action: habilidades de retaguarda interativas
 	ACTION,
 	COMBAT,
 	END,
@@ -23,6 +24,8 @@ func phase_to_string(p: Phase) -> String:
 			return "DRAW"
 		Phase.HERO_SELECTION:
 			return "HERO_SELECTION"
+		Phase.BACKLINE_ABILITY:
+			return "BACKLINE_ABILITY"
 		Phase.ACTION:
 			return "ACTION"
 		Phase.COMBAT:

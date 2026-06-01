@@ -31,6 +31,7 @@ func rebuild(hand: Array, sleeve: Texture2D) -> void:
 		var view: CardView = CardViewScene.instantiate()
 		add_child(view)
 		view.bind(hand[i])
+		view.apply_scale(1.0)
 		view.set_sleeve(sleeve)
 
 		var idx := i

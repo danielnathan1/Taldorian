@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Pause Menu</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold:        oklch(0.82 0.16 80);
+    --gold-mid:    oklch(0.73 0.13 78);
+    --gold-dim:    oklch(0.55 0.10 78);
+    --gold-deep:   oklch(0.42 0.08 78);
+    --red:         oklch(0.60 0.22 15);
+    --red-mid:     oklch(0.55 0.22 15);
+    --red-dim:     oklch(0.42 0.16 15);
+    --bg-deep:     oklch(0.07 0.055 268);
+    --panel-bg:    oklch(0.10 0.04 268 / 0.92);
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-deep); font-family: 'Cinzel', serif; color: var(--gold); }
+
+  #root { width: 100vw; height: 100vh; position: relative; }
+
+  /* ── Fake board behind overlay ── */
+  .fake-board { position: absolute; inset: 0; z-index: 0; }
+  .fake-board-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(175deg, oklch(0.10 0.06 270) 0%, oklch(0.07 0.05 260) 50%, oklch(0.06 0.04 10) 100%);
+  }
+  .board-line {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 5%, oklch(0.73 0.13 78 / 0.10) 30%, oklch(0.73 0.13 78 / 0.10) 70%, transparent 95%);
+  }
+  .fake-card {
+    position: absolute;
+    border: 1px solid oklch(0.73 0.13 78 / 0.25);
+    background: oklch(0.10 0.04 268 / 0.6);
+    border-radius: 4px;
+  }
+  .fake-hero {
+    position: absolute;
+    width: 80px; height: 110px;
+    background: linear-gradient(160deg, oklch(0.18 0.06 268), oklch(0.10 0.04 268));
+    border: 1px solid oklch(0.73 0.13 78 / 0.35);
+    border-radius: 4px;
+  }
+  .fake-center-line {
+    position: absolute; top: 50%; left: 0; right: 0; height: 50px;
+    transform: translateY(-50%);
+    background: linear-gradient(180deg, transparent, oklch(0.73 0.13 78 / 0.05), transparent);
+    border-top: 1px dashed oklch(0.73 0.13 78 / 0.2);
+    border-bottom: 1px dashed oklch(0.73 0.13 78 / 0.2);
+  }
+  .fake-mana {
+    position: absolute;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, oklch(0.55 0.18 240), oklch(0.28 0.12 240));
+    border: 1px solid oklch(0.65 0.18 240);
+  }
+
+  /* ── ESC hint ── */
+  .esc-hint {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: oklch(0.55 0.10 78 / 0.7);
+    padding: 0.5rem 1rem;
+    border: 1px solid oklch(0.55 0.10 78 / 0.3);
+    background: oklch(0.10 0.04 268 / 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 5;
+    transition: opacity 0.3s;
+  }
+  .esc-hint kbd {
+    font-family: 'Cinzel', serif; font-weight: 700;
+    color: var(--gold);
+    padding: 1px 7px;
+    border: 1px solid oklch(0.73 0.13 78 / 0.55);
+    background: oklch(0.06 0.04 268);
+    margin: 0 0.3em;
+  }
+  .esc-hint.dim { opacity: 0; pointer-events: none; }
+
+  /* ── OVERLAY (backdrop) ── */
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 50%, oklch(0.73 0.13 78 / 0.06) 0%, transparent 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.07 0.05 268 / 0.85) 0%, oklch(0.05 0.04 268 / 0.95) 100%);
+    backdrop-filter: blur(8px);
+    animation: overlayIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes overlayIn { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; backdrop-filter: blur(8px); } }
+  .overlay.closing { animation: overlayOut 0.25s cubic-bezier(0.55,0,0.55,0.2) both; }
+  @keyframes overlayOut { to { opacity: 0; } }
+
+  /* ── Card ── */
+  .pause-card {
+    position: relative;
+    width: min(440px, 88vw);
+    display: flex; flex-direction: column; align-items: center;
+    animation: cardReveal 0.5s 0.05s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes cardReveal {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ── Crest ── */
+  .crest {
+    width: 76px; height: 76px;
+    margin-bottom: 1.2rem;
+    filter: drop-shadow(0 0 16px oklch(0.73 0.13 78 / 0.5));
+  }
+
+  /* ── Panel ── */
+  .panel {
+    width: 100%;
+    background: var(--panel-bg);
+    border: 1px solid oklch(0.73 0.13 78 / 0.32);
+    backdrop-filter: blur(20px) saturate(1.3);
+    padding: 2.4rem 2.6rem 2.2rem;
+    position: relative;
+    box-shadow:
+      0 0 80px oklch(0.73 0.13 78 / 0.08),
+      0 30px 60px oklch(0.05 0.04 268 / 0.7);
+  }
+  /* corner ornaments */
+  .panel::before, .panel::after, .panel .c-br, .panel .c-bl {
+    content: ''; position: absolute;
+    width: 18px; height: 18px;
+    border-style: solid; border-color: oklch(0.73 0.13 78 / 0.55);
+  }
+  .panel::before { top:-1px; left:-1px;   border-width: 2px 0 0 2px; }
+  .panel::after  { top:-1px; right:-1px;  border-width: 2px 2px 0 0; }
+  .panel .c-br   { bottom:-1px; right:-1px; border-width: 0 2px 2px 0; }
+  .panel .c-bl   { bottom:-1px; left:-1px;  border-width: 0 0 2px 2px; }
+
+  /* ── Header text ── */
+  .eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    text-align: center;
+    margin-bottom: 0.6rem;
+    opacity: 0.85;
+  }
+  .title {
+    font-family: 'Cinzel Decorative', cursive;
+    font-weight: 900;
+    font-size: 2.4rem;
+    text-align: center;
+    line-height: 1.05;
+    background: linear-gradient(160deg, oklch(0.88 0.16 82), oklch(0.73 0.13 78) 50%, oklch(0.88 0.08 78) 70%, oklch(0.73 0.13 78));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 18px oklch(0.73 0.13 78 / 0.5));
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.04em;
+  }
+  .divider {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0 auto 1.8rem;
+    width: fit-content;
+  }
+  .divider-line { width: 40px; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim)); }
+  .divider-line.r { background: linear-gradient(to left, transparent, var(--gold-dim)); }
+  .divider-diamond {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    transform: rotate(45deg);
+    box-shadow: 0 0 8px var(--gold);
+  }
+
+  /* ── Menu buttons ── */
+  .menu-list { display: flex; flex-direction: column; gap: 0.7rem; }
+  .btn-menu {
+    display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+    width: 100%;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 1.05rem 1rem;
+    cursor: pointer;
+    border: 1px solid oklch(0.73 0.13 78 / 0.4);
+    background: oklch(0.14 0.05 268 / 0.9);
+    color: var(--gold);
+    transition: filter 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-menu:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    border-color: oklch(0.73 0.13 78 / 0.9);
+    box-shadow: 0 6px 30px oklch(0.73 0.13 78 / 0.20);
+    background: oklch(0.16 0.05 268 / 0.95);
+  }
+  .btn-menu:active { transform: translateY(0); filter: brightness(0.95); }
+  .btn-shimmer {
+    position: absolute; top:0; left:-100%; width:55%; height:100%;
+    background: linear-gradient(105deg, transparent, oklch(1 0 0 / 0.07), transparent);
+    transform: skewX(-20deg); transition: left 0.5s;
+  }
+  .btn-menu:hover .btn-shimmer { left: 160%; }
+  .btn-menu svg { flex-shrink: 0; }
+
+  /* primary (resume) — slightly emphasized */
+  .btn-menu.primary {
+    background: linear-gradient(180deg, oklch(0.18 0.06 268 / 0.95), oklch(0.12 0.05 268 / 0.95));
+    border-color: oklch(0.73 0.13 78 / 0.7);
+  }
+  .btn-menu.primary:hover { border-color: var(--gold); }
+
+  /* danger (forfeit) */
+  .btn-menu.danger { color: oklch(0.75 0.14 15); border-color: oklch(0.42 0.20 15 / 0.4); }
+  .btn-menu.danger:hover {
+    border-color: oklch(0.55 0.22 15 / 0.9);
+    box-shadow: 0 6px 30px oklch(0.42 0.20 15 / 0.22);
+    background: oklch(0.14 0.05 268 / 0.95);
+  }
+
+  /* ── Footer hint inside panel ── */
+  .panel-footer {
+    margin-top: 1.6rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid oklch(0.55 0.10 78 / 0.15);
+    text-align: center;
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: oklch(0.55 0.10 78 / 0.7);
+  }
+  .panel-footer kbd {
+    font-family: 'Cinzel', serif; font-style: normal;
+    color: var(--gold-mid);
+    padding: 1px 6px;
+    border: 1px solid oklch(0.73 0.13 78 / 0.35);
+    background: oklch(0.06 0.04 268);
+    margin: 0 0.2em;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Settings view ── */
+  .settings-back {
+    position: absolute; top: 1rem; left: 1rem;
+    background: transparent; border: none; cursor: pointer;
+    font-family: 'Cinzel', serif; font-size: 0.7rem;
+    color: var(--gold-dim);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 0.4rem 0.6rem;
+    display: flex; align-items: center; gap: 0.3rem;
+    transition: color 0.2s;
+  }
+  .settings-back:hover { color: var(--gold); }
+
+  .setting-row { margin-bottom: 1.6rem; }
+  .setting-row:last-child { margin-bottom: 0.4rem; }
+  .setting-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+  .setting-label {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold-mid);
+  }
+  .setting-value {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--gold);
+    min-width: 3.2rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .setting-value.muted { color: var(--gold-deep); font-style: italic; font-family: 'Crimson Pro', serif; font-weight: 400; }
+
+  /* Slider track */
+  .slider-row { display: flex; align-items: center; gap: 0.8rem; }
+  .slider-icon-btn {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--gold-dim);
+    padding: 0.2rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.2s, transform 0.15s;
+  }
+  .slider-icon-btn:hover { color: var(--gold); transform: scale(1.1); }
+  .slider-icon-btn:active { transform: scale(0.95); }
+
+  .slider-wrap {
+    flex: 1; position: relative; height: 24px;
+    display: flex; align-items: center;
+  }
+  .slider-track {
+    width: 100%; height: 2px;
+    background: oklch(0.55 0.10 78 / 0.18);
+    position: relative;
+    overflow: visible;
+  }
+  .slider-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--gold-mid), var(--gold));
+    box-shadow: 0 0 8px oklch(0.73 0.13 78 / 0.5);
+    transition: width 0.15s ease;
+  }
+  .slider-thumb {
+    position: absolute; top: 50%;
+    width: 14px; height: 14px;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: var(--gold);
+    border: 1px solid oklch(0.07 0.05 268);
+    box-shadow: 0 0 12px oklch(0.82 0.16 80 / 0.7), 0 0 2px oklch(0.07 0.05 268);
+    transition: width 0.15s, height 0.15s, box-shadow 0.2s;
+    pointer-events: none;
+  }
+  .slider-wrap:hover .slider-thumb { box-shadow: 0 0 18px oklch(0.82 0.16 80 / 0.9), 0 0 2px oklch(0.07 0.05 268); }
+
+  .slider-input {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0; cursor: pointer;
+    margin: 0; padding: 0;
+  }
+  .slider-ticks {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    left: 0; right: 0; height: 8px;
+    display: flex; justify-content: space-between;
+    pointer-events: none;
+  }
+  .slider-tick {
+    width: 1px; height: 6px;
+    background: oklch(0.55 0.10 78 / 0.25);
+  }
+
+  /* ── Confirm modal ── */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: oklch(0.04 0.03 268 / 0.55);
+    backdrop-filter: blur(4px);
+    animation: overlayIn 0.2s ease both;
+  }
+  .modal-card {
+    width: min(380px, 86vw);
+    background: var(--panel-bg);
+    border: 1px solid oklch(0.55 0.22 15 / 0.45);
+    backdrop-filter: blur(20px) saturate(1.3);
+    padding: 1.8rem 1.8rem 1.6rem;
+    position: relative;
+    box-shadow:
+      0 0 60px oklch(0.55 0.22 15 / 0.15),
+      0 20px 50px oklch(0.04 0.03 268 / 0.7);
+    animation: cardReveal 0.3s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .modal-card::before, .modal-card::after, .modal-card .c-br, .modal-card .c-bl {
+    content: ''; position: absolute;
+    width: 14px; height: 14px;
+    border-style: solid; border-color: oklch(0.55 0.22 15 / 0.6);
+  }
+  .modal-card::before { top:-1px; left:-1px;   border-width: 2px 0 0 2px; }
+  .modal-card::after  { top:-1px; right:-1px;  border-width: 2px 2px 0 0; }
+  .modal-card .c-br   { bottom:-1px; right:-1px; border-width: 0 2px 2px 0; }
+  .modal-card .c-bl   { bottom:-1px; left:-1px;  border-width: 0 0 2px 2px; }
+
+  .modal-icon {
+    width: 44px; height: 44px;
+    margin: 0 auto 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 12px oklch(0.55 0.22 15 / 0.6));
+  }
+  .modal-title {
+    font-family: 'Cinzel Decorative', cursive;
+    font-weight: 700;
+    font-size: 1.4rem;
+    text-align: center;
+    color: oklch(0.75 0.14 15);
+    line-height: 1.1;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.04em;
+  }
+  .modal-body {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 0.98rem;
+    text-align: center;
+    color: oklch(0.72 0.04 78 / 0.85);
+    line-height: 1.55;
+    margin-bottom: 1.4rem;
+  }
+  .modal-penalty {
+    font-family: 'Cinzel', serif;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: oklch(0.65 0.18 15);
+    display: block;
+    margin-top: 0.7rem;
+  }
+  .modal-actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem;
+  }
+  .btn-modal {
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 0.85rem 0.6rem;
+    cursor: pointer;
+    border: 1px solid;
+    background: oklch(0.14 0.05 268 / 0.9);
+    transition: filter 0.15s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .btn-modal:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-modal:active { transform: translateY(0); filter: brightness(0.95); }
+  .btn-modal.cancel {
+    border-color: oklch(0.55 0.10 78 / 0.45);
+    color: var(--gold-mid);
+  }
+  .btn-modal.cancel:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-modal.confirm {
+    border-color: oklch(0.55 0.22 15 / 0.6);
+    color: oklch(0.75 0.14 15);
+  }
+  .btn-modal.confirm:hover {
+    border-color: oklch(0.55 0.22 15 / 1);
+    color: oklch(0.85 0.16 15);
+    box-shadow: 0 4px 20px oklch(0.42 0.20 15 / 0.3);
+  }
+
+  /* ── Victory/Defeat overlay (reuse styling) ── */
+  .result-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 30;
+    animation: overlayIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .result-overlay.victory {
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 50%, oklch(0.72 0.13 78 / 0.08) 0%, transparent 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.07 0.05 268 / 0.92) 0%, oklch(0.07 0.05 268 / 0.96) 100%);
+  }
+  .result-overlay.defeat {
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 50%, oklch(0.42 0.20 15 / 0.10) 0%, transparent 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.06 0.04 268 / 0.94) 0%, oklch(0.06 0.04 268 / 0.97) 100%);
+  }
+  .result-card {
+    width: min(520px, 88vw);
+    display: flex; flex-direction: column; align-items: center;
+    animation: cardReveal 0.9s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .result-crest {
+    width: 100px; height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.6rem;
+    animation: crestPulse 3s ease-in-out infinite;
+  }
+  @keyframes crestPulse {
+    0%, 100% { filter: drop-shadow(0 0 20px var(--crest-glow)); }
+    50%      { filter: drop-shadow(0 0 40px var(--crest-glow)); }
+  }
+  .result-overlay.victory .result-crest { --crest-glow: oklch(0.82 0.16 80 / 0.7); }
+  .result-overlay.defeat  .result-crest { --crest-glow: oklch(0.55 0.22 15 / 0.5); }
+  .result-panel {
+    width: 100%;
+    background: oklch(0.10 0.04 268 / 0.88);
+    border: 1px solid var(--rp-border);
+    backdrop-filter: blur(20px) saturate(1.3);
+    padding: 2.8rem 3rem 2.4rem;
+    position: relative;
+    box-shadow: 0 0 80px var(--rp-shadow), 0 30px 60px oklch(0.05 0.04 268 / 0.7);
+  }
+  .result-overlay.victory .result-panel { --rp-border: oklch(0.73 0.13 78 / 0.30); --rp-shadow: oklch(0.73 0.13 78 / 0.08); }
+  .result-overlay.defeat  .result-panel { --rp-border: oklch(0.42 0.20 15 / 0.30); --rp-shadow: oklch(0.42 0.20 15 / 0.10); }
+  .result-panel::before, .result-panel::after, .result-panel .c-br, .result-panel .c-bl {
+    content: ''; position: absolute;
+    width: 18px; height: 18px;
+    border-style: solid; border-color: var(--rp-border); opacity: 0.7;
+  }
+  .result-panel::before { top:-1px; left:-1px;   border-width: 2px 0 0 2px; }
+  .result-panel::after  { top:-1px; right:-1px;  border-width: 2px 2px 0 0; }
+  .result-panel .c-br   { bottom:-1px; right:-1px; border-width: 0 2px 2px 0; }
+  .result-panel .c-bl   { bottom:-1px; left:-1px;  border-width: 0 0 2px 2px; }
+  .result-title {
+    font-family: 'Cinzel Decorative', cursive;
+    font-weight: 900;
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    text-align: center;
+    line-height: 1.05;
+    background: var(--title-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 24px var(--accent-color));
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+  .result-overlay.victory .result-card {
+    --accent-color: oklch(0.82 0.16 80);
+    --accent-dim: oklch(0.55 0.10 78);
+    --title-gradient: linear-gradient(160deg, oklch(0.88 0.16 82) 0%, oklch(0.73 0.13 78) 45%, oklch(0.88 0.08 78) 70%, oklch(0.73 0.13 78) 100%);
+  }
+  .result-overlay.defeat .result-card {
+    --accent-color: oklch(0.60 0.22 15);
+    --accent-dim: oklch(0.42 0.16 15);
+    --title-gradient: linear-gradient(160deg, oklch(0.72 0.18 15) 0%, oklch(0.55 0.22 15) 45%, oklch(0.72 0.12 15) 70%, oklch(0.55 0.22 15) 100%);
+  }
+  .result-eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    text-align: center;
+    margin-bottom: 0.6rem;
+    opacity: 0.8;
+  }
+  .result-divider {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0 auto 1.4rem;
+    width: fit-content;
+  }
+  .result-divider .l { width: 40px; height: 1px; background: linear-gradient(to right, transparent, var(--accent-dim)); }
+  .result-divider .r { width: 40px; height: 1px; background: linear-gradient(to left,  transparent, var(--accent-dim)); }
+  .result-divider .d {
+    width: 6px; height: 6px; background: var(--accent-color);
+    transform: rotate(45deg); box-shadow: 0 0 8px var(--accent-color);
+  }
+  .result-desc {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    text-align: center;
+    color: oklch(0.72 0.03 78);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    opacity: 0.85;
+  }
+  .result-points {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: oklch(0.65 0.18 15);
+    text-align: center;
+    margin-top: -1.2rem;
+    margin-bottom: 1.6rem;
+  }
+  .result-points strong {
+    color: oklch(0.78 0.20 15);
+    font-weight: 700;
+  }
+  .btn-result {
+    display: block;
+    width: 100%;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 1.05rem 1rem;
+    cursor: pointer;
+    border: 1px solid var(--btn-border);
+    background: oklch(0.14 0.05 268 / 0.9);
+    color: var(--btn-color);
+    transition: filter 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-overlay.victory .btn-result {
+    --btn-border: oklch(0.73 0.13 78 / 0.55);
+    --btn-color: oklch(0.82 0.16 80);
+  }
+  .result-overlay.defeat .btn-result {
+    --btn-border: oklch(0.42 0.20 15 / 0.50);
+    --btn-color: oklch(0.75 0.12 15);
+  }
+  .btn-result:hover { filter: brightness(1.12); transform: translateY(-2px); }
+
+  /* ── Demo toggle (top of screen) ── */
+  .demo-controls {
+    position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 0.5rem; z-index: 100;
+  }
+  .demo-btn {
+    font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.18em;
+    text-transform: uppercase; padding: 0.45rem 0.9rem; cursor: pointer;
+    backdrop-filter: blur(8px); transition: all 0.2s;
+    background: oklch(0.12 0.04 268 / 0.85);
+    border: 1px solid oklch(0.55 0.10 78 / 0.35);
+    color: var(--gold-mid);
+  }
+  .demo-btn:hover, .demo-btn.active {
+    border-color: oklch(0.73 0.13 78 / 0.85);
+    color: var(--gold);
+  }
+
+  /* slide-in transition between views */
+  .view-anim { animation: viewIn 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+  @keyframes viewIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── Decorative crest for pause screen ─────────────────────────────────────────
+function PauseCrest() {
+  return (
+    <svg viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" stroke="oklch(0.73 0.13 78)" strokeWidth="1" strokeDasharray="4 8" opacity="0.5"/>
+      <path d="M50 14 L74 25 L74 50 Q74 70 50 86 Q26 70 26 50 L26 25 Z"
+        fill="oklch(0.73 0.13 78 / 0.12)" stroke="oklch(0.82 0.16 80)" strokeWidth="1.5"/>
+      {/* hourglass / pause bars */}
+      <rect x="40" y="36" width="6" height="28" fill="oklch(0.82 0.16 80)" opacity="0.9"/>
+      <rect x="54" y="36" width="6" height="28" fill="oklch(0.82 0.16 80)" opacity="0.9"/>
+    </svg>
+  );
+}
+
+function VictoryCrest() {
+  return (
+    <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" stroke="oklch(0.73 0.13 78)" strokeWidth="1" strokeDasharray="4 8" opacity="0.5"/>
+      <path d="M50 12 L76 24 L76 52 Q76 72 50 88 Q24 72 24 52 L24 24 Z"
+        fill="oklch(0.73 0.13 78 / 0.12)" stroke="oklch(0.82 0.16 80)" strokeWidth="1.5"/>
+      <path d="M36 56 L36 44 L42 50 L50 38 L58 50 L64 44 L64 56 Z"
+        fill="oklch(0.82 0.16 80)" opacity="0.9"/>
+      <path d="M50 26 L51.8 31.8 L57.8 31.8 L53 35.2 L54.8 41 L50 37.6 L45.2 41 L47 35.2 L42.2 31.8 L48.2 31.8 Z"
+        fill="oklch(0.88 0.08 78)" opacity="0.8"/>
+    </svg>
+  );
+}
+
+function DefeatCrest() {
+  return (
+    <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" stroke="oklch(0.42 0.20 15)" strokeWidth="1" strokeDasharray="3 10" opacity="0.5"/>
+      <path d="M50 14 L74 25 L74 50 Q74 70 50 86 Q26 70 26 50 L26 25 Z"
+        fill="oklch(0.42 0.20 15 / 0.12)" stroke="oklch(0.55 0.22 15)" strokeWidth="1.5" strokeDasharray="5 3"/>
+      <path d="M50 22 L54 38 L46 50 L52 66 L48 80"
+        stroke="oklch(0.60 0.22 15)" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+      <circle cx="42" cy="58" r="3" fill="oklch(0.55 0.22 15)" opacity="0.6"/>
+      <circle cx="58" cy="46" r="2" fill="oklch(0.55 0.22 15)" opacity="0.4"/>
+    </svg>
+  );
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const IconPlay = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5 L19 12 L7 19 Z"/></svg>
+);
+const IconGear = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.65 1.65 0 0 0-1.8-.3 1.65 1.65 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.65 1.65 0 0 0-1-1.5 1.65 1.65 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.65 1.65 0 0 0 .3-1.8 1.65 1.65 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.65 1.65 0 0 0 1.5-1 1.65 1.65 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.65 1.65 0 0 0 1.8.3h0a1.65 1.65 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.65 1.65 0 0 0 1 1.5h0a1.65 1.65 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.65 1.65 0 0 0-.3 1.8v0a1.65 1.65 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.65 1.65 0 0 0-1.5 1z"/>
+  </svg>
+);
+const IconFlag = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 21V4"/>
+    <path d="M4 4 h12 l-2 4 l2 4 H4"/>
+  </svg>
+);
+const IconBack = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 18 L9 12 L15 6"/>
+  </svg>
+);
+const IconWarning = () => (
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+    <path d="M22 6 L40 36 L4 36 Z" stroke="oklch(0.65 0.22 15)" strokeWidth="1.5" fill="oklch(0.42 0.20 15 / 0.15)" strokeLinejoin="round"/>
+    <rect x="20.6" y="16" width="2.8" height="11" fill="oklch(0.75 0.18 15)"/>
+    <rect x="20.6" y="29.5" width="2.8" height="2.8" fill="oklch(0.75 0.18 15)"/>
+  </svg>
+);
+
+// Music icon shows mute states based on volume
+function IconMusic({ vol }) {
+  const muted = vol === 0;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 17 V5 L19 3 V15"/>
+      <circle cx="7" cy="17" r="2.5" fill="currentColor" opacity="0.8"/>
+      <circle cx="17" cy="15" r="2.5" fill="currentColor" opacity="0.8"/>
+      {muted && <line x1="3" y1="3" x2="21" y2="21" stroke="oklch(0.65 0.22 15)" strokeWidth="2"/>}
+    </svg>
+  );
+}
+function IconFx({ vol }) {
+  const muted = vol === 0;
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9 V15 H8 L13 19 V5 L8 9 Z" fill="currentColor" fillOpacity="0.2"/>
+      {!muted && <>
+        <path d="M16 9 Q18 12 16 15"/>
+        <path d="M19 6 Q23 12 19 18" opacity="0.6"/>
+      </>}
+      {muted && <>
+        <line x1="16" y1="9" x2="21" y2="14" />
+        <line x1="21" y1="9" x2="16" y2="14" />
+      </>}
+    </svg>
+  );
+}
+const IconMinus = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12"/></svg>
+);
+const IconPlus = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12"/><line x1="12" y1="6" x2="12" y2="18"/></svg>
+);
+
+// ── Slider ────────────────────────────────────────────────────────────────────
+function VolumeSlider({ value, onChange }) {
+  const stepDown = () => onChange(Math.max(0, value - 5));
+  const stepUp   = () => onChange(Math.min(100, value + 5));
+  return (
+    <div className="slider-row">
+      <button className="slider-icon-btn" onClick={stepDown} aria-label="Diminuir"><IconMinus/></button>
+      <div className="slider-wrap">
+        <div className="slider-track">
+          <div className="slider-ticks">
+            {Array.from({length: 11}).map((_,i) => <div key={i} className="slider-tick"/>)}
+          </div>
+          <div className="slider-fill" style={{ width: `${value}%` }}/>
+          <div className="slider-thumb" style={{ left: `${value}%` }}/>
+        </div>
+        <input
+          className="slider-input"
+          type="range" min="0" max="100" step="1"
+          value={value}
+          onChange={e => onChange(parseInt(e.target.value, 10))}
+        />
+      </div>
+      <button className="slider-icon-btn" onClick={stepUp} aria-label="Aumentar"><IconPlus/></button>
+    </div>
+  );
+}
+
+// ── Fake board (faded behind overlay) ─────────────────────────────────────────
+function FakeBoard() {
+  return (
+    <div className="fake-board">
+      <div className="fake-board-bg"/>
+      {[18, 32, 68, 82].map(t => (
+        <div key={t} className="board-line" style={{ top: `${t}%` }}/>
+      ))}
+      <div className="fake-center-line"/>
+
+      {/* opponent heroes */}
+      <div className="fake-hero" style={{ top: '4%', left: '38%' }}/>
+      <div className="fake-hero" style={{ top: '4%', left: '50%' }}/>
+      <div className="fake-hero" style={{ top: '4%', left: '62%' }}/>
+      {/* opponent deck */}
+      <div className="fake-card" style={{ top: '6%', left: '4%', width: 60, height: 84 }}/>
+      <div className="fake-card" style={{ top: '6%', right: '4%', width: 110, height: 150 }}/>
+
+      {/* player heroes */}
+      <div className="fake-hero" style={{ bottom: '4%', left: '38%' }}/>
+      <div className="fake-hero" style={{ bottom: '4%', left: '50%' }}/>
+      <div className="fake-hero" style={{ bottom: '4%', left: '62%' }}/>
+      {/* player deck */}
+      <div className="fake-card" style={{ bottom: '6%', left: '4%', width: 60, height: 84 }}/>
+      <div className="fake-card" style={{ bottom: '6%', right: '4%', width: 110, height: 150 }}/>
+
+      {/* mana orbs */}
+      <div className="fake-mana" style={{ top: '14%', left: '12%' }}/>
+      <div className="fake-mana" style={{ bottom: '14%', left: '12%' }}/>
+    </div>
+  );
+}
+
+// ── Pause Menu (main) ─────────────────────────────────────────────────────────
+function PauseMenu({ onResume, onSettings, onForfeit }) {
+  return (
+    <div className="pause-card view-anim">
+      <div className="crest"><PauseCrest/></div>
+      <div className="panel">
+        <div className="c-br"/>
+        <div className="c-bl"/>
+        <div className="eyebrow">Pausa</div>
+        <div className="title">Em Repouso</div>
+        <div className="divider">
+          <div className="divider-line"/>
+          <div className="divider-diamond"/>
+          <div className="divider-line r"/>
+        </div>
+
+        <div className="menu-list">
+          <button className="btn-menu primary" onClick={onResume} autoFocus>
+            <span className="btn-shimmer"/>
+            <IconPlay/>
+            <span>Voltar ao Jogo</span>
+          </button>
+          <button className="btn-menu" onClick={onSettings}>
+            <span className="btn-shimmer"/>
+            <IconGear/>
+            <span>Configurações</span>
+          </button>
+          <button className="btn-menu danger" onClick={onForfeit}>
+            <span className="btn-shimmer"/>
+            <IconFlag/>
+            <span>Desistir da Partida</span>
+          </button>
+        </div>
+
+        <div className="panel-footer">
+          Pressione <kbd>ESC</kbd> para retomar a batalha
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Settings view ─────────────────────────────────────────────────────────────
+function SettingsView({ music, fx, setMusic, setFx, onBack }) {
+  return (
+    <div className="pause-card view-anim">
+      <div className="crest"><PauseCrest/></div>
+      <div className="panel">
+        <div className="c-br"/>
+        <div className="c-bl"/>
+
+        <button className="settings-back" onClick={onBack}>
+          <IconBack/> Voltar
+        </button>
+
+        <div className="eyebrow">Configurações</div>
+        <div className="title" style={{ fontSize: '2rem' }}>Áudio</div>
+        <div className="divider">
+          <div className="divider-line"/>
+          <div className="divider-diamond"/>
+          <div className="divider-line r"/>
+        </div>
+
+        <div className="setting-row">
+          <div className="setting-header">
+            <div className="setting-label"><IconMusic vol={music}/> Música</div>
+            <div className={`setting-value ${music === 0 ? 'muted' : ''}`}>
+              {music === 0 ? 'Mudo' : `${music}%`}
+            </div>
+          </div>
+          <VolumeSlider value={music} onChange={setMusic}/>
+        </div>
+
+        <div className="setting-row">
+          <div className="setting-header">
+            <div className="setting-label"><IconFx vol={fx}/> Efeitos</div>
+            <div className={`setting-value ${fx === 0 ? 'muted' : ''}`}>
+              {fx === 0 ? 'Mudo' : `${fx}%`}
+            </div>
+          </div>
+          <VolumeSlider value={fx} onChange={setFx}/>
+        </div>
+
+        <div className="panel-footer">
+          Use as setas <kbd>←</kbd><kbd>→</kbd> para ajustes finos
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Forfeit confirmation modal ────────────────────────────────────────────────
+function ConfirmForfeit({ onConfirm, onCancel }) {
+  // close on Esc
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onCancel]);
+
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="c-br"/>
+        <div className="c-bl"/>
+        <div className="modal-icon"><IconWarning/></div>
+        <div className="modal-title">Desistir da Partida?</div>
+        <div className="modal-body">
+          Tem certeza que deseja abandonar a batalha?
+          <span className="modal-penalty">— Você perderá pontos —</span>
+        </div>
+        <div className="modal-actions">
+          <button className="btn-modal cancel" onClick={onCancel}>Cancelar</button>
+          <button className="btn-modal confirm" onClick={onConfirm}>Sim, Desistir</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Victory / Defeat (existing screen, embedded) ──────────────────────────────
+function ResultOverlay({ type, onMenu }) {
+  const isVictory = type === 'victory';
+  return (
+    <div className={`result-overlay ${isVictory ? 'victory' : 'defeat'}`}>
+      <div className="result-card">
+        <div className="result-crest">
+          {isVictory ? <VictoryCrest/> : <DefeatCrest/>}
+        </div>
+        <div className="result-panel">
+          <div className="c-br"/>
+          <div className="c-bl"/>
+          <div className="result-eyebrow">Batalha Encerrada</div>
+          <div className="result-title">{isVictory ? 'Vitória!' : 'Derrota'}</div>
+          <div className="result-divider">
+            <div className="l"/><div className="d"/><div className="r"/>
+          </div>
+          <p className="result-desc">
+            {isVictory
+              ? 'Seu oponente abandonou o campo. A glória é sua.'
+              : 'Você recuou da batalha. A lenda continua…'}
+          </p>
+          {!isVictory && (
+            <div className="result-points">— <strong>-25 PR</strong> por desistência —</div>
+          )}
+          <button className="btn-result" onClick={onMenu}>
+            ← Voltar ao Menu
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+// state machine: 'playing' | 'pause' | 'settings' | 'confirm' | 'victory' | 'defeat'
+function App() {
+  const [state, setState] = useState('playing');
+  const [music, setMusic] = useState(70);
+  const [fx, setFx] = useState(85);
+  const [resultRole, setResultRole] = useState('defeat'); // role to view after forfeit
+  // hint visibility (dim once user opens menu once)
+  const [hintDim, setHintDim] = useState(false);
+
+  // ESC handling
+  const handleEsc = useCallback(() => {
+    setState(s => {
+      if (s === 'playing') { setHintDim(true); return 'pause'; }
+      if (s === 'pause')   return 'playing';
+      if (s === 'settings') return 'pause';
+      // confirm/result handled by their own ESC handlers (cancel / no-op)
+      return s;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        // confirm modal listens itself; result has no esc behaviour
+        if (state === 'confirm' || state === 'victory' || state === 'defeat') return;
+        e.preventDefault();
+        handleEsc();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state, handleEsc]);
+
+  const openPause = () => { setHintDim(true); setState('pause'); };
+  const goSettings = () => setState('settings');
+  const back = () => setState('pause');
+  const resume = () => setState('playing');
+  const askForfeit = () => setState('confirm');
+  const cancelForfeit = () => setState('pause');
+  const confirmForfeit = () => setState(resultRole);
+  const backToMenu = () => setState('playing'); // reset demo
+
+  return (
+    <>
+      <FakeBoard/>
+
+      {/* ESC hint */}
+      <div className={`esc-hint ${hintDim ? 'dim' : ''}`} onClick={openPause}>
+        Pressione <kbd>ESC</kbd> para pausar
+      </div>
+
+      {/* Pause overlay */}
+      {state === 'pause' && (
+        <div className="overlay">
+          <PauseMenu onResume={resume} onSettings={goSettings} onForfeit={askForfeit}/>
+        </div>
+      )}
+
+      {state === 'settings' && (
+        <div className="overlay">
+          <SettingsView music={music} fx={fx} setMusic={setMusic} setFx={setFx} onBack={back}/>
+        </div>
+      )}
+
+      {state === 'confirm' && (
+        <>
+          {/* keep pause panel visible behind modal */}
+          <div className="overlay">
+            <PauseMenu onResume={resume} onSettings={goSettings} onForfeit={askForfeit}/>
+          </div>
+          <ConfirmForfeit onCancel={cancelForfeit} onConfirm={confirmForfeit}/>
+        </>
+      )}
+
+      {(state === 'victory' || state === 'defeat') && (
+        <ResultOverlay type={state} onMenu={backToMenu}/>
+      )}
+
+      {/* Demo controls (preview helper) */}
+      <div className="demo-controls">
+        <button className={`demo-btn ${state === 'playing' ? 'active' : ''}`} onClick={() => setState('playing')}>Jogo</button>
+        <button className={`demo-btn ${state === 'pause' ? 'active' : ''}`} onClick={openPause}>Pausa</button>
+        <button className={`demo-btn ${state === 'settings' ? 'active' : ''}`} onClick={() => { setHintDim(true); setState('settings'); }}>Config.</button>
+        <button className={`demo-btn ${state === 'confirm' ? 'active' : ''}`} onClick={() => { setHintDim(true); setState('confirm'); }}>Desistir</button>
+        <button className={`demo-btn ${resultRole === 'victory' ? 'active' : ''}`} onClick={() => setResultRole(r => r === 'victory' ? 'defeat' : 'victory')}>
+          Perdedor: {resultRole === 'victory' ? 'Vence' : 'Perde'}
+        </button>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

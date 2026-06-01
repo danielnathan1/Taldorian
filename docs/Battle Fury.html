@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Fúria de Batalha</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050a;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #stage-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative; overflow: hidden;
+    background: #0a0a12;
+  }
+
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.28 0.10 15 / 0.22) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.09 0.05 12) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.30 0.14 35 / 0.22) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.09 0.05 220) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.73 0.13 78 / 0.25) 20%,
+      oklch(0.73 0.13 78 / 0.50) 50%,
+      oklch(0.73 0.13 78 / 0.25) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.025; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.65 0.18 15); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.70 0.18 40); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.14 200 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 220 / 0.60);
+    --slot-label-color: oklch(0.65 0.14 200);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.20 15 / 0.40);
+    --slot-bg:          oklch(0.10 0.04 15 / 0.55);
+    --slot-label-color: oklch(0.60 0.18 15);
+  }
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 268);
+  }
+  .hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, oklch(0.55 0.22 150), oklch(0.78 0.18 145));
+  }
+  .hp-fill.enemy {
+    background: linear-gradient(90deg, oklch(0.55 0.22 15), oklch(0.72 0.18 15));
+  }
+
+  /* ── ATK badge (top-left corner of every card) ── */
+  .atk-badge {
+    position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 9px; font-weight: 700;
+    color: oklch(0.92 0.05 80);
+    background: oklch(0.18 0.04 260 / 0.85);
+    border: 0.5px solid oklch(0.55 0.18 35 / 0.75);
+    transform-origin: center;
+    z-index: 4;
+  }
+  .atk-badge.size-active { width: 19px; height: 19px; font-size: 11px; }
+  .atk-badge.buffed {
+    color: oklch(0.96 0.18 50);
+    background: oklch(0.28 0.13 30 / 0.95);
+    border-color: oklch(0.78 0.22 35);
+    box-shadow:
+      0 0 8px oklch(0.78 0.22 35 / 0.85),
+      0 0 18px oklch(0.78 0.22 35 / 0.5),
+      inset 0 0 6px oklch(0.85 0.22 35 / 0.5);
+    text-shadow: 0 0 6px oklch(0.92 0.20 45);
+  }
+
+  /* ── Cavaleiro card highlight states ── */
+  .knight-charging {
+    border-color: oklch(0.78 0.22 35) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.78 0.22 35 / 0.85),
+      0 0 24px oklch(0.78 0.22 35 / 0.55),
+      0 0 60px oklch(0.78 0.22 35 / 0.30);
+  }
+  .knight-buffed {
+    border-color: oklch(0.85 0.22 38) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.85 0.22 38),
+      0 0 22px oklch(0.78 0.22 35 / 0.65),
+      0 0 60px oklch(0.78 0.22 35 / 0.35),
+      inset 0 0 12px oklch(0.65 0.20 30 / 0.35);
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: calc(50% - 22px);
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; z-index: 50;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 28px; font-weight: 700;
+    color: oklch(0.92 0.20 45);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    text-shadow:
+      0 0 18px oklch(0.78 0.22 35 / 0.85),
+      0 2px 0 oklch(0.20 0.08 30 / 0.7);
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.45em; text-transform: uppercase;
+    color: oklch(0.80 0.16 50); opacity: 0.85;
+  }
+  .ability-rule {
+    width: 280px; height: 1px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.78 0.22 35 / 0.8), transparent);
+    margin-top: 4px;
+  }
+
+  /* ── FX layer ── */
+  .fx-layer {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── ATK pump popup ── */
+  .atk-pop {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 22px; font-weight: 700;
+    color: oklch(0.94 0.20 45);
+    text-shadow:
+      0 0 14px oklch(0.78 0.22 35),
+      0 2px 0 oklch(0.20 0.08 30);
+    pointer-events: none;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .screen-flash {
+    position: absolute; inset: 0;
+    background: oklch(0.95 0.14 50);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: oklch(0.10 0.03 268 / 0.85);
+    border: 1px solid oklch(0.73 0.13 78 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 268 / 0.9);
+    color: oklch(0.82 0.16 80);
+    border: 1px solid oklch(0.73 0.13 78 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 268 / 0.95);
+    border-color: oklch(0.73 0.13 78 / 0.8);
+    box-shadow: 0 0 14px oklch(0.73 0.13 78 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.32 0.14 35 / 0.95), oklch(0.18 0.10 30 / 0.95));
+    color: oklch(0.95 0.16 50);
+    border-color: oklch(0.78 0.22 35 / 0.7);
+  }
+  .ctrl-btn.primary:hover {
+    box-shadow: 0 0 18px oklch(0.78 0.22 35 / 0.5);
+  }
+  .ctrl-scrub {
+    width: 220px; accent-color: oklch(0.78 0.22 35);
+  }
+  .ctrl-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: oklch(0.65 0.10 78);
+  }
+  .ctrl-time {
+    color: oklch(0.82 0.16 80);
+    font-size: 10px;
+    min-width: 48px;
+  }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Geometry
+// ───────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+
+// Cavaleiro = ally being buffed (bench, leftmost). Active slot would also work,
+// but the buff is on a bench hero to highlight the "stronger ally" idea.
+// Promote to ACTIVE slot for size — visually it reads better as the hero of the moment.
+const KNIGHT = { x: 720, y: 540 };
+const KNIGHT_CARD = { x: 720, y: 540, w: 90, h: 126 };
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Timing (seconds)
+// ───────────────────────────────────────────────────────────────────────────────
+const T = {
+  CHARGE_START   : 0.0,
+  CHARGE_END     : 1.05,
+  BANNER_IN      : 0.2,
+  BANNER_OUT     : 3.2,
+  RUNE_IN        : 0.8,
+  BURST_AT       : 1.05,
+  BURST_END      : 1.7,
+  AURA_FROM      : 1.05,   // persistent aura begins
+  ATK_PUMP_FROM  : 1.05,
+  ATK_PUMP_TO    : 2.0,    // ATK number ticks from base→buffed across this window
+  ATK_POP_FROM   : 1.1,
+  ATK_POP_TO     : 2.6,
+  DEACTIVATE_DUR : 0.6,    // fade-out length when buff is removed
+};
+// Scrubber upper bound — the activation sequence is done by here; everything
+// past it is the persistent aura loop. We let users scrub up to a bit beyond.
+const SCRUB_MAX = 6.0;
+
+const ATK_BASE   = 30;
+const ATK_BUFFED = 55;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Utilities
+// ───────────────────────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+const easeInQuad   = t => t * t;
+const clamp01 = v => Math.max(0, Math.min(1, v));
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Ember particles — pre-seeded so we can recompute deterministically.
+//  Each ember has its own period; on every period it spawns from a random offset
+//  at the card base and rises while fading. This gives a steady persistent fire
+//  aura without needing per-frame state.
+// ───────────────────────────────────────────────────────────────────────────────
+const NUM_EMBERS = 28;
+const embers = (() => {
+  const rng = mulberry32(91);
+  const list = [];
+  for (let i = 0; i < NUM_EMBERS; i++) {
+    list.push({
+      id: i,
+      offsetX: (rng() - 0.5) * (KNIGHT_CARD.w + 8), // horizontal spawn point along card width
+      driftX:  (rng() - 0.5) * 28,                  // lateral drift while rising
+      driftFreq: 2.5 + rng() * 2,
+      period: 1.4 + rng() * 1.1,                    // life span in seconds
+      phase:  rng() * 1.6,                          // offset so they don't all spawn together
+      size:   1.4 + rng() * 2.4,
+      hueShift: (rng() - 0.5) * 18,                 // small color variance
+      rise: 90 + rng() * 50,
+    });
+  }
+  return list;
+})();
+
+// Small "spark" rings that occasionally pop at the card corners
+const NUM_SPARKS = 16;
+const sparks = (() => {
+  const rng = mulberry32(33);
+  const list = [];
+  for (let i = 0; i < NUM_SPARKS; i++) {
+    list.push({
+      id: i,
+      x: KNIGHT.x + (rng() - 0.5) * (KNIGHT_CARD.w + 30),
+      y: KNIGHT.y + (rng() - 0.5) * (KNIGHT_CARD.h + 30),
+      period: 1.6 + rng() * 1.4,
+      phase: rng() * 2,
+      size: 4 + rng() * 6,
+    });
+  }
+  return list;
+})();
+
+// Burst shockwave shards (radial lines at burst moment)
+const NUM_SHARDS = 14;
+const shards = (() => {
+  const rng = mulberry32(57);
+  const list = [];
+  for (let i = 0; i < NUM_SHARDS; i++) {
+    const a = (i / NUM_SHARDS) * Math.PI * 2 + (rng() - 0.5) * 0.2;
+    list.push({
+      id: i,
+      angle: a,
+      length: 38 + rng() * 32,
+      width: 0.6 + rng() * 0.6,
+    });
+  }
+  return list;
+})();
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Static board
+// ───────────────────────────────────────────────────────────────────────────────
+function StaticBoard({ knightAtk, knightBuffed, scene }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: 30, atk: 24, enemy: true },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: 55, atk: 18, enemy: true },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: 80, atk: 22, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: 70, atk: 32, enemy: true },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std',    label: 'Arqueiro',  hp: 65, atk: 22 },
+    { x: 450, y: 540, size: 'std',    label: 'Sacerdote', hp: 80, atk: 14 },
+    { x: 540, y: 540, size: 'std',    label: 'Maga',      hp: 55, atk: 28 },
+    { x: 720, y: 540, size: 'active', label: 'Cavaleiro', hp: 90, atk: knightAtk, isKnight: true, buffed: knightBuffed, scene },
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+
+  return (
+    <>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}
+      {player.map((s, i) => <Slot key={'p'+i} theme="player" {...s} />)}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, hp, atk, isKnight, buffed, scene, enemy }) {
+  const cardClasses = [
+    'slot-card',
+    isKnight && scene === 'charging' ? 'knight-charging' : '',
+    isKnight && scene === 'buffed' ? 'knight-buffed' : '',
+  ].filter(Boolean).join(' ');
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className={cardClasses}>
+        <CardArt theme={theme} size={size} label={label} buffed={isKnight && buffed} />
+        {atk !== undefined && (
+          <div className={`atk-badge ${size === 'active' ? 'size-active' : ''} ${isKnight && buffed ? 'buffed' : ''}`}>
+            {atk}
+          </div>
+        )}
+        {hp !== undefined && (
+          <div className="hp-bar">
+            <div className={`hp-fill ${enemy ? 'enemy' : ''}`} style={{ width: `${hp}%` }} />
+          </div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+// Card face art
+function CardArt({ theme, size, label, buffed }) {
+  const accent = theme === 'player'
+    ? 'oklch(0.55 0.14 200 / 0.55)'
+    : 'oklch(0.55 0.20 15 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+
+  if (label === 'Cavaleiro') {
+    const bladeColor = buffed ? 'oklch(0.96 0.18 50)' : 'oklch(0.85 0.04 240 / 0.95)';
+    const bladeStroke = buffed ? 'oklch(0.85 0.20 35)' : 'oklch(0.65 0.06 240 / 0.6)';
+    const shieldStroke = buffed ? 'oklch(0.85 0.22 35 / 0.9)' : 'oklch(0.65 0.14 200 / 0.75)';
+    const frameStroke = buffed ? 'oklch(0.85 0.22 35 / 0.8)' : accent;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={frameStroke} strokeWidth="0.6"/>
+        {/* sword blade */}
+        <line x1={w/2} y1={h/2 - 26} x2={w/2} y2={h/2 + 18}
+              stroke={bladeColor} strokeWidth="2.2" strokeLinecap="round"/>
+        <line x1={w/2} y1={h/2 - 24} x2={w/2} y2={h/2 + 16}
+              stroke={bladeStroke} strokeWidth="0.5"/>
+        {/* crossguard */}
+        <line x1={w/2 - 10} y1={h/2 + 18} x2={w/2 + 10} y2={h/2 + 18}
+              stroke="oklch(0.65 0.12 60 / 0.95)" strokeWidth="2.0" strokeLinecap="round"/>
+        {/* pommel */}
+        <circle cx={w/2} cy={h/2 + 24} r="1.6" fill="oklch(0.75 0.14 60)"/>
+        {/* shield outline */}
+        <path d={`M ${w/2 - 16} ${h/2 - 4} L ${w/2 + 16} ${h/2 - 4} L ${w/2 + 14} ${h/2 + 10} L ${w/2} ${h/2 + 20} L ${w/2 - 14} ${h/2 + 10} Z`}
+              stroke={shieldStroke} strokeWidth="0.6" fill="none"/>
+        {/* nameplate */}
+        <rect x="6" y={h - 22} width={w-12} height="12" fill="oklch(0.08 0.04 260 / 0.7)"
+              stroke={frameStroke} strokeWidth="0.4" opacity="0.7"/>
+        {/* buffed: tiny flame icon over sword */}
+        {buffed && (
+          <path d={`M ${w/2} ${h/2 - 32} q -3 4 -1 7 q 2 -2 1 -5 q 2 3 1 6 q 2 0 2 -4 z`}
+                fill="oklch(0.94 0.20 45 / 0.95)" stroke="oklch(0.82 0.22 30 / 0.9)" strokeWidth="0.3"/>
+        )}
+      </svg>
+    );
+  }
+  if (label === 'Sacerdote') {
+    const cx = w/2, cy = h/2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.65 0.20 145 / 0.55)" strokeWidth="0.6"/>
+        <circle cx={cx} cy={cy - 14} r="9" stroke="oklch(0.85 0.18 145 / 0.8)" strokeWidth="0.6" fill="none"/>
+        <line x1={cx} y1={cy - 6} x2={cx} y2={cy + 22}
+              stroke="oklch(0.78 0.10 140 / 0.9)" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2 - 12} ${h/2 - 16} Q ${w/2 - 22} ${h/2}, ${w/2 - 12} ${h/2 + 16}`}
+              stroke="oklch(0.82 0.16 80 / 0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+        <line x1={w/2 - 6} y1={h/2} x2={w/2 + 18} y2={h/2}
+              stroke="oklch(0.85 0.10 78 / 0.95)" strokeWidth="1.0"/>
+      </svg>
+    );
+  }
+  if (label === 'Maga') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2} ${h/2 - 20} L ${w/2 + 11} ${h/2 - 4} L ${w/2 - 11} ${h/2 - 4} Z`}
+              stroke="oklch(0.65 0.18 290 / 0.85)" strokeWidth="0.6" fill="none"/>
+        <path d={`M ${w/2} ${h/2 + 4} l 3 6 l 6 1 l -4.5 4 l 1 6 l -5.5 -3 l -5.5 3 l 1 -6 l -4.5 -4 l 6 -1 z`}
+              fill="none" stroke="oklch(0.85 0.16 290 / 0.85)" strokeWidth="0.5"/>
+      </svg>
+    );
+  }
+  // Generic ornament
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Scene derivation
+// ───────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // Card scene flag
+  let scene = 'idle';
+  if (t >= T.CHARGE_START && t < T.BURST_AT) scene = 'charging';
+  else if (t >= T.BURST_AT) scene = 'buffed';
+
+  // Charge glow
+  let chargeGlow = 0;
+  if (t >= T.CHARGE_START && t < T.BURST_AT) {
+    const u = (t - T.CHARGE_START) / (T.BURST_AT - T.CHARGE_START);
+    chargeGlow = easeInQuad(u);
+  } else if (t >= T.BURST_AT) {
+    // persistent breathing pulse during aura phase
+    const phase = (t - T.BURST_AT) * 1.6;
+    chargeGlow = 0.55 + Math.sin(phase) * 0.15;
+  }
+
+  // Banner
+  const bannerShow = t >= T.BANNER_IN && t < T.BANNER_OUT;
+  const bannerFadeIn = clamp01((t - T.BANNER_IN) / 0.35);
+  const bannerFadeOut = clamp01((T.BANNER_OUT - t) / 0.45);
+  const bannerOpacity = bannerShow ? Math.min(bannerFadeIn, bannerFadeOut) : 0;
+  const bannerLabel = t < T.BURST_AT ? 'Canalizando fúria' : 'Ataque ampliado';
+
+  // Rune circle on the ground beneath the knight
+  let runeOpacity = 0;
+  let runeScale = 0.4;
+  let runeRotation = 0;
+  if (t >= T.RUNE_IN) {
+    const u = clamp01((t - T.RUNE_IN) / 0.55);
+    runeOpacity = u;
+    runeScale = 0.4 + u * 0.6;
+    runeRotation = (t - T.RUNE_IN) * 18; // degrees, slow rotation
+  }
+
+  // Burst shockwaves (2 quick rings)
+  const burstWaves = [];
+  if (t >= T.BURST_AT && t <= T.BURST_END) {
+    for (let i = 0; i < 2; i++) {
+      const start = T.BURST_AT + i * 0.18;
+      const u = (t - start) / 0.55;
+      if (u > 0 && u < 1) {
+        burstWaves.push({
+          id: i,
+          r: 30 + easeOutQuart(u) * 280,
+          op: (1 - u) * 0.85,
+          stroke: 2.2 + (1 - u) * 2,
+        });
+      }
+    }
+  }
+  // Burst shards: short radial lines firing outward at the burst moment
+  const burstShards = [];
+  if (t >= T.BURST_AT && t <= T.BURST_AT + 0.55) {
+    const u = (t - T.BURST_AT) / 0.55;
+    for (const s of shards) {
+      const r0 = 22 + easeOutCubic(u) * s.length;
+      const r1 = r0 + 14 + (1 - u) * 6;
+      burstShards.push({
+        id: s.id,
+        x1: KNIGHT.x + Math.cos(s.angle) * r0,
+        y1: KNIGHT.y + Math.sin(s.angle) * r0,
+        x2: KNIGHT.x + Math.cos(s.angle) * r1,
+        y2: KNIGHT.y + Math.sin(s.angle) * r1,
+        op: (1 - u) * 0.95,
+        w: s.width,
+      });
+    }
+  }
+
+  // Persistent aura ring around card (active once buffed) — breathing
+  let auraOpacity = 0;
+  let auraScale = 0.6;
+  if (t >= T.AURA_FROM) {
+    const u = clamp01((t - T.AURA_FROM) / 0.45);
+    const phase = (t - T.AURA_FROM) * 2.2;
+    auraOpacity = u;
+    auraScale = 1.0 + Math.sin(phase) * 0.04;
+  }
+
+  // Embers — only active during aura phase
+  const liveEmbers = [];
+  if (t >= T.AURA_FROM) {
+    const auraT = t - T.AURA_FROM;
+    for (const e of embers) {
+      const local = ((auraT + e.phase) % e.period) / e.period; // 0..1
+      // fade in/out at extremes
+      let op = 1;
+      if (local < 0.1) op = local / 0.1;
+      else if (local > 0.7) op = (1 - local) / 0.3;
+      // position: spawn at card bottom, rise with drift
+      const x = KNIGHT.x + e.offsetX + Math.sin(local * Math.PI * e.driftFreq) * e.driftX * 0.5 + (local) * (e.driftX * 0.6);
+      const y = (KNIGHT.y + KNIGHT_CARD.h/2 - 6) - local * e.rise;
+      // size grows then shrinks
+      const sz = e.size * (0.4 + Math.sin(local * Math.PI) * 0.8);
+      liveEmbers.push({
+        id: e.id,
+        x, y, size: sz, opacity: op, hueShift: e.hueShift,
+      });
+    }
+  }
+
+  // Sparks — small short-lived flickers near the card edges during aura
+  const liveSparks = [];
+  if (t >= T.AURA_FROM) {
+    const auraT = t - T.AURA_FROM;
+    for (const s of sparks) {
+      const local = ((auraT + s.phase) % s.period) / s.period;
+      if (local < 0.15) {
+        // visible flicker for first 15% of cycle
+        const u = local / 0.15;
+        let op = (1 - u) * 0.9;
+        liveSparks.push({
+          id: s.id,
+          x: s.x, y: s.y,
+          r: s.size * (0.4 + u * 0.7),
+          opacity: op,
+        });
+      }
+    }
+  }
+
+  // ATK number — tween from base to buffed across pump window
+  let knightAtk = ATK_BASE;
+  if (t >= T.ATK_PUMP_FROM && t < T.ATK_PUMP_TO) {
+    const u = (t - T.ATK_PUMP_FROM) / (T.ATK_PUMP_TO - T.ATK_PUMP_FROM);
+    knightAtk = Math.round(ATK_BASE + (ATK_BUFFED - ATK_BASE) * easeOutCubic(u));
+  } else if (t >= T.ATK_PUMP_TO) {
+    knightAtk = ATK_BUFFED;
+  }
+  const knightBuffed = t >= T.BURST_AT;
+
+  // ATK +N popup — floats up from the card after burst
+  let atkPop = null;
+  if (t >= T.ATK_POP_FROM && t < T.ATK_POP_TO) {
+    const u = (t - T.ATK_POP_FROM) / (T.ATK_POP_TO - T.ATK_POP_FROM);
+    const popOp = u < 0.15 ? u/0.15 : (u > 0.7 ? (1 - u)/0.3 : 1);
+    atkPop = {
+      x: KNIGHT.x + 60,
+      y: KNIGHT.y - 60 - u * 35,
+      opacity: clamp01(popOp),
+    };
+  }
+
+  // Screen flash at burst
+  let flashOpacity = 0;
+  if (t >= T.BURST_AT - 0.05 && t < T.BURST_AT + 0.35) {
+    const u = Math.max(0, (t - (T.BURST_AT - 0.05)) / 0.4);
+    flashOpacity = (1 - u) * 0.32;
+  }
+
+  return {
+    scene, chargeGlow,
+    bannerOpacity, bannerLabel,
+    runeOpacity, runeScale, runeRotation,
+    burstWaves, burstShards,
+    auraOpacity, auraScale,
+    liveEmbers, liveSparks,
+    knightAtk, knightBuffed,
+    atkPop, flashOpacity,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Visual primitives
+// ───────────────────────────────────────────────────────────────────────────────
+function Ember({ x, y, size, opacity, hueShift }) {
+  const h = 38 + hueShift;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      <circle r={size * 2.2} fill={`oklch(0.78 0.18 ${h} / 0.18)`} />
+      <circle r={size * 1.4} fill={`oklch(0.85 0.20 ${h} / 0.45)`} />
+      <circle r={size} fill={`oklch(0.94 0.20 ${h} / 0.95)`} />
+      <circle r={size * 0.5} fill="oklch(0.99 0.06 80 / 1)" />
+    </g>
+  );
+}
+
+function Spark({ x, y, r, opacity }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none" stroke={`oklch(0.95 0.20 50 / ${opacity})`} strokeWidth="0.8" />
+      <circle r={r * 0.35} fill={`oklch(0.97 0.16 55 / ${opacity * 0.85})`} />
+    </g>
+  );
+}
+
+function BurstWave({ x, y, r, op, stroke }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.90 0.20 45 / ${op * 0.5})`} strokeWidth={stroke + 4}/>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.94 0.22 42 / ${op})`} strokeWidth={stroke}/>
+    </g>
+  );
+}
+
+function BurstShard({ x1, y1, x2, y2, op, w }) {
+  return (
+    <line x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={`oklch(0.95 0.18 50 / ${op})`} strokeWidth={w}
+          strokeLinecap="round"/>
+  );
+}
+
+// Runic circle on the ground (visual: 2 rings + 8 tick marks + 4 sigils)
+function RuneCircle({ x, y, opacity, scale, rotation }) {
+  const r = 70;
+  const ticks = 12;
+  return (
+    <g transform={`translate(${x} ${y}) scale(${scale}) rotate(${rotation})`} style={{ opacity }}>
+      <ellipse cx="0" cy="14" rx={r * 1.05} ry={r * 0.32}
+               fill="none" stroke="oklch(0.85 0.20 38 / 0.4)" strokeWidth="0.6"/>
+      <ellipse cx="0" cy="14" rx={r * 0.78} ry={r * 0.24}
+               fill="none" stroke="oklch(0.78 0.22 32 / 0.65)" strokeWidth="0.8"/>
+      <ellipse cx="0" cy="14" rx={r * 0.52} ry={r * 0.16}
+               fill="none" stroke="oklch(0.92 0.20 45 / 0.85)" strokeWidth="0.6"/>
+      {/* tick marks around outer ring (perspective: project onto ellipse) */}
+      {Array.from({ length: ticks }).map((_, i) => {
+        const a = (i / ticks) * Math.PI * 2;
+        const rx1 = Math.cos(a) * r * 0.78;
+        const ry1 = Math.sin(a) * r * 0.24 + 14;
+        const rx2 = Math.cos(a) * r * 1.0;
+        const ry2 = Math.sin(a) * r * 0.30 + 14;
+        return (
+          <line key={i} x1={rx1} y1={ry1} x2={rx2} y2={ry2}
+                stroke="oklch(0.88 0.20 38 / 0.75)" strokeWidth="0.6"/>
+        );
+      })}
+      {/* 4 cardinal sigil dots */}
+      {[0, 0.25, 0.5, 0.75].map((p, i) => {
+        const a = p * Math.PI * 2;
+        const sx = Math.cos(a) * r * 0.78;
+        const sy = Math.sin(a) * r * 0.24 + 14;
+        return (
+          <g key={'s' + i}>
+            <circle cx={sx} cy={sy} r="1.6" fill="oklch(0.97 0.20 45)"/>
+            <circle cx={sx} cy={sy} r="3.2" fill="none" stroke="oklch(0.85 0.20 38 / 0.7)" strokeWidth="0.4"/>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Aura overlay around the knight card — the persistent "stronger" indicator.
+//  Multiple concentric soft rings + a breathing radial gradient halo.
+// ───────────────────────────────────────────────────────────────────────────────
+function AuraOverlay({ scene, chargeGlow, auraOpacity, auraScale }) {
+  const x = KNIGHT_CARD.x, y = KNIGHT_CARD.y;
+  // Charging glow size grows with chargeGlow
+  const glowSize = 70 + chargeGlow * 170;
+
+  // Aura body: 2 concentric softly glowing rings, breathing with auraScale
+  return (
+    <>
+      {/* Vertical 'rising power' beam under the card during channeling/buffed */}
+      {(scene === 'charging' || scene === 'buffed') && (
+        <div style={{
+          position: 'absolute',
+          left: x, top: y + 40,
+          width: 6, height: 50,
+          transform: 'translate(-50%, 0)',
+          background: 'linear-gradient(0deg, oklch(0.92 0.20 42 / 0.65), oklch(0.92 0.20 42 / 0))',
+          filter: 'blur(2px)',
+          pointerEvents: 'none',
+          mixBlendMode: 'screen',
+          opacity: scene === 'buffed' ? 0.8 : chargeGlow,
+        }}/>
+      )}
+
+      {/* Radial halo (charge + persistent) */}
+      {chargeGlow > 0.01 && (
+        <div style={{
+          position: 'absolute',
+          left: x, top: y - 6,
+          width: glowSize, height: glowSize,
+          transform: 'translate(-50%, -50%)',
+          background: `radial-gradient(circle,
+            oklch(0.92 0.20 42 / 0.55) 0%,
+            oklch(0.78 0.22 35 / 0.30) 35%,
+            transparent 70%)`,
+          opacity: 0.9 * chargeGlow,
+          mixBlendMode: 'screen',
+          pointerEvents: 'none',
+          borderRadius: '50%',
+        }}/>
+      )}
+
+      {/* Persistent aura — soft outer ring */}
+      {auraOpacity > 0.01 && (
+        <>
+          <div style={{
+            position: 'absolute',
+            left: x, top: y,
+            width: (KNIGHT_CARD.w + 38) * auraScale,
+            height: (KNIGHT_CARD.h + 38) * auraScale,
+            transform: 'translate(-50%, -50%)',
+            border: '1px solid oklch(0.85 0.22 38 / 0.65)',
+            boxShadow:
+              '0 0 24px oklch(0.78 0.22 35 / 0.65), inset 0 0 24px oklch(0.78 0.22 35 / 0.35)',
+            opacity: auraOpacity * 0.9,
+            pointerEvents: 'none',
+          }}/>
+          <div style={{
+            position: 'absolute',
+            left: x, top: y,
+            width: (KNIGHT_CARD.w + 18) * auraScale,
+            height: (KNIGHT_CARD.h + 18) * auraScale,
+            transform: 'translate(-50%, -50%)',
+            border: '1px solid oklch(0.95 0.22 45 / 0.8)',
+            boxShadow:
+              '0 0 14px oklch(0.92 0.22 42 / 0.55)',
+            opacity: auraOpacity,
+            pointerEvents: 'none',
+          }}/>
+        </>
+      )}
+
+      {/* Corner brackets that flare the buff state */}
+      {auraOpacity > 0.01 && (
+        <CornerBrackets x={x} y={y} w={KNIGHT_CARD.w + 38} h={KNIGHT_CARD.h + 38}
+                        opacity={auraOpacity} scale={auraScale}/>
+      )}
+
+      {/* Highlight border directly on the card (state-driven) */}
+      <div style={{
+        position: 'absolute',
+        left: x, top: y,
+        width: KNIGHT_CARD.w + 6,
+        height: KNIGHT_CARD.h + 6,
+        transform: 'translate(-50%, -50%)',
+        border: scene === 'charging'
+          ? '1px solid oklch(0.78 0.22 35 / 0.85)'
+          : scene === 'buffed'
+            ? '1px solid oklch(0.92 0.22 42)'
+            : '1px solid transparent',
+        boxShadow:
+          scene === 'charging'
+            ? '0 0 22px oklch(0.78 0.22 35 / 0.55), 0 0 60px oklch(0.78 0.22 35 / 0.30), inset 0 0 16px oklch(0.78 0.22 35 / 0.18)'
+            : scene === 'buffed'
+              ? '0 0 28px oklch(0.92 0.22 42 / 0.65), 0 0 80px oklch(0.78 0.22 35 / 0.35), inset 0 0 18px oklch(0.78 0.22 35 / 0.25)'
+              : 'none',
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+        pointerEvents: 'none',
+      }}/>
+    </>
+  );
+}
+
+function CornerBrackets({ x, y, w, h, opacity, scale }) {
+  const sw = 14, color = 'oklch(0.94 0.22 42 / 0.95)';
+  const ww = w * scale, hh = h * scale;
+  const left = x - ww/2, top = y - hh/2;
+  const base = {
+    position: 'absolute',
+    width: sw, height: sw,
+    borderColor: color,
+    borderStyle: 'solid',
+    opacity,
+    pointerEvents: 'none',
+    boxShadow: `0 0 10px oklch(0.92 0.22 42 / ${opacity * 0.85})`,
+  };
+  return (
+    <>
+      <div style={{ ...base, left: left - 1,         top: top - 1,           borderWidth: '1px 0 0 1px' }}/>
+      <div style={{ ...base, left: left + ww - sw + 1, top: top - 1,         borderWidth: '1px 1px 0 0' }}/>
+      <div style={{ ...base, left: left - 1,         top: top + hh - sw + 1, borderWidth: '0 0 1px 1px' }}/>
+      <div style={{ ...base, left: left + ww - sw + 1, top: top + hh - sw + 1, borderWidth: '0 1px 1px 0' }}/>
+    </>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  App
+// ───────────────────────────────────────────────────────────────────────────────
+function App() {
+  // Buff state machine: idle | active | deactivating | deactivated
+  // We start ALREADY in 'active' so the user sees the effect immediately
+  // (matches the user's instruction: "once active, stays around the card").
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [buffState, setBuffState] = useState('active');
+  const [deactT, setDeactT] = useState(0); // seconds since deactivation began
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = (now - lastRef.current) / 1000;
+      lastRef.current = now;
+      if (playing && (buffState === 'active' || buffState === 'deactivating')) {
+        setT(prev => prev + dt);
+        if (buffState === 'deactivating') {
+          setDeactT(prev => {
+            const next = prev + dt;
+            if (next >= T.DEACTIVATE_DUR) {
+              setBuffState('deactivated');
+              return T.DEACTIVATE_DUR;
+            }
+            return next;
+          });
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing, buffState]);
+
+  const rawScene = deriveScene(t);
+  // Apply deactivation fade as a global multiplier on aura visuals
+  const deactFade = buffState === 'deactivating'
+    ? 1 - clamp01(deactT / T.DEACTIVATE_DUR)
+    : (buffState === 'deactivated' ? 0 : 1);
+  const scene = {
+    ...rawScene,
+    auraOpacity: rawScene.auraOpacity * deactFade,
+    runeOpacity: rawScene.runeOpacity * deactFade,
+    liveEmbers: rawScene.liveEmbers.map(e => ({ ...e, opacity: e.opacity * deactFade })),
+    liveSparks: rawScene.liveSparks.map(s => ({ ...s, opacity: s.opacity * deactFade })),
+    // Card highlight state: stays buffed while active/deactivating, then idle
+    scene: buffState === 'deactivated' ? 'idle' : rawScene.scene,
+    knightBuffed: rawScene.knightBuffed && buffState !== 'deactivated',
+    knightAtk: buffState === 'deactivated' ? ATK_BASE : rawScene.knightAtk,
+    chargeGlow: rawScene.chargeGlow * deactFade,
+  };
+
+  function activate() {
+    setT(0);
+    setDeactT(0);
+    setBuffState('active');
+  }
+  function deactivate() {
+    if (buffState === 'active') {
+      setDeactT(0);
+      setBuffState('deactivating');
+    }
+  }
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente</div>
+        <div className="half-label pl">Sua Área — Cavaleiro Fortalecido</div>
+
+        {/* Rune circle sits on the GROUND below the knight, behind the card */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none"
+             style={{ zIndex: 1 }}>
+          <RuneCircle x={KNIGHT.x} y={KNIGHT.y + 70}
+                      opacity={scene.runeOpacity} scale={scene.runeScale}
+                      rotation={scene.runeRotation}/>
+        </svg>
+
+        <StaticBoard knightAtk={scene.knightAtk} knightBuffed={scene.knightBuffed} scene={scene.scene}/>
+
+        {/* Aura around the knight (on top of card highlight but below particles) */}
+        <AuraOverlay scene={scene.scene} chargeGlow={scene.chargeGlow}
+                     auraOpacity={scene.auraOpacity} auraScale={scene.auraScale}/>
+
+        {/* Ability banner */}
+        <div className="ability-banner" style={{ opacity: scene.bannerOpacity }}>
+          <div className="ability-sub">Habilidade Definitiva</div>
+          <div className="ability-name">Fúria de Batalha</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>
+            {scene.bannerLabel}
+          </div>
+        </div>
+
+        {/* Particles + burst FX */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {/* Burst shockwaves and shards */}
+          {scene.burstWaves.map(w => (
+            <BurstWave key={'bw' + w.id} x={KNIGHT.x} y={KNIGHT.y}
+                       r={w.r} op={w.op} stroke={w.stroke}/>
+          ))}
+          {scene.burstShards.map(s => (
+            <BurstShard key={'bs' + s.id} {...s}/>
+          ))}
+
+          {/* Persistent embers + sparks */}
+          {scene.liveEmbers.map(e => <Ember key={'e' + e.id} {...e}/>)}
+          {scene.liveSparks.map(s => <Spark key={'sp' + s.id} {...s}/>)}
+        </svg>
+
+        {/* +ATK popup */}
+        {scene.atkPop && (
+          <div className="atk-pop"
+               style={{ left: scene.atkPop.x, top: scene.atkPop.y, opacity: scene.atkPop.opacity }}>
+            +{ATK_BUFFED - ATK_BASE} ATQ
+          </div>
+        )}
+
+        {/* Screen flash */}
+        {scene.flashOpacity > 0 && (
+          <div className="screen-flash" style={{ opacity: scene.flashOpacity }}/>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={activate}>
+          ⚔ Ativar
+        </button>
+        <button className="ctrl-btn" onClick={deactivate}
+                disabled={buffState !== 'active'}
+                style={buffState !== 'active' ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+          ✕ Desativar
+        </button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>
+          {playing ? '❚❚ Pausar' : '▶ Tocar'}
+        </button>
+        <span className="ctrl-label">Estado</span>
+        <span className="ctrl-time" style={{ minWidth: 90 }}>
+          {buffState === 'active' ? (t < T.BURST_AT ? 'ativando…' : 'BUFF ATIVO')
+            : buffState === 'deactivating' ? 'removendo…'
+            : 'sem buff'}
+        </span>
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>

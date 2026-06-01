@@ -13,6 +13,7 @@ func execute(ctx: CardEffectContext) -> void:
 	for i in p.deck.size():
 		indices.append(i)
 
-	GameState.begin_card_pick(p.player_index, indices)
+	GameState.begin_card_pick(p.player_index, indices,
+		"Escolha uma carta do seu baralho para colocar na mão")
 	# O estado de pick é sincronizado pelo GameState imediatamente após o efeito
 	# (via _sync_state chamado pelo caller após execute_pending_effect).

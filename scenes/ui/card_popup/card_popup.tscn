@@ -1,12 +1,13 @@
 [gd_scene format=3 uid="uid://cp0pup0cp0pup"]
 
-[ext_resource type="Script" uid="uid://cp0pup1cp0pu1" path="res://scenes/ui/card_popup/card_popup.gd" id="1_popup"]
+[ext_resource type="Script" uid="uid://cvqth4y2rxe3k" path="res://scenes/ui/card_popup/card_popup.gd" id="1_popup"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="2_538k5"]
 
-[node name="CardPopup" type="CanvasLayer"]
+[node name="CardPopup" type="CanvasLayer" unique_id=1236504139]
 layer = 4
 script = ExtResource("1_popup")
 
-[node name="Overlay" type="Control" parent="."]
+[node name="Overlay" type="Control" parent="." unique_id=1683750193]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,37 +16,37 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Container" type="PanelContainer" parent="Overlay"]
-layout_mode = 0
-offset_left = 780.0
-offset_top = 250.0
-offset_right = 1140.0
-offset_bottom = 830.0
-pivot_offset = Vector2(180, 290)
+[node name="Container" type="PanelContainer" parent="Overlay" unique_id=1993354207]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -175.0
+offset_top = -270.0
+offset_right = 175.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(175, 270)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Overlay/Container"]
+[node name="VBox" type="VBoxContainer" parent="Overlay/Container" unique_id=241394478]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
-[node name="PlayerLabel" type="Label" parent="Overlay/Container/VBoxContainer"]
+[node name="PlayerLabel" type="Label" parent="Overlay/Container/VBox" unique_id=1888838788]
 layout_mode = 2
+theme_override_font_sizes/font_size = 18
 text = "Você jogou"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 22
 
-[node name="CardArt" type="TextureRect" parent="Overlay/Container/VBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Overlay/Container/VBox" unique_id=1005231565]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
+
+[node name="CardView" parent="Overlay/Container/VBox" unique_id=1754183775 instance=ExtResource("2_538k5")]
+custom_minimum_size = Vector2(310, 460)
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 400)
-expand_mode = 5
-stretch_mode = 5
-
-[node name="CardNameLabel" type="Label" parent="Overlay/Container/VBoxContainer"]
-layout_mode = 2
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 26
-
-[node name="TimingLabel" type="Label" parent="Overlay/Container/VBoxContainer"]
-layout_mode = 2
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 18

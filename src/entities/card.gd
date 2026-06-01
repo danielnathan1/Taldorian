@@ -3,15 +3,20 @@ class_name Card
 extends RefCounted
 
 enum TimingType { ACTION, BONUS_ACTION, REACTION }
+enum Rarity { COMMON, RARE, LEGENDARY, MYSTIC }
 
+var id: int = 0
 var card_name: String
 var timing: TimingType = TimingType.ACTION
+var rarity: Rarity = Rarity.COMMON
 var attack_value: int  = 0   # contribuição ao ataque (pode ser negativo)
 var defense_value: int = 0   # contribuição à defesa (pode ser negativo)
 ## IDs de símbolo (`String`, ex.: GameSymbols.FOGO); um ou N por carta.
 var symbols: Array[String] = []
 var is_stealth: bool = false  # carta furtiva não revela herói
+var is_heal: bool = false     # carta temática de cura — dispara VFX de cura ao ser jogada
 var art_key: String = ""
+var description: String = ""
 var effects: Array[CardEffect] = []
 
 
@@ -29,7 +34,7 @@ func get_texture() -> Texture2D:
 	var path := "res://assets/card/%s.png" % art_key
 	if art_key != "" and ResourceLoader.exists(path):
 		return load(path)
-	return load("res://assets/card/place_holder.png")
+	return null
 
 func execute_pre_window_effects(ctx: CardEffectContext) -> void:
 	for effect in effects:
@@ -50,13 +55,17 @@ func values_display() -> String:
 
 static func from_dict(data: Dictionary) -> Card:
 	var c := Card.new()
+	c.id           = data.get("id", 0)
 	c.card_name    = data.get("name", "")
 	c.timing       = TimingType[data.get("timing", "ACTION").to_upper()]
 	c.attack_value = data.get("attack_value", 0)
 	c.defense_value = data.get("defense_value", 0)
 	c.set_symbols(data.get("symbols", []))
 	c.is_stealth   = data.get("stealth", false)
+	c.is_heal      = data.get("is_heal", false)
 	c.art_key      = data.get("art_key", "")
+	c.description  = data.get("description", "")
+	c.rarity       = Rarity[data.get("rarity", "COMMON").to_upper()]
 	for entry in data.get("effects", []):
 		var eff := CardEffectRegistry.create(entry.get("id", ""), entry)
 		if eff != null:

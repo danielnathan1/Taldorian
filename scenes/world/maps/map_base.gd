@@ -40,7 +40,7 @@ func set_tile_walkable(tile: Vector2i, value: bool) -> void:
 	_walkable[tile.x][tile.y] = value
 
 func get_spawn_point() -> Vector2i:
-	return Vector2i(5, 5)
+	return Vector2i(MAP_WIDTH / 2, MAP_HEIGHT / 2)
 
 func get_map_name() -> String:
 	return "unknown"

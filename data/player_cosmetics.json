@@ -1,0 +1,5 @@
+{
+  "player_id": "player_mock",
+  "sleeves":   ["default", "ieldor", "irena", "poppy"],
+  "playmats":  ["default", "catedral", "florest"]
+}

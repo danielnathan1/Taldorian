@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Paper plane -->
+  <path fill="white" d="M2 3l20 9-20 9 3-9z"/>
+  <path fill="#14161c" opacity="0.35" d="M5 12l17-9-9 9z"/>
+</svg>

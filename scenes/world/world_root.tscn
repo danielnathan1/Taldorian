@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://guebkhhtn04v"]
 
-[ext_resource type="Script" uid="uid://b6nkg1sgxuehs" path="res://scenes/world/world_root.gd" id="1_wr"]
-[ext_resource type="PackedScene" path="res://scenes/world/player/player_character.tscn" id="2_pc"]
-[ext_resource type="PackedScene" path="res://scenes/world/ui/hud_world.tscn" id="3_hud"]
+[ext_resource type="Script"      uid="uid://b6nkg1sgxuehs" path="res://scenes/world/world_root.gd"           id="1_wr"]
+[ext_resource type="PackedScene" uid="uid://cpo65f0amcosy" path="res://scenes/world/player/player_character.tscn" id="2_pc"]
+[ext_resource type="PackedScene" uid="uid://worldhud_main" path="res://scenes/ui/worldhud/WorldHUD.tscn"     id="3_hud"]
 
 [node name="WorldRoot" type="Node2D" unique_id=1248736718]
 script = ExtResource("1_wr")
@@ -13,9 +13,4 @@ script = ExtResource("1_wr")
 
 [node name="PlayerCharacter" parent="." unique_id=198676935 instance=ExtResource("2_pc")]
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=639642924]
-layer = 2
-
-[node name="HudWorld" parent="HUD" unique_id=1070561068 instance=ExtResource("3_hud")]
-grow_horizontal = 2
-grow_vertical = 2
+[node name="WorldHUD" parent="." instance=ExtResource("3_hud")]

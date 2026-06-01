@@ -1,6 +1,8 @@
 [gd_scene format=3 uid="uid://co81w0qrcilac"]
 
 [ext_resource type="Script" path="res://scenes/ui/boardv2/pick_card/pick_card.gd" id="1_pkcard"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="2_font_regular"]
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="3_font_black"]
 
 [node name="PickCard" type="Control" unique_id=1909096607]
 visible = false
@@ -22,6 +24,17 @@ offset_bottom = -100.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
+theme_override_constants/separation = 24
+
+[node name="InstructionLabel" type="Label" parent="VBoxContainer" unique_id=1111111101]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "Decida manter essa carta no topo do deck ou mandá-la para o fundo do deck"
+theme_override_fonts/font = ExtResource("2_font_regular")
+theme_override_font_sizes/font_size = 22
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer" unique_id=1123456789]
 layout_mode = 2
@@ -34,6 +47,27 @@ layout_mode = 2
 size_flags_horizontal = 6
 size_flags_vertical = 6
 columns = 8
+
+[node name="PeekButtons" type="HBoxContainer" parent="VBoxContainer" unique_id=2222222202]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+theme_override_constants/separation = 48
+
+[node name="BtnKeep" type="Button" parent="VBoxContainer/PeekButtons" unique_id=3333333303]
+layout_mode = 2
+custom_minimum_size = Vector2(320, 64)
+text = "Manter no Topo"
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnBottom" type="Button" parent="VBoxContainer/PeekButtons" unique_id=4444444404]
+layout_mode = 2
+custom_minimum_size = Vector2(320, 64)
+text = "Mover ao Fundo"
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
 
 [node name="Button" type="Button" parent="." unique_id=283010983]
 layout_mode = 0

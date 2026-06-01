@@ -56,6 +56,7 @@ func _rebuild_cards() -> void:
 		view.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 		cards_row.add_child(view)
 		view.bind(hand[i])
+		view.apply_scale(card_w / 160.0)
 		view.card_clicked.connect(_on_card_clicked.bind(i))
 	_refresh_confirm_button()
 

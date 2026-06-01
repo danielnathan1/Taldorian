@@ -2,3 +2,8 @@
 .godot/
 /android/
 .claude
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.tmp

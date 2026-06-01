@@ -1,5 +1,9 @@
 extends CanvasLayer
 
+## Emitido quando toda a fila de popups terminou de animar.
+## Listeners devem usar CONNECT_ONE_SHOT para não acumular conexões.
+signal popup_finished
+
 @onready var _container   := $Overlay/Container
 @onready var _title_label := $Overlay/Container/VBoxContainer/TitleLabel
 @onready var _hero_art    := $Overlay/Container/VBoxContainer/HeroArt
@@ -18,6 +22,10 @@ func _ready() -> void:
 	_container.scale = Vector2(0.4, 0.4)
 	visible = false
 
+## Retorna true enquanto há popup sendo exibido ou na fila.
+func is_busy() -> bool:
+	return _busy
+
 func show_skill(p_hero: Hero, p_skill_name: String) -> void:
 	_queue.push_back({ "hero": p_hero, "skill_name": p_skill_name })
 	if not _busy:
@@ -27,6 +35,7 @@ func _show_next() -> void:
 	if _queue.is_empty():
 		_busy = false
 		visible = false
+		popup_finished.emit()
 		return
 	_busy = true
 	var entry: Dictionary = _queue.pop_front()

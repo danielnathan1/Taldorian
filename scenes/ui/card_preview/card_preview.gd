@@ -16,10 +16,16 @@ func _on_card_hovered(data: Dictionary) -> void:
 	match data["type"]:
 		"hero":
 			_hero_slot.bind(data["hero"])
+			_hero_slot.apply_scale(2.5)
+			if data.has("atk"):
+				_hero_slot.set_modified_attack(data["atk"])
+			if data.has("def"):
+				_hero_slot.set_modified_defense(data["def"])
 			_hero_slot.visible = true
 			_card_slot.visible = false
 		"card":
 			_card_slot.bind(data["card"])
+			_card_slot.apply_scale(2.0)
 			_card_slot.visible = true
 			_hero_slot.visible = false
 	visible = true

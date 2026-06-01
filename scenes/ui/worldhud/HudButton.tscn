@@ -1,0 +1,96 @@
+[gd_scene format=3 uid="uid://hudbtn_whud"]
+
+[ext_resource type="Script" path="res://scenes/ui/worldhud/hud_button.gd" id="1_hb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+bg_color = Color(0.137255, 0.152941, 0.2, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2275, 0.2549, 0.3137, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_left = 0
+corner_radius_bottom_right = 0
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.137255, 0.152941, 0.2, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5294, 0.8078, 0.8941, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_left = 0
+corner_radius_bottom_right = 0
+shadow_color = Color(0.5294, 0.8078, 0.8941, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+bg_color = Color(0.1, 0.12, 0.16, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5294, 0.8078, 0.8941, 1)
+
+[node name="HudButton" type="Button"]
+custom_minimum_size = Vector2(50, 50)
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/focus = SubResource("StyleBoxFlat_btn_normal")
+theme_override_colors/font_color = Color(0.7176, 0.7137, 0.6784, 1)
+script = ExtResource("1_hb")
+
+[node name="Icon" type="TextureRect" parent="."]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 12.0
+offset_bottom = 12.0
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Badge" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -18.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 14.0
+z_index = 2
+theme_override_colors/font_color = Color(0.0784, 0.0863, 0.1098, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "0"
+
+[node name="Tooltip" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -40.0
+offset_top = -26.0
+offset_right = 40.0
+offset_bottom = -4.0
+z_index = 10
+theme_override_colors/font_color = Color(0.9059, 0.8902, 0.8549, 1)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 1
+text = ""

@@ -9,10 +9,17 @@ extends Control
 @onready var _confirm_button := $VBoxContainer/Confirm
 
 const SYMBOL_LABELS := {
-	"fogo":  "🔥 Fogo",
-	"terra": "🌿 Terra",
-	"agua":  "💧 Água",
-	"ar":    "💨 Ar",
+	"fogo":  "Fogo",
+	"terra": "Terra",
+	"agua":  "Água",
+	"ar":    "Ar",
+}
+
+const SYMBOL_ICONS := {
+	"fogo":  "res://assets/icons/elements/fire.png",
+	"terra": "res://assets/icons/elements/earth.png",
+	"agua":  "res://assets/icons/elements/water.png",
+	"ar":    "res://assets/icons/elements/wind.png",
 }
 
 var _required_count: int     = 2
@@ -42,7 +49,10 @@ func _rebuild() -> void:
 	for sym_id in GameSymbols.ALL:
 		var btn := Button.new()
 		btn.text = SYMBOL_LABELS.get(sym_id, sym_id.capitalize())
-		btn.custom_minimum_size = Vector2(160, 60)
+		btn.icon = load(SYMBOL_ICONS.get(sym_id, ""))
+		btn.expand_icon = true
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.custom_minimum_size = Vector2(160, 64)
 		btn.pressed.connect(_on_symbol_pressed.bind(sym_id))
 		_buttons_row.add_child(btn)
 
@@ -66,8 +76,11 @@ func _refresh_selection_display() -> void:
 	for i in _selected.size():
 		var sym_id: String = _selected[i]
 		var chip := Button.new()
-		chip.text = SYMBOL_LABELS.get(sym_id, sym_id) + "  ✕"
-		chip.custom_minimum_size = Vector2(140, 44)
+		chip.text = "  " + SYMBOL_LABELS.get(sym_id, sym_id) + "  ✕"
+		chip.icon = load(SYMBOL_ICONS.get(sym_id, ""))
+		chip.expand_icon = true
+		chip.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		chip.custom_minimum_size = Vector2(160, 44)
 		chip.pressed.connect(_on_chip_removed.bind(i))
 		_selection_row.add_child(chip)
 

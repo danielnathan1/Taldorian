@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Bottom card -->
+  <rect x="7" y="12" width="13" height="10" rx="1.5" fill="white" opacity="0.5"/>
+  <!-- Middle card -->
+  <rect x="5" y="8" width="13" height="10" rx="1.5" fill="white" opacity="0.75"/>
+  <!-- Top card -->
+  <rect x="3" y="4" width="13" height="10" rx="1.5" fill="white"/>
+  <!-- Card detail lines -->
+  <rect x="5" y="7" width="9" height="1" rx="0.5" fill="#14161c" opacity="0.4"/>
+  <rect x="5" y="9" width="6" height="1" rx="0.5" fill="#14161c" opacity="0.4"/>
+</svg>

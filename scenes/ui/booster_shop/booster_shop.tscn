@@ -1,0 +1,602 @@
+[gd_scene format=3 uid="uid://dnrp20entcff7"]
+
+[ext_resource type="Script" uid="uid://dm2227rw1or35" path="res://scenes/ui/booster_shop/booster_shop.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://s4qbculee5f" path="res://scenes/ui/card_preview/PreviewLayer.tscn" id="2_preview"]
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="3_font_black"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="4_font_reg"]
+
+[sub_resource type="Gradient" id="Gradient_bg"]
+colors = PackedColorArray(0.047, 0.063, 0.133, 1, 0.018, 0.025, 0.058, 1)
+
+[sub_resource type="GradientTexture2D" id="GradTex_bg"]
+gradient = SubResource("Gradient_bg")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.45)
+fill_to = Vector2(1.1, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="Style_Header"]
+bg_color = Color(0.05, 0.07, 0.14, 0.85)
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="Style_GoldPurse"]
+bg_color = Color(0.1, 0.08, 0.03, 0.75)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.4)
+
+[sub_resource type="StyleBoxFlat" id="Style_CollPane"]
+bg_color = Color(0.05, 0.06, 0.12, 0.35)
+border_width_right = 1
+border_color = Color(0.788, 0.627, 0.298, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="Style_QtyBlock"]
+bg_color = Color(0.06, 0.08, 0.18, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="Style_QtyDisplay"]
+bg_color = Color(0.04, 0.05, 0.12, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.4)
+
+[sub_resource type="StyleBoxFlat" id="Style_CounterBar"]
+bg_color = Color(0.04, 0.05, 0.1, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.2)
+
+[node name="BoosterShop" type="Control" unique_id=82581152]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BackgroundBase" type="ColorRect" parent="." unique_id=303017564]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.018, 0.025, 0.058, 1)
+
+[node name="AtmosphereBg" type="TextureRect" parent="." unique_id=501481406]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradTex_bg")
+stretch_mode = 1
+
+[node name="PreviewLayer" parent="." unique_id=2029606404 instance=ExtResource("2_preview")]
+
+[node name="ShopView" type="Control" parent="." unique_id=718066038]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopHeader" type="PanelContainer" parent="ShopView" unique_id=279347747]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 64.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("Style_Header")
+
+[node name="HeaderMargin" type="MarginContainer" parent="ShopView/TopHeader" unique_id=1818301749]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+
+[node name="HeaderHBox" type="HBoxContainer" parent="ShopView/TopHeader/HeaderMargin" unique_id=1551669897]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BackButton" type="Button" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=651719290]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "←  Voltar ao Lobby"
+
+[node name="HeaderSep" type="ColorRect" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=42354126]
+custom_minimum_size = Vector2(1, 28)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.788, 0.627, 0.298, 0.2)
+
+[node name="TitleBlock" type="VBoxContainer" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=175339295]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="TitleEyebrow" type="Label" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/TitleBlock" unique_id=1705778440]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 10
+text = "MERCADO"
+
+[node name="TitleLabel" type="Label" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/TitleBlock" unique_id=1009611741]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "Loja de Boosters"
+
+[node name="HeaderSpacer" type="Control" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=1977021504]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GoldPurse" type="PanelContainer" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=1707630231]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("Style_GoldPurse")
+
+[node name="GoldMargin" type="MarginContainer" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/GoldPurse" unique_id=1679979959]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="GoldVBox" type="VBoxContainer" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/GoldPurse/GoldMargin" unique_id=1384752368]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="GoldEyebrow" type="Label" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/GoldPurse/GoldMargin/GoldVBox" unique_id=511564350]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 9
+text = "OURO"
+horizontal_alignment = 1
+
+[node name="GoldLabel" type="Label" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox/GoldPurse/GoldMargin/GoldVBox" unique_id=1157441590]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "0"
+horizontal_alignment = 1
+
+[node name="BodyHBox" type="HBoxContainer" parent="ShopView" unique_id=578709686]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 64.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="CollectionsPane" type="PanelContainer" parent="ShopView/BodyHBox" unique_id=650111167]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("Style_CollPane")
+
+[node name="CollectionsScroll" type="ScrollContainer" parent="ShopView/BodyHBox/CollectionsPane" unique_id=1388508543]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CollectionsMargin" type="MarginContainer" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll" unique_id=115868434]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 32
+
+[node name="CollectionsVBox" type="VBoxContainer" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin" unique_id=1066022604]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CollEyebrow" type="Label" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox" unique_id=587023502]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 10
+text = "CAPÍTULO I"
+
+[node name="CollTitle" type="Label" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox" unique_id=2100913645]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 26
+text = "Escolha uma
+Coleção"
+
+[node name="CollSub" type="Label" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox" unique_id=666919244]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "Cada pacote contém 8 cartas. Raridades sorteadas por peso."
+autowrap_mode = 3
+
+[node name="Ornament" type="HBoxContainer" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox" unique_id=2120152391]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="OrnLine1" type="ColorRect" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox/Ornament" unique_id=1990730266]
+custom_minimum_size = Vector2(56, 1)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.549, 0.431, 0.192, 0.6)
+
+[node name="OrnDiamond" type="ColorRect" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox/Ornament" unique_id=1934263611]
+custom_minimum_size = Vector2(7, 7)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.788, 0.627, 0.298, 1)
+
+[node name="OrnLine2" type="ColorRect" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox/Ornament" unique_id=1549280471]
+custom_minimum_size = Vector2(56, 1)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.549, 0.431, 0.192, 0.6)
+
+[node name="CollectionsList" type="VBoxContainer" parent="ShopView/BodyHBox/CollectionsPane/CollectionsScroll/CollectionsMargin/CollectionsVBox" unique_id=955881721]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PurchasePane" type="Control" parent="ShopView/BodyHBox" unique_id=1586364380]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PurchaseMargin" type="MarginContainer" parent="ShopView/BodyHBox/PurchasePane" unique_id=1548336443]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 32
+
+[node name="PurchaseVBox" type="VBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin" unique_id=839166427]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="PurchaseEyebrow" type="Label" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=1902290460]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 10
+text = "COLEÇÃO INICIAL · BOOSTER"
+horizontal_alignment = 1
+
+[node name="PackDisplayWrap" type="CenterContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=1896448569]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+
+[node name="PackInfoRow" type="HBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=1559834913]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="QtyBlock" type="PanelContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=1448832259]
+layout_mode = 2
+theme_override_styles/panel = SubResource("Style_QtyBlock")
+
+[node name="QtyMargin" type="MarginContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock" unique_id=1937742154]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="QtyVBox" type="VBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin" unique_id=900322493]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="QtyEyebrow" type="Label" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox" unique_id=55720286]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 10
+text = "QUANTIDADE DE PACOTES"
+horizontal_alignment = 1
+
+[node name="QtyStepper" type="HBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox" unique_id=1167330980]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="MinusBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/QtyStepper" unique_id=1808695929]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "−"
+
+[node name="QtyDisplay" type="PanelContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/QtyStepper" unique_id=842360272]
+custom_minimum_size = Vector2(80, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Style_QtyDisplay")
+
+[node name="QtyLabel" type="Label" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/QtyStepper/QtyDisplay" unique_id=836803725]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 24
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlusBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/QtyStepper" unique_id=1786312867]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "+"
+
+[node name="MaxBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/QtyStepper" unique_id=599634502]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "MÁX"
+
+[node name="TotalRow" type="HBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox" unique_id=1143677664]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TotalText" type="Label" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/TotalRow" unique_id=1417456154]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "TOTAL"
+
+[node name="TotalLabel" type="Label" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/QtyBlock/QtyMargin/QtyVBox/TotalRow" unique_id=484889769]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "100"
+
+[node name="BuyBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=967594180]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.84, 0.62, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 13
+text = "⚔  Abrir Pacote"
+
+[node name="OpeningView" type="Control" parent="." unique_id=1157282172]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OpeningVeil" type="ColorRect" parent="OpeningView" unique_id=391840918]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.03, 0.08, 0.97)
+
+[node name="OpeningGlow" type="ColorRect" parent="OpeningView" unique_id=1452184616]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -350.0
+offset_right = 350.0
+offset_bottom = 350.0
+mouse_filter = 2
+color = Color(0.788, 0.627, 0.298, 0.07)
+
+[node name="CounterBar" type="PanelContainer" parent="OpeningView" unique_id=342730304]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 24.0
+offset_right = 200.0
+offset_bottom = 78.0
+theme_override_styles/panel = SubResource("Style_CounterBar")
+
+[node name="CounterMargin" type="MarginContainer" parent="OpeningView/CounterBar" unique_id=1742749087]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 8
+
+[node name="CounterHBox" type="HBoxContainer" parent="OpeningView/CounterBar/CounterMargin" unique_id=324802026]
+layout_mode = 2
+theme_override_constants/separation = 22
+alignment = 1
+
+[node name="PackInfoVBox" type="VBoxContainer" parent="OpeningView/CounterBar/CounterMargin/CounterHBox" unique_id=1048779120]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PackEyebrow" type="Label" parent="OpeningView/CounterBar/CounterMargin/CounterHBox/PackInfoVBox" unique_id=1657634247]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 9
+text = "PACOTE"
+
+[node name="PackCounterLabel" type="Label" parent="OpeningView/CounterBar/CounterMargin/CounterHBox/PackInfoVBox" unique_id=534501875]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 18
+text = "1 / 1"
+
+[node name="DotsRow" type="HBoxContainer" parent="OpeningView/CounterBar/CounterMargin/CounterHBox" unique_id=1859099251]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="ExitButton" type="Button" parent="OpeningView" unique_id=267155795]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -126.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "✕  Sair"
+
+[node name="PackRoot" type="Control" parent="OpeningView" unique_id=1807523416]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 280)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -140.0
+offset_right = 100.0
+offset_bottom = 140.0
+pivot_offset = Vector2(100, 140)
+
+[node name="CardStage" type="Control" parent="OpeningView" unique_id=613500511]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HintLabel" type="Label" parent="OpeningView" unique_id=647475251]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = 175.0
+offset_right = 180.0
+offset_bottom = 200.0
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "⟡ Clique para revelar ⟡"
+horizontal_alignment = 1
+
+[node name="RailScroll" type="ScrollContainer" parent="OpeningView" unique_id=189961532]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -126.0
+offset_right = -24.0
+offset_bottom = -24.0
+vertical_scroll_mode = 0
+
+[node name="RevealRail" type="HBoxContainer" parent="OpeningView/RailScroll" unique_id=1651379914]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="FinishRow" type="Control" parent="OpeningView" unique_id=216738267]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+offset_bottom = -24.0
+
+[node name="FinishHBox" type="HBoxContainer" parent="OpeningView/FinishRow" unique_id=2116905541]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="BackToShopBtn" type="Button" parent="OpeningView/FinishRow/FinishHBox" unique_id=1491007759]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "← Voltar à Loja"
+
+[node name="NextPackBtn" type="Button" parent="OpeningView/FinishRow/FinishHBox" unique_id=1851254967]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.84, 0.62, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 13
+text = "Próximo Pacote →"

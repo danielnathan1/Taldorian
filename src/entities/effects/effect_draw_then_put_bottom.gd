@@ -18,4 +18,5 @@ func execute(ctx: CardEffectContext) -> void:
 	for i in p.hand.size():
 		indices.append(i)
 
-	GameState.begin_hand_pick(p.player_index, indices)
+	GameState.begin_hand_pick(p.player_index, indices, 0,
+		"Escolha uma carta da mão para colocar no fundo do baralho")

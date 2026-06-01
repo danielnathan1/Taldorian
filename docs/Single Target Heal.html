@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCG — Toque Curativo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050a;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage-wrap {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative;
+    overflow: hidden;
+    background: #0a0a12;
+  }
+
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.28 0.10 15 / 0.22) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.09 0.05 12) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.32 0.13 150 / 0.18) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.09 0.05 220) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.73 0.13 78 / 0.25) 20%,
+      oklch(0.73 0.13 78 / 0.50) 50%,
+      oklch(0.73 0.13 78 / 0.25) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.025; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.65 0.18 15); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.70 0.15 150); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: filter 0.4s, transform 0.4s, border-color 0.3s;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.14 200 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 220 / 0.60);
+    --slot-label-color: oklch(0.65 0.14 200);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.20 15 / 0.40);
+    --slot-bg:          oklch(0.10 0.04 15 / 0.55);
+    --slot-label-color: oklch(0.60 0.18 15);
+  }
+  /* dim non-target during channel/travel */
+  .slot.dimmed .slot-card { filter: brightness(0.65) saturate(0.7); }
+
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 268);
+  }
+  .hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, oklch(0.55 0.22 150), oklch(0.78 0.18 145));
+  }
+  .hp-fill.enemy {
+    background: linear-gradient(90deg, oklch(0.55 0.22 15), oklch(0.72 0.18 15));
+  }
+  .hp-fill.low {
+    background: linear-gradient(90deg, oklch(0.55 0.22 30), oklch(0.70 0.20 50));
+  }
+
+  /* Target highlight ring */
+  .target-ring {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    border: 1px solid oklch(0.85 0.18 145);
+    box-shadow:
+      0 0 24px oklch(0.85 0.18 145 / 0.55),
+      0 0 60px oklch(0.85 0.18 145 / 0.30),
+      inset 0 0 18px oklch(0.85 0.18 145 / 0.18);
+    opacity: 0;
+    transition: opacity 0.35s;
+  }
+  .target-corner {
+    position: absolute; width: 12px; height: 12px;
+    border: 1px solid oklch(0.92 0.18 142);
+  }
+  .target-corner.tl { top: -1px; left: -1px;       border-right: none; border-bottom: none; }
+  .target-corner.tr { top: -1px; right: -1px;      border-left: none;  border-bottom: none; }
+  .target-corner.bl { bottom: -1px; left: -1px;    border-right: none; border-top: none; }
+  .target-corner.br { bottom: -1px; right: -1px;   border-left: none;  border-top: none; }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: calc(50% - 100px);
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; z-index: 50;
+    opacity: 0;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 26px; font-weight: 700;
+    color: oklch(0.94 0.14 140);
+    letter-spacing: 0.20em; text-transform: uppercase;
+    text-shadow:
+      0 0 18px oklch(0.82 0.18 145 / 0.85),
+      0 2px 0 oklch(0.20 0.06 160 / 0.7);
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.45em; text-transform: uppercase;
+    color: oklch(0.78 0.12 145); opacity: 0.85;
+  }
+  .ability-rule {
+    width: 240px; height: 1px;
+    background: linear-gradient(90deg,
+      transparent, oklch(0.82 0.18 145 / 0.7), transparent);
+    margin-top: 4px;
+  }
+
+  .fx-layer {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* ── Heal popup ── */
+  .heal-pop {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: 700;
+    color: oklch(0.96 0.16 145);
+    text-shadow:
+      0 0 16px oklch(0.85 0.20 145),
+      0 0 30px oklch(0.85 0.20 145 / 0.6),
+      0 2px 0 oklch(0.20 0.06 160);
+    pointer-events: none;
+    letter-spacing: 0.05em;
+  }
+  .heal-pop .small {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    opacity: 0.85;
+    margin-top: -2px;
+    display: block;
+  }
+
+  .screen-flash {
+    position: absolute; inset: 0;
+    background: oklch(0.95 0.12 145);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: oklch(0.10 0.03 268 / 0.85);
+    border: 1px solid oklch(0.73 0.13 78 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 268 / 0.9);
+    color: oklch(0.82 0.16 80);
+    border: 1px solid oklch(0.73 0.13 78 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 268 / 0.95);
+    border-color: oklch(0.73 0.13 78 / 0.8);
+    box-shadow: 0 0 14px oklch(0.73 0.13 78 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.30 0.13 150 / 0.9), oklch(0.18 0.08 150 / 0.9));
+    color: oklch(0.95 0.12 145);
+    border-color: oklch(0.65 0.20 145 / 0.7);
+  }
+  .ctrl-btn.primary:hover {
+    box-shadow: 0 0 18px oklch(0.65 0.20 145 / 0.5);
+  }
+  .ctrl-scrub {
+    width: 220px; accent-color: oklch(0.78 0.18 145);
+  }
+  .ctrl-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: oklch(0.65 0.10 78);
+  }
+  .ctrl-time {
+    color: oklch(0.82 0.16 80);
+    font-size: 10px;
+    min-width: 48px;
+  }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage" data-screen-label="Single Target Heal">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Geometry — board layout matches Holy Heal / Arrow Rain
+// ─────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+
+// Origin point: middle of board (slightly above center line, where energy gathers)
+const ORIGIN = { x: 640, y: 360 };
+
+// Target: wounded Cavaleiro on player side
+const TARGET = {
+  x: 360, y: 540,
+  w: 70, h: 98,
+  key: 'cavaleiro',
+  label: 'Cavaleiro',
+  start: 28,
+  end: 88,
+  isActive: false,
+};
+const HEAL_AMOUNT = TARGET.end - TARGET.start;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Timeline (seconds)
+// ─────────────────────────────────────────────────────────────────────────────
+const T = {
+  // Energy gathers at board center
+  GATHER_START   : 0.0,
+  GATHER_END     : 0.75,
+  // Banner appears
+  BANNER_IN      : 0.15,
+  BANNER_OUT     : 3.6,
+  // Target gets highlighted as soon as we lock on
+  TARGET_LOCK    : 0.30,
+  TARGET_UNLOCK  : 3.6,
+  // Orb launches and flies to target
+  LAUNCH         : 0.75,
+  IMPACT         : 1.50,
+  // Particle burst window
+  BURST_START    : 1.50,
+  BURST_END      : 2.40,
+  // HP fill window
+  HP_FILL_START  : 1.50,
+  HP_FILL_END    : 2.10,
+  // Heal popup
+  POP_START      : 1.55,
+  POP_END        : 2.80,
+  // Hold + settle
+  HOLD_END       : 4.20,
+};
+
+const NUM_BURST_PARTICLES = 42;
+const NUM_TRAIL_SAMPLES   = 14;
+const NUM_GATHER_PARTICLES = 14;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Utilities
+// ─────────────────────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function () {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const clamp01      = v => Math.max(0, Math.min(1, v));
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+const easeInQuad   = t => t * t;
+const easeInCubic  = t => t * t * t;
+const easeInOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+
+function bezier(p0, p1, p2, t) {
+  const u = 1 - t;
+  return {
+    x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+    y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y,
+  };
+}
+
+// Quadratic bezier control point for orb flight — arc slightly upward then dives
+const FLIGHT_CTRL = {
+  x: (ORIGIN.x + TARGET.x) / 2 - 40,
+  y: Math.min(ORIGIN.y, TARGET.y) - 80,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Pre-compute burst particles (radial spray around target)
+// ─────────────────────────────────────────────────────────────────────────────
+const burstParticles = (() => {
+  const rng = mulberry32(7);
+  const list = [];
+  for (let i = 0; i < NUM_BURST_PARTICLES; i++) {
+    const angle = (i / NUM_BURST_PARTICLES) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+    // bias upward & sideways
+    const speed = 60 + rng() * 110;
+    const life  = 0.55 + rng() * 0.45;
+    const size  = 1.5 + rng() * 2.8;
+    const hueShift = (rng() - 0.5) * 18;
+    const delay = rng() * 0.08;
+    const gravity = 35 + rng() * 35; // small fall after burst
+    list.push({ id: i, angle, speed, life, size, hueShift, delay, gravity });
+  }
+  return list;
+})();
+
+// Gather particles spiral into ORIGIN
+const gatherParticles = (() => {
+  const rng = mulberry32(31);
+  const list = [];
+  for (let i = 0; i < NUM_GATHER_PARTICLES; i++) {
+    const startAngle = (i / NUM_GATHER_PARTICLES) * Math.PI * 2 + rng() * 0.6;
+    const startRad   = 70 + rng() * 90;
+    const delay      = rng() * 0.25;
+    const size       = 1.2 + rng() * 1.8;
+    const hueShift   = (rng() - 0.5) * 18;
+    list.push({ id: i, startAngle, startRad, delay, size, hueShift });
+  }
+  return list;
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Static board
+// ─────────────────────────────────────────────────────────────────────────────
+function StaticBoard({ targetHp, isTargetLocked }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: 60, enemy: true },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: 80, enemy: true },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: 45, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: 70, enemy: true },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std',    label: 'Cavaleiro', hp: targetHp, isCard: 'cavaleiro', isTarget: true },
+    { x: 450, y: 540, size: 'std',    label: 'Arqueiro',  hp: 78,        isCard: 'arqueiro'  },
+    { x: 540, y: 540, size: 'std',    label: 'Maga',      hp: 62,        isCard: 'maga'      },
+    { x: 720, y: 540, size: 'active', label: 'Sacerdote', hp: 55,        isCard: 'healer', isHealer: true },
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+
+  return (
+    <>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} dimmed={isTargetLocked} />)}
+      {player.map((s, i) => (
+        <Slot key={'p'+i} theme="player" {...s}
+              dimmed={isTargetLocked && !s.isTarget} />
+      ))}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, hp, enemy, dimmed, isTarget, isHealer }) {
+  const cls = `slot size-${size} theme-${theme}${dimmed ? ' dimmed' : ''}`;
+  const lowHp = hp !== undefined && hp < 35 && !enemy;
+  return (
+    <div className={cls} style={{ left: x, top: y }}>
+      <div className="slot-card" data-card={label}>
+        <CardArt theme={theme} size={size} label={label} />
+        {hp !== undefined && (
+          <div className="hp-bar">
+            <div
+              className={`hp-fill ${enemy ? 'enemy' : (lowHp ? 'low' : '')}`}
+              style={{ width: `${hp}%`, transition: 'width 0.05s linear' }}
+            />
+          </div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player'
+    ? 'oklch(0.55 0.14 200 / 0.55)'
+    : 'oklch(0.55 0.20 15 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+  const cx = w / 2;
+
+  if (label === 'Sacerdote') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.65 0.20 145 / 0.55)" strokeWidth="0.6"/>
+        <circle cx={cx} cy={h/2 - 18} r="11" stroke="oklch(0.85 0.18 145 / 0.85)" strokeWidth="0.7" fill="none"/>
+        <line x1={cx} y1={h/2 - 8} x2={cx} y2={h/2 + 28}
+              stroke="oklch(0.78 0.10 140 / 0.95)" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d={`M ${cx} ${h/2 - 12} l 3 4 l -3 5 l -3 -5 z`}
+              fill="oklch(0.88 0.18 145 / 0.95)"
+              stroke="oklch(0.55 0.20 150 / 0.85)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Cavaleiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <line x1={w/2} y1={h/2 - 22} x2={w/2} y2={h/2 + 18}
+              stroke="oklch(0.80 0.04 240 / 0.95)" strokeWidth="1.4" strokeLinecap="round"/>
+        <line x1={w/2 - 8} y1={h/2 + 18} x2={w/2 + 8} y2={h/2 + 18}
+              stroke="oklch(0.65 0.10 60 / 0.9)" strokeWidth="1.6"/>
+        <path d={`M ${w/2 - 14} ${h/2 - 6} L ${w/2 + 14} ${h/2 - 6} L ${w/2 + 12} ${h/2 + 8} L ${w/2} ${h/2 + 16} L ${w/2 - 12} ${h/2 + 8} Z`}
+              stroke="oklch(0.65 0.14 200 / 0.75)" strokeWidth="0.5" fill="none"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2 - 14} ${h/2 - 18} Q ${w/2 - 26} ${h/2}, ${w/2 - 14} ${h/2 + 18}`}
+              stroke="oklch(0.82 0.16 80 / 0.85)" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+        <line x1={w/2 - 6} y1={h/2} x2={w/2 + 20} y2={h/2}
+              stroke="oklch(0.85 0.10 78 / 0.95)" strokeWidth="1.0"/>
+        <path d={`M ${w/2 + 20} ${h/2} l -3 -2 l 0 4 z`} fill="oklch(0.85 0.10 78)"/>
+      </svg>
+    );
+  }
+
+  if (label === 'Maga') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2} ${h/2 - 22} L ${w/2 + 12} ${h/2 - 4} L ${w/2 - 12} ${h/2 - 4} Z`}
+              stroke="oklch(0.65 0.18 290 / 0.85)" strokeWidth="0.6" fill="none"/>
+        <path d={`M ${w/2} ${h/2 + 6} l 3 6 l 6 1 l -4.5 4 l 1 6 l -5.5 -3 l -5.5 3 l 1 -6 l -4.5 -4 l 6 -1 z`}
+              fill="none" stroke="oklch(0.85 0.16 290 / 0.85)" strokeWidth="0.5"/>
+      </svg>
+    );
+  }
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Animation derivation
+// ─────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // Gather progress 0..1
+  let gather = 0;
+  if (t < T.GATHER_START) gather = 0;
+  else if (t < T.GATHER_END) gather = easeInQuad((t - T.GATHER_START) / (T.GATHER_END - T.GATHER_START));
+  else if (t < T.LAUNCH) gather = 1;
+  else gather = 0;
+
+  // Orb position (if in flight)
+  let orb = null;
+  if (t >= T.LAUNCH && t < T.IMPACT) {
+    const u = (t - T.LAUNCH) / (T.IMPACT - T.LAUNCH);
+    // ease in (accelerate) — feels like the orb dives at the target
+    const eased = easeInCubic(u) * 0.55 + u * 0.45;
+    const pt = bezier(ORIGIN, FLIGHT_CTRL, TARGET, eased);
+    orb = {
+      x: pt.x, y: pt.y,
+      // tangent for trail orientation
+      progress: eased,
+      // a touch larger as it travels
+      size: 8 + eased * 4,
+      glow: 1,
+    };
+  } else if (t >= T.GATHER_START && t < T.LAUNCH) {
+    // anchored at origin, pulsing
+    const u = (t - T.GATHER_START) / (T.LAUNCH - T.GATHER_START);
+    orb = {
+      x: ORIGIN.x, y: ORIGIN.y,
+      progress: 0,
+      size: 1 + gather * 9 + Math.sin(t * 14) * 0.6 * gather,
+      glow: gather,
+      anchored: true,
+    };
+  }
+
+  // Trail samples — sequence of past orb positions
+  let trail = [];
+  if (t >= T.LAUNCH && t < T.IMPACT + 0.2) {
+    for (let i = 0; i < NUM_TRAIL_SAMPLES; i++) {
+      const back = (i / NUM_TRAIL_SAMPLES) * 0.30; // 300ms tail
+      const ts = t - back;
+      if (ts < T.LAUNCH) continue;
+      if (ts >= T.IMPACT) continue;
+      const u = (ts - T.LAUNCH) / (T.IMPACT - T.LAUNCH);
+      const eased = easeInCubic(u) * 0.55 + u * 0.45;
+      const pt = bezier(ORIGIN, FLIGHT_CTRL, TARGET, eased);
+      trail.push({
+        id: i,
+        x: pt.x, y: pt.y,
+        opacity: (1 - i / NUM_TRAIL_SAMPLES) * 0.85,
+        size: 6 * (1 - i / NUM_TRAIL_SAMPLES) + 1.5,
+      });
+    }
+  }
+
+  // Burst particles
+  const burst = [];
+  if (t >= T.BURST_START && t < T.BURST_END + 0.2) {
+    for (const p of burstParticles) {
+      const local = (t - T.BURST_START - p.delay) / p.life;
+      if (local <= 0 || local >= 1) continue;
+      // distance traveled with easeOutCubic
+      const dist = easeOutCubic(local) * p.speed;
+      const x = TARGET.x + Math.cos(p.angle) * dist;
+      const y = TARGET.y + Math.sin(p.angle) * dist + easeInQuad(local) * p.gravity;
+      const opacity = local < 0.1 ? local / 0.1 : (1 - local) * (1 - local);
+      const size = p.size * (1 - local * 0.4);
+      burst.push({ id: p.id, x, y, size, opacity, hueShift: p.hueShift });
+    }
+  }
+
+  // Impact flash (sharp at IMPACT)
+  let impactFlash = 0;
+  if (t >= T.IMPACT && t < T.IMPACT + 0.45) {
+    const u = (t - T.IMPACT) / 0.45;
+    impactFlash = (1 - u) * (1 - u);
+  }
+
+  // Screen flash
+  let screenFlash = 0;
+  if (t >= T.IMPACT - 0.02 && t < T.IMPACT + 0.35) {
+    const u = (t - (T.IMPACT - 0.02)) / 0.37;
+    screenFlash = (1 - u) * 0.30;
+  }
+
+  // Shockwave ring at target
+  const rings = [];
+  if (t >= T.IMPACT && t < T.IMPACT + 0.8) {
+    for (let i = 0; i < 2; i++) {
+      const start = T.IMPACT + i * 0.12;
+      const local = (t - start) / 0.60;
+      if (local <= 0 || local >= 1) continue;
+      rings.push({
+        id: i,
+        r: 16 + easeOutQuart(local) * 110,
+        opacity: (1 - local) * 0.9,
+        stroke: 1.4 + (1 - local) * 1.4,
+      });
+    }
+  }
+
+  // Floating heal crosses around target after impact
+  const crosses = [];
+  if (t >= T.IMPACT && t < T.IMPACT + 1.6) {
+    const since = t - T.IMPACT;
+    for (let i = 0; i < 4; i++) {
+      const phase = since * 1.2 + i * (Math.PI * 2 / 4);
+      const drift = since * 28;
+      const cx = TARGET.x + Math.cos(phase) * 24;
+      const cy = TARGET.y - 8 - drift + Math.sin(phase) * 5;
+      const op = clamp01(1 - since / 1.5) * 0.85;
+      const sc = 0.5 + Math.min(since * 2.5, 1) * 0.6;
+      crosses.push({ id: i, x: cx, y: cy, scale: sc, opacity: op });
+    }
+  }
+
+  // HP fill
+  let targetHp;
+  if (t < T.HP_FILL_START) targetHp = TARGET.start;
+  else if (t >= T.HP_FILL_END) targetHp = TARGET.end;
+  else {
+    const u = (t - T.HP_FILL_START) / (T.HP_FILL_END - T.HP_FILL_START);
+    targetHp = TARGET.start + (TARGET.end - TARGET.start) * easeOutCubic(u);
+  }
+
+  // Heal popup
+  let popup = null;
+  if (t >= T.POP_START && t < T.POP_END) {
+    const u = (t - T.POP_START) / (T.POP_END - T.POP_START);
+    const driftUp = easeOutCubic(u) * 56;
+    let op = 1;
+    if (u < 0.12) op = u / 0.12;
+    else if (u > 0.70) op = (1 - u) / 0.30;
+    const scale = 0.5 + easeOutQuart(Math.min(u * 3, 1)) * 0.7;
+    popup = {
+      x: TARGET.x,
+      y: TARGET.y - 56 - driftUp,
+      opacity: clamp01(op),
+      scale,
+    };
+  }
+
+  // Target lock
+  const isTargetLocked = t >= T.TARGET_LOCK && t < T.TARGET_UNLOCK;
+  let lockOpacity = 0;
+  if (t >= T.TARGET_LOCK && t < T.TARGET_LOCK + 0.35) {
+    lockOpacity = (t - T.TARGET_LOCK) / 0.35;
+  } else if (t >= T.TARGET_LOCK + 0.35 && t < T.TARGET_UNLOCK - 0.45) {
+    lockOpacity = 1;
+  } else if (t >= T.TARGET_UNLOCK - 0.45 && t < T.TARGET_UNLOCK) {
+    lockOpacity = (T.TARGET_UNLOCK - t) / 0.45;
+  }
+
+  // Banner
+  let bannerOpacity = 0;
+  if (t >= T.BANNER_IN && t < T.BANNER_OUT) {
+    if (t < T.BANNER_IN + 0.35) bannerOpacity = (t - T.BANNER_IN) / 0.35;
+    else if (t < T.BANNER_OUT - 0.45) bannerOpacity = 1;
+    else bannerOpacity = (T.BANNER_OUT - t) / 0.45;
+  }
+  const bannerLabel = t < T.IMPACT - 0.05 ? 'Canalizando' : 'Vida restaurada';
+
+  // Gather glow on origin (during gather phase only)
+  let gatherGlow = 0;
+  if (t >= T.GATHER_START && t < T.LAUNCH) {
+    gatherGlow = gather;
+  } else if (t >= T.LAUNCH && t < T.LAUNCH + 0.2) {
+    gatherGlow = (1 - (t - T.LAUNCH) / 0.2);
+  }
+
+  return {
+    orb, trail, burst, rings, crosses, popup,
+    impactFlash, screenFlash,
+    targetHp,
+    isTargetLocked, lockOpacity,
+    bannerOpacity, bannerLabel,
+    gatherGlow,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Visual primitives
+// ─────────────────────────────────────────────────────────────────────────────
+function Orb({ x, y, size, glow }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {/* outer halo */}
+      <circle r={size * 4.0} fill="oklch(0.92 0.16 145 / 0.10)"/>
+      <circle r={size * 2.6} fill="oklch(0.92 0.16 145 / 0.22)"/>
+      <circle r={size * 1.7} fill="oklch(0.94 0.18 145 / 0.40)"/>
+      {/* core */}
+      <circle r={size} fill="oklch(0.96 0.18 145 / 0.95)"/>
+      <circle r={size * 0.55} fill="oklch(0.99 0.06 145 / 1)"/>
+      {/* sparkles around */}
+      <g opacity={glow}>
+        <circle cx={size * 1.6} cy={-size * 0.3} r={size * 0.18} fill="oklch(0.99 0.10 145)"/>
+        <circle cx={-size * 1.4} cy={size * 0.6} r={size * 0.14} fill="oklch(0.99 0.10 145)"/>
+        <circle cx={size * 0.3} cy={-size * 1.7} r={size * 0.12} fill="oklch(0.99 0.10 145)"/>
+      </g>
+    </g>
+  );
+}
+
+function TrailDot({ x, y, size, opacity }) {
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      <circle r={size * 2.2} fill="oklch(0.94 0.16 145 / 0.20)"/>
+      <circle r={size * 1.2} fill="oklch(0.96 0.18 145 / 0.55)"/>
+      <circle r={size * 0.6} fill="oklch(0.99 0.10 145)"/>
+    </g>
+  );
+}
+
+function BurstParticle({ x, y, size, opacity, hueShift }) {
+  const h = 145 + hueShift;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      <circle r={size * 2.0} fill={`oklch(0.92 0.14 ${h} / 0.20)`}/>
+      <circle r={size * 1.2} fill={`oklch(0.94 0.18 ${h} / 0.50)`}/>
+      <circle r={size} fill={`oklch(0.97 0.18 ${h})`}/>
+      <circle r={size * 0.45} fill="oklch(0.99 0.06 145)"/>
+    </g>
+  );
+}
+
+function Shockwave({ x, y, r, opacity, stroke }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.90 0.15 145 / ${opacity * 0.45})`} strokeWidth={stroke + 3}/>
+      <circle r={r} fill="none"
+              stroke={`oklch(0.95 0.18 145 / ${opacity})`} strokeWidth={stroke}/>
+      <circle r={r - 5} fill="none"
+              stroke={`oklch(0.80 0.16 148 / ${opacity * 0.55})`} strokeWidth={stroke * 0.6}/>
+    </g>
+  );
+}
+
+function HealCross({ x, y, scale, opacity }) {
+  const s = 7 * scale;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ opacity }}>
+      <rect x={-s*0.25} y={-s} width={s*0.5} height={s*2} rx={s*0.12}
+            fill="oklch(0.96 0.18 142 / 0.95)"/>
+      <rect x={-s} y={-s*0.25} width={s*2} height={s*0.5} rx={s*0.12}
+            fill="oklch(0.96 0.18 142 / 0.95)"/>
+      <rect x={-s*0.15} y={-s*0.85} width={s*0.3} height={s*1.7}
+            fill="oklch(0.99 0.04 145 / 1)"/>
+      <rect x={-s*0.85} y={-s*0.15} width={s*1.7} height={s*0.3}
+            fill="oklch(0.99 0.04 145 / 1)"/>
+    </g>
+  );
+}
+
+function GatherSpiral({ t, glow }) {
+  // gather particles spiraling into origin
+  if (glow < 0.01) return null;
+  const items = [];
+  for (const p of gatherParticles) {
+    const local = clamp01((t - T.GATHER_START - p.delay) / (T.GATHER_END - T.GATHER_START - p.delay));
+    if (local <= 0) continue;
+    const u = easeInCubic(local);
+    const rad = p.startRad * (1 - u);
+    const ang = p.startAngle + u * Math.PI * 2.5; // spiral
+    const x = ORIGIN.x + Math.cos(ang) * rad;
+    const y = ORIGIN.y + Math.sin(ang) * rad;
+    const op = (1 - local) * 0.95;
+    const sz = p.size * (0.6 + (1 - local) * 0.6);
+    items.push(
+      <g key={'g'+p.id} transform={`translate(${x} ${y})`} style={{ opacity: op }}>
+        <circle r={sz * 2.2} fill="oklch(0.92 0.14 145 / 0.20)"/>
+        <circle r={sz} fill="oklch(0.97 0.18 145)"/>
+      </g>
+    );
+  }
+  return <>{items}</>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Origin gather glow (pulsing radial)
+// ─────────────────────────────────────────────────────────────────────────────
+function OriginGlow({ glow }) {
+  if (glow < 0.01) return null;
+  const size = 60 + glow * 140;
+  return (
+    <div style={{
+      position: 'absolute',
+      left: ORIGIN.x, top: ORIGIN.y,
+      width: size, height: size,
+      transform: 'translate(-50%, -50%)',
+      background: `radial-gradient(circle,
+        oklch(0.96 0.18 145 / 0.55) 0%,
+        oklch(0.85 0.18 145 / 0.28) 35%,
+        transparent 70%)`,
+      opacity: 0.9 * glow,
+      mixBlendMode: 'screen',
+      pointerEvents: 'none',
+      borderRadius: '50%',
+    }}/>
+  );
+}
+
+// Target lock ring around the wounded card
+function TargetLock({ opacity }) {
+  if (opacity < 0.01) return null;
+  return (
+    <div style={{
+      position: 'absolute',
+      left: TARGET.x, top: TARGET.y,
+      width: TARGET.w + 10,
+      height: TARGET.h + 10,
+      transform: 'translate(-50%, -50%)',
+      border: '1px solid oklch(0.85 0.18 145 / 0.85)',
+      boxShadow: '0 0 24px oklch(0.85 0.18 145 / 0.55), 0 0 60px oklch(0.85 0.18 145 / 0.30), inset 0 0 18px oklch(0.85 0.18 145 / 0.18)',
+      pointerEvents: 'none',
+      opacity,
+    }}>
+      <div className="target-corner tl"/>
+      <div className="target-corner tr"/>
+      <div className="target-corner bl"/>
+      <div className="target-corner br"/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  App
+// ─────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = (now - lastRef.current) / 1000;
+      lastRef.current = now;
+      if (playing) {
+        setT(prev => {
+          const next = prev + dt;
+          if (next >= T.HOLD_END + 0.8) return 0;
+          return next;
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  const scene = deriveScene(t);
+
+  return (
+    <>
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente</div>
+        <div className="half-label pl">Sua Área</div>
+
+        <StaticBoard
+          targetHp={scene.targetHp}
+          isTargetLocked={scene.isTargetLocked}
+        />
+
+        {/* Origin glow */}
+        <OriginGlow glow={scene.gatherGlow} />
+
+        {/* Target lock highlight */}
+        <TargetLock opacity={scene.lockOpacity} />
+
+        {/* Ability banner */}
+        <div className="ability-banner" style={{ opacity: scene.bannerOpacity }}>
+          <div className="ability-sub">Habilidade</div>
+          <div className="ability-name">Toque Curativo</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>
+            {scene.bannerLabel}
+          </div>
+        </div>
+
+        {/* FX layer */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {/* Gather spiral */}
+          <GatherSpiral t={t} glow={scene.gatherGlow} />
+
+          {/* Trail */}
+          {scene.trail.map(d => (
+            <TrailDot key={'tr'+d.id} x={d.x} y={d.y} size={d.size} opacity={d.opacity}/>
+          ))}
+
+          {/* Orb */}
+          {scene.orb && (
+            <Orb x={scene.orb.x} y={scene.orb.y} size={scene.orb.size} glow={scene.orb.glow}/>
+          )}
+
+          {/* Shockwave rings */}
+          {scene.rings.map(r => (
+            <Shockwave key={'rg'+r.id} x={TARGET.x} y={TARGET.y}
+                       r={r.r} opacity={r.opacity} stroke={r.stroke}/>
+          ))}
+
+          {/* Impact flash (radial) */}
+          {scene.impactFlash > 0.01 && (
+            <g transform={`translate(${TARGET.x} ${TARGET.y})`} style={{ opacity: scene.impactFlash }}>
+              <circle r={70} fill="oklch(0.97 0.14 145 / 0.45)"/>
+              <circle r={40} fill="oklch(0.98 0.10 145 / 0.75)"/>
+              <circle r={18} fill="oklch(0.99 0.05 145)"/>
+            </g>
+          )}
+
+          {/* Burst particles */}
+          {scene.burst.map(p => (
+            <BurstParticle key={'b'+p.id} x={p.x} y={p.y}
+                           size={p.size} opacity={p.opacity} hueShift={p.hueShift}/>
+          ))}
+
+          {/* Floating crosses */}
+          {scene.crosses.map(c => (
+            <HealCross key={'c'+c.id} x={c.x} y={c.y} scale={c.scale} opacity={c.opacity}/>
+          ))}
+        </svg>
+
+        {/* Heal popup */}
+        {scene.popup && (
+          <div
+            className="heal-pop"
+            style={{
+              left: scene.popup.x,
+              top: scene.popup.y,
+              opacity: scene.popup.opacity,
+              transform: `translate(-50%, -50%) scale(${scene.popup.scale})`,
+              fontSize: '34px',
+              textAlign: 'center',
+              lineHeight: 1.0,
+            }}>
+            +{HEAL_AMOUNT}
+            <span className="small">Vida</span>
+          </div>
+        )}
+
+        {/* Screen flash */}
+        {scene.screenFlash > 0 && (
+          <div className="screen-flash" style={{ opacity: scene.screenFlash }}/>
+        )}
+      </div>
+
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>
+          ↻ Repetir
+        </button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>
+          {playing ? '❚❚ Pausar' : '▶ Tocar'}
+        </button>
+        <span className="ctrl-label">Tempo</span>
+        <input
+          type="range"
+          className="ctrl-scrub"
+          min="0" max={T.HOLD_END + 0.8} step="0.01"
+          value={t}
+          onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}
+        />
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>
