@@ -5,5 +5,7 @@
 
 # OS / editor junk
 .DS_Store
+._*
+__MACOSX/
 Thumbs.db
 *.tmp
