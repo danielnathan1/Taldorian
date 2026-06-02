@@ -4,8 +4,13 @@ signal resumed
 signal forfeit_requested
 signal forfeit_confirmed
 signal settings_changed(music_pct: int, fx_pct: int)
+signal quit_to_menu_requested
 
 enum View { MAIN, SETTINGS, CONFIRM }
+
+## Modo mundo aberto: troca "Desistir da Partida" por "Voltar ao Menu" (sem
+## confirmação de render). Definir ANTES de adicionar o nó à árvore.
+var world_mode: bool = false
 
 const SETTINGS_PATH := "user://settings.cfg"
 
@@ -178,25 +183,32 @@ func _build_pause_card() -> Control:
 	btn_list.add_theme_constant_override("separation", 11)
 	inner.add_child(btn_list)
 
-	var btn_resume   := _make_menu_button("Voltar ao Jogo",      false)
-	var btn_settings := _make_menu_button("Configurações",       false)
-	var btn_forfeit  := _make_menu_button("Desistir da Partida", true)
+	var btn_resume   := _make_menu_button("Voltar ao Mundo" if world_mode else "Voltar ao Jogo", false)
+	var btn_settings := _make_menu_button("Configurações", false)
 
 	btn_resume.pressed.connect(close)
 	btn_settings.pressed.connect(func(): _show_view(View.SETTINGS))
-	btn_forfeit.pressed.connect(func():
-		emit_signal("forfeit_requested")
-		_show_view(View.CONFIRM)
-	)
 
 	btn_list.add_child(btn_resume)
 	btn_list.add_child(btn_settings)
-	btn_list.add_child(btn_forfeit)
+
+	if world_mode:
+		var btn_menu := _make_menu_button("Voltar ao Menu", false)
+		btn_menu.pressed.connect(_on_quit_to_menu)
+		btn_list.add_child(btn_menu)
+	else:
+		var btn_forfeit := _make_menu_button("Desistir da Partida", true)
+		btn_forfeit.pressed.connect(func():
+			emit_signal("forfeit_requested")
+			_show_view(View.CONFIRM)
+		)
+		btn_list.add_child(btn_forfeit)
 
 	var sp3 := Control.new(); sp3.custom_minimum_size = Vector2(0, 20); inner.add_child(sp3)
 
 	# Footer
-	var footer := _make_label("Pressione ESC para retomar a batalha", FONT_ITALIC, 13, Color(C_GOLD_DIM, 0.7))
+	var footer_text := "Pressione ESC para retomar" if world_mode else "Pressione ESC para retomar a batalha"
+	var footer := _make_label(footer_text, FONT_ITALIC, 13, Color(C_GOLD_DIM, 0.7))
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	inner.add_child(footer)
@@ -770,3 +782,9 @@ func _on_confirm_yes() -> void:
 	visible = false
 	get_tree().paused = false
 	emit_signal("forfeit_confirmed")
+
+func _on_quit_to_menu() -> void:
+	_is_open = false
+	visible = false
+	get_tree().paused = false
+	emit_signal("quit_to_menu_requested")

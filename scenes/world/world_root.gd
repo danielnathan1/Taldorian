@@ -5,8 +5,10 @@ const LOBBY_SCENE         := "res://scenes/ui/lobby/lobby.tscn"
 const REMOTE_PLAYER_SCENE := preload("res://scenes/world/player/remote_player.tscn")
 const DECK_BUILDER_SCENE  := "res://scenes/ui/deck_builder/deck_builder.tscn"
 const ROOM_LOBBY_SCENE    := preload("res://scenes/ui/room_lobby/room_lobby.tscn")
+const PAUSE_MENU_SCENE    := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
 
 var _room_lobby: Control = null
+var _pause_menu: PauseMenu = null
 
 @onready var map_container     : Node2D      = $MapContainer
 @onready var players_container : Node2D      = $PlayersContainer
@@ -44,15 +46,20 @@ func _ready() -> void:
 
 	_setup_hud()
 	_load_map("taldorian_city")
+	_setup_pause_menu()
+
+func _setup_pause_menu() -> void:
+	# Menu de pausa do mundo (ESC): volume + voltar ao menu. O próprio PauseMenu
+	# trata o ESC (abre/fecha); por isso o world_root não intercepta mais a tecla.
+	_pause_menu = PAUSE_MENU_SCENE.instantiate()
+	_pause_menu.world_mode = true
+	add_child(_pause_menu)
+	_pause_menu.quit_to_menu_requested.connect(_return_to_lobby)
 
 func _request_sync_deferred() -> void:
 	await get_tree().process_frame
 	if multiplayer.multiplayer_peer != null:
 		WorldState._rpc_request_sync.rpc_id(1)
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		_return_to_lobby()
 
 # ── HUD ────────────────────────────────────────────────────────────────────────
 
