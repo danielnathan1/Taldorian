@@ -28,6 +28,7 @@ var _passwords: Dictionary = {}    # id:int -> password:String  (nunca enviado a
 var _occupants: Dictionary = {}    # id:int -> Array[int] (peer_ids na sala)
 var _ready_state: Dictionary = {}  # id:int -> { peer_id:int -> bool }
 var _counting_down: Dictionary = {} # id:int -> bool
+var _peer_deck: Dictionary = {}    # peer_id:int -> nome do deck ativo
 
 # Cliente: id da match room que acabou de entrar (lido pela cena MatchRoom).
 var current_match_room_id: int = -1
@@ -82,6 +83,16 @@ func submit_ready(p_value: bool) -> void:
 		_srv_set_ready(_self_peer(), p_value)
 	else:
 		rpc_id(1, "_rpc_set_ready", p_value)
+
+## Cliente: informa ao servidor o nome do seu deck ativo (exibido na Match Room).
+func report_deck_name(p_name: String) -> void:
+	if multiplayer.is_server():
+		_peer_deck[_self_peer()] = p_name
+		var rid := _room_of_peer(_self_peer())
+		if rid != -1:
+			_broadcast_room_detail(rid)
+	else:
+		rpc_id(1, "_rpc_set_deck_name", p_name)
 
 ## Cliente: sai da match room (volta ao mundo).
 func request_leave_match_room() -> void:
@@ -268,6 +279,7 @@ func _build_room_detail(p_id: int) -> Dictionary:
 			seats.append({
 				"peer":    peer,
 				"name":    pname,
+				"deck":    str(_peer_deck.get(peer, "")),
 				"ready":   bool(ready.get(peer, false)),
 				"is_host": i == 0,
 			})
@@ -303,6 +315,16 @@ func _rpc_leave_match_room() -> void:
 	if not multiplayer.is_server():
 		return
 	_srv_leave_match_room(multiplayer.get_remote_sender_id())
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_set_deck_name(p_name: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	_peer_deck[sender] = p_name.left(40)
+	var rid := _room_of_peer(sender)
+	if rid != -1:
+		_broadcast_room_detail(rid)
 
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_request_room_detail() -> void:

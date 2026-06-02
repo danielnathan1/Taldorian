@@ -29,6 +29,10 @@ func _ready() -> void:
 	var appearance: Dictionary = {}
 	if CharacterStore.has_character():
 		appearance = CharacterStore.get_character()
+		# Usa o nome do personagem como nome de rede (mundo, chat e Match Room).
+		var char_name := str(appearance.get("name", "")).strip_edges()
+		if char_name != "":
+			NetworkState.player_name = char_name
 
 	# 3. Ativa: servidor registra-se; cliente envia _rpc_enter_world ao servidor.
 	WorldState.activate(appearance)
