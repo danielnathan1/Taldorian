@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cflqn28yr4tne"
+path="res://.godot/imported/Cidade de Cinza.mp3-7e075033b155c206584dac451f8daf89.mp3str"
+
+[deps]
+
+source_file="res://audio/theme/cities/Cidade de Cinza.mp3"
+dest_files=["res://.godot/imported/Cidade de Cinza.mp3-7e075033b155c206584dac451f8daf89.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

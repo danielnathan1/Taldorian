@@ -250,21 +250,38 @@ func _build_settings_view() -> Control:
 	inner.add_theme_constant_override("separation", 0)
 	margin.add_child(inner)
 
-	# Back button
+	# Back button — superior esquerdo, com borda
+	var back_row := HBoxContainer.new()
 	var back_btn := Button.new()
 	back_btn.text = "← Voltar"
-	back_btn.flat = true
 	back_btn.add_theme_font_override("font", FONT_REGULAR)
-	back_btn.add_theme_font_size_override("font_size", 11)
+	back_btn.add_theme_font_size_override("font_size", 12)
 	back_btn.add_theme_color_override("font_color", C_GOLD_MID)
 	back_btn.add_theme_color_override("font_hover_color", C_GOLD)
 	back_btn.pressed.connect(func(): _show_view(View.MAIN))
-	var back_style := StyleBoxFlat.new()
-	back_style.bg_color = Color(0, 0, 0, 0)
-	back_btn.add_theme_stylebox_override("normal", back_style)
-	back_btn.add_theme_stylebox_override("hover",  back_style)
-	back_btn.add_theme_stylebox_override("pressed", back_style)
-	inner.add_child(back_btn)
+
+	var bs_normal := StyleBoxFlat.new()
+	bs_normal.bg_color = Color(0.086, 0.094, 0.188, 0.9)
+	bs_normal.border_color = Color(C_GOLD_MID, 0.45)
+	bs_normal.set_border_width_all(1)
+	bs_normal.set_corner_radius_all(0)
+	bs_normal.set_content_margin(SIDE_LEFT,   14)
+	bs_normal.set_content_margin(SIDE_RIGHT,  14)
+	bs_normal.set_content_margin(SIDE_TOP,     8)
+	bs_normal.set_content_margin(SIDE_BOTTOM,  8)
+	var bs_hover := bs_normal.duplicate() as StyleBoxFlat
+	bs_hover.bg_color = Color(0.11, 0.12, 0.22, 0.95)
+	bs_hover.border_color = Color(C_GOLD, 0.75)
+	back_btn.add_theme_stylebox_override("normal",  bs_normal)
+	back_btn.add_theme_stylebox_override("hover",   bs_hover)
+	back_btn.add_theme_stylebox_override("pressed", bs_normal)
+	back_btn.add_theme_stylebox_override("focus",   StyleBoxEmpty.new())
+
+	back_row.add_child(back_btn)
+	var back_spacer := Control.new()
+	back_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back_row.add_child(back_spacer)
+	inner.add_child(back_row)
 
 	var sp0 := Control.new(); sp0.custom_minimum_size = Vector2(0, 4); inner.add_child(sp0)
 

@@ -6,9 +6,16 @@ const REMOTE_PLAYER_SCENE := preload("res://scenes/world/player/remote_player.ts
 const DECK_BUILDER_SCENE  := "res://scenes/ui/deck_builder/deck_builder.tscn"
 const ROOM_LOBBY_SCENE    := preload("res://scenes/ui/room_lobby/room_lobby.tscn")
 const PAUSE_MENU_SCENE    := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
+const CITY_MUSIC := [
+	"res://audio/theme/cities/taldorian.mp3",
+	"res://audio/theme/cities/Cidade de Cinza.mp3",
+]
 
 var _room_lobby: Control = null
 var _pause_menu: PauseMenu = null
+var _world_music: AudioStreamPlayer = null
+var _music_tracks: Array = []
+var _music_idx: int = 0
 
 @onready var map_container     : Node2D      = $MapContainer
 @onready var players_container : Node2D      = $PlayersContainer
@@ -47,6 +54,37 @@ func _ready() -> void:
 	_setup_hud()
 	_load_map("taldorian_city")
 	_setup_pause_menu()
+	_setup_world_music()
+
+# Música ambiente do mapa: alterna entre as faixas de audio/theme/cities/.
+# No bus "Music" (controlado pelo slider de volume) e PROCESS_MODE_ALWAYS para
+# continuar tocando enquanto o menu de pausa estiver aberto.
+func _setup_world_music() -> void:
+	for path in CITY_MUSIC:
+		if ResourceLoader.exists(path):
+			var s = load(path)
+			if s is AudioStreamMP3:
+				s.loop = false  # garante que 'finished' dispare para alternar
+			_music_tracks.append(s)
+	if _music_tracks.is_empty():
+		return
+	_world_music = AudioStreamPlayer.new()
+	_world_music.bus = "Music"
+	_world_music.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_world_music)
+	_world_music.finished.connect(_on_world_music_finished)
+	_music_idx = randi() % _music_tracks.size()
+	_play_world_music()
+
+func _play_world_music() -> void:
+	if _world_music == null or _music_tracks.is_empty():
+		return
+	_world_music.stream = _music_tracks[_music_idx]
+	_world_music.play()
+
+func _on_world_music_finished() -> void:
+	_music_idx = (_music_idx + 1) % _music_tracks.size()
+	_play_world_music()
 
 func _setup_pause_menu() -> void:
 	# Menu de pausa do mundo (ESC): volume + voltar ao menu. O próprio PauseMenu
