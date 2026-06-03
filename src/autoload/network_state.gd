@@ -8,6 +8,9 @@ var local_player_index: int = 0
 ## Nome do jogador local — exibido no mundo e acima do personagem.
 var player_name: String = "Jogador"
 
+## Usuário da conta logada (login fake por enquanto; futura API real).
+var account_name: String = ""
+
 ## true quando a partida atual foi iniciada a partir do mundo aberto (Modelo A).
 ## Define se, ao terminar, o jogador volta ao mundo (true) ou ao lobby (false).
 var match_origin_world: bool = false

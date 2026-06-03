@@ -1,7 +1,19 @@
-[gd_scene format=3 uid="uid://c11w1tu8dmhux"]
+[gd_scene load_steps=2 format=3 uid="uid://c11w1tu8dmhux"]
 
-[ext_resource type="PackedScene" uid="uid://dhxw3cgr6mb8e" path="res://scenes/ui/lobby/lobby.tscn" id="1_2p1s2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/login/login.tscn" id="1_login"]
 
-[node name="Main" type="Node2D" unique_id=2136108459]
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="LobbyScreen" parent="." unique_id=116870145 instance=ExtResource("1_2p1s2")]
+[node name="LoginScreen" parent="." instance=ExtResource("1_login")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
