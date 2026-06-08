@@ -1665,7 +1665,6 @@ func _build_snapshot() -> Dictionary:
 			"passive_attack_bonus":            (p.active_hero.get_passive_attack_bonus() if p.active_hero != null else 0),
 			"battle_bonus_attack":               p.battle_bonus_attack,
 			"next_turn_bonus_attack":         p.next_turn_bonus_attack,
-			"pending_cross_turn_if_no_damage": p.pending_cross_turn_if_no_damage,
 		})
 	# estado do mulligan de abertura
 	snap["opening_mulligan_done"] = [_opening_mulligan_done[0], _opening_mulligan_done[1]]
@@ -1747,7 +1746,6 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		p.passive_attack_bonus             = pd.get("passive_attack_bonus",             0)
 		p.battle_bonus_attack                = pd.get("battle_bonus_attack",                0)
 		p.next_turn_bonus_attack          = pd.get("next_turn_bonus_attack",          0)
-		p.pending_cross_turn_if_no_damage = pd.get("pending_cross_turn_if_no_damage", 0)
 		if not multiplayer.is_server():
 			var dp: Array = pd.get("discard_pile", [])
 			p.discard_pile = _deserialize_cards(dp)

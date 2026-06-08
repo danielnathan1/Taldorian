@@ -1,13 +1,19 @@
+# "Guarda Inabalável" — se o herói não tomou dano neste combate, guarda um
+# bônus de ataque para o próximo turno (next_turn_bonus_attack, cross-turn).
 class_name EffectPersistAttackIfNoDamage
 extends CardEffect
 
 var _bonus: int = 1
 
+func default_timing() -> int:
+	return Timing.AFTER_COMBAT
+
 func setup(params: Dictionary) -> void:
 	_bonus = params.get("bonus", 1)
 
-func execute(ctx: CardEffectContext) -> void:
-	# O bônus só é confirmado se o herói não tomar dano neste combate.
-	# resolve_turn() converte pending_cross_turn_if_no_damage → next_turn_bonus_attack
-	# após verificar o resultado do combate.
-	ctx.source_player.pending_cross_turn_if_no_damage += _bonus
+func resolve_after_combat(ctx: CardEffectContext) -> void:
+	if ctx.damage_taken == 0:
+		ctx.source_player.next_turn_bonus_attack += _bonus
+		print("[TCG]   ★ Guarda Inabalável (J%d): bloqueio total → +%d ATK no próximo turno" % [
+			ctx.source_player.player_index, _bonus
+		])

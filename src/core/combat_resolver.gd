@@ -4,6 +4,11 @@ extends RefCounted
 
 ## Resolve o combate de um turno completo (ambas as direções).
 ## Usa turn_cards para o dano e cards_this_battle para o chain.
+##
+## Efeitos condicionais ao RESULTADO do combate (cura por bloqueio total, contra-ataque,
+## ricochete, destruir arsenal, descarte por dano, bônus cross-turn, etc.) NÃO são tratados
+## aqui — são efeitos AFTER_COMBAT, enfileirados ao jogar a carta e resolvidos pela fila do
+## GameState após esta função retornar (ver GameState._drain_after_combat_queue).
 static func resolve_turn(p0: Player, p1: Player) -> void:
 	# Aplica bônus cross-turn ganho no combate anterior (ex: Guarda Inabalável confirmado)
 	p0.pending_bonus_attack += p0.next_turn_bonus_attack
@@ -15,26 +20,6 @@ static func resolve_turn(p0: Player, p1: Player) -> void:
 	var dmg_to_p0 := _resolve_directed_turn(p1, p0)
 	print("[TCG] Resultado: J0→J1 %d dano | J1→J0 %d dano" % [dmg_to_p1, dmg_to_p0])
 	GameBus.combat_resolved.emit(dmg_to_p0, dmg_to_p1)
-	# Cura "após combate" agora é efeito AFTER_COMBAT (effect_heal_after_combat),
-	# resolvido pela fila do GameState após esta função retornar.
-	# Florescer Eterno — cura todos os heróis aliados vivos
-	if p0.pending_heal_all_amount > 0:
-		for h in p0.heroes:
-			if h.is_alive():
-				h.heal(p0.pending_heal_all_amount)
-	if p1.pending_heal_all_amount > 0:
-		for h in p1.heroes:
-			if h.is_alive():
-				h.heal(p1.pending_heal_all_amount)
-	# Guarda Inabalável: confirma bônus cross-turn SOMENTE se o herói não tomou dano
-	if p0.pending_cross_turn_if_no_damage > 0:
-		if dmg_to_p0 == 0:
-			p0.next_turn_bonus_attack += p0.pending_cross_turn_if_no_damage
-			print("[TCG]   ★ Guarda Inabalável (J0): bloqueio total → +%d ATK na próxima rodada" % p0.pending_cross_turn_if_no_damage)
-	if p1.pending_cross_turn_if_no_damage > 0:
-		if dmg_to_p1 == 0:
-			p1.next_turn_bonus_attack += p1.pending_cross_turn_if_no_damage
-			print("[TCG]   ★ Guarda Inabalável (J1): bloqueio total → +%d ATK na próxima rodada" % p1.pending_cross_turn_if_no_damage)
 	p0.reset_turn_modifiers()
 	p1.reset_turn_modifiers()
 
@@ -84,52 +69,10 @@ static func _resolve_directed_turn(source: Player, target: Player) -> int:
 	# Escudo de dano (Fluxo Reativo) — absorve antes das verificações de dano
 	final_dmg = ctx.defender.absorb_shield(final_dmg)
 
-	# All in — se atacou e causou 0 dano, atacante leva dano e compra carta
-	if final_dmg == 0 and source.pending_on_zero_damage_self_damage > 0:
-		if source.active_hero != null:
-			source.active_hero.take_damage(source.pending_on_zero_damage_self_damage, ctx)
-		source.draw_cards(source.pending_on_zero_damage_draw)
-
-	# Contra Ataque — se defensor bloqueou tudo, causa dano direto ao atacante
-	if final_dmg == 0 and target.pending_counter_damage > 0:
-		if source.active_hero != null:
-			var counter_dmg := source.active_hero.absorb_shield(target.pending_counter_damage)
-			if counter_dmg > 0:
-				source.active_hero.take_damage(counter_dmg, ctx)
-
 	ctx.defender.take_damage(final_dmg, ctx)
 	if final_dmg > 0:
 		GameBus.hero_damaged.emit(ctx.defender, final_dmg)
 		target.took_damage_this_turn = true
-
-	# Bloqueio completo (dano == 0): reações de defesa perfeita
-	if final_dmg == 0:
-		if target.pending_on_full_block_draw > 0:
-			target.draw_cards(target.pending_on_full_block_draw)
-		if target.pending_on_full_block_discard_random > 0:
-			target.discard_random_from_hand(target.pending_on_full_block_discard_random)
-		if target.pending_on_full_block_heal > 0 and target.active_hero != null:
-			target.active_hero.heal(target.pending_on_full_block_heal)
-		if target.pending_on_no_damage_heal > 0 and target.active_hero != null:
-			target.active_hero.heal(target.pending_on_no_damage_heal)
-
-	# Quebrando a Banca — se causou dano, destruir arsenal do oponente
-	if final_dmg > 0 and source.pending_destroy_opponent_arsenal:
-		target.arsenal.clear()
-
-	# Ricochetear — se causou dano, causa 1 dano direto de volta ao herói do atacante
-	if final_dmg > 0 and target.pending_ricochet and source.active_hero != null:
-		var ricochet_dmg := source.active_hero.absorb_shield(1)
-		if ricochet_dmg > 0:
-			source.active_hero.take_damage(ricochet_dmg, ctx)
-			GameBus.hero_damaged.emit(source.active_hero, ricochet_dmg)
-		print("[TCG]   ↩ Ricochetear: %s (J%d) sofre %d de dano (HP restante: %d)" % [
-			source.active_hero.hero_name, source.player_index, ricochet_dmg, source.active_hero.current_hp
-		])
-
-	# Fúria Instável — se causou dano, atacante descarta 1 carta aleatória
-	if final_dmg > 0 and source.pending_discard_if_attacked:
-		source.discard_random_from_hand(1)
 
 	# Execução Silenciosa — se causou dano, marca herói para começar oculto no próximo combate
 	if final_dmg > 0 and source.pending_next_turn_stealth:

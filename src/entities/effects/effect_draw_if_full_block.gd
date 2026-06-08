@@ -1,5 +1,9 @@
 class_name EffectDrawIfFullBlock
 extends CardEffect
 
-func execute(ctx: CardEffectContext) -> void:
-	ctx.source_player.pending_on_full_block_draw += 1
+func default_timing() -> int:
+	return Timing.AFTER_COMBAT
+
+func resolve_after_combat(ctx: CardEffectContext) -> void:
+	if ctx.damage_taken == 0:
+		ctx.source_player.draw_cards(1)
