@@ -73,6 +73,8 @@ const _MAP := {
 	"direct_damage_if_first":        preload("res://src/entities/effects/effect_direct_damage_if_first.gd"),
 	# ── Coleção 0: habilidade / skill ──────────────────────────────────────
 	"skill_trigger_draw":            preload("res://src/entities/effects/effect_skill_trigger_draw.gd"),
+	# ── Timing AFTER_COMBAT (resolvem após o combate, com resultado de dano) ─
+	"on_hit_draw":                   preload("res://src/entities/effects/effect_on_hit_draw.gd"),
 }
 
 static func create(id: String, params: Dictionary) -> CardEffect:
@@ -80,5 +82,20 @@ static func create(id: String, params: Dictionary) -> CardEffect:
 		push_error("CardEffectRegistry: efeito desconhecido — '%s'" % id)
 		return null
 	var effect: CardEffect = _MAP[id].new()
+	# Timing: começa do padrão do efeito; carta pode sobrescrever via "timing" no JSON.
+	effect.timing = effect.default_timing()
+	if params.has("timing"):
+		effect.timing = _parse_timing(params["timing"])
 	effect.setup(params)
 	return effect
+
+static func _parse_timing(value) -> int:
+	match str(value).to_lower():
+		"instant":
+			return CardEffect.Timing.INSTANT
+		"after_reaction", "afterreaction":
+			return CardEffect.Timing.AFTER_REACTION
+		"after_combat", "aftercombat", "after_turn", "afterturn":
+			return CardEffect.Timing.AFTER_COMBAT
+	push_error("CardEffectRegistry: timing desconhecido — '%s' (usando AFTER_REACTION)" % value)
+	return CardEffect.Timing.AFTER_REACTION

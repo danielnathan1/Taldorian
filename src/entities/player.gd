@@ -31,7 +31,6 @@ var pending_on_zero_damage_self_damage: int = 0
 var pending_on_zero_damage_draw: int = 0
 # Cura aplicada ao resolver o combate
 var pending_heal: int = 0
-var pending_heal_after_combat: int = 0
 # Bônus que se transfere para a próxima carta jogada
 var pending_next_card_attack: int = 0
 var pending_next_card_defense: int = 0
@@ -125,7 +124,6 @@ func reset_turn_modifiers() -> void:
 	pending_on_zero_damage_self_damage = 0
 	pending_on_zero_damage_draw = 0
 	pending_heal = 0
-	pending_heal_after_combat = 0
 	pending_next_card_attack = 0
 	pending_next_card_defense = 0
 

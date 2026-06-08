@@ -738,6 +738,8 @@ func action_pass(player_idx: int) -> bool:
 ## Verifica se a cadeia de símbolos ativa a skill do herói e notifica a passiva.
 func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 	var pl: Player = players[player_idx]
+	# Enfileira os efeitos AFTER_COMBAT desta carta para resolver após o combate.
+	_enqueue_after_combat_effects(player_idx, card)
 	# Consome bônus pendente para esta carta (definido pela carta anterior)
 	if pl.pending_next_card_attack != 0:
 		pl.pending_bonus_attack += pl.pending_next_card_attack
@@ -768,6 +770,37 @@ func _fire_on_card_played(player_idx: int, card: Card) -> void:
 	if active != null:
 		active.on_card_played(card, pl)
 
+# ── Fila de efeitos AFTER_COMBAT ─────────────────────────────────────────────
+
+func _enqueue_after_combat_effects(player_idx: int, card: Card) -> void:
+	for effect in card.after_combat_effects():
+		_m._after_combat_queue.append({
+			"effect":       effect,
+			"player":       player_idx,
+			"card":         card,
+			# TODO: threadear played_from_arsenal quando um efeito AFTER_COMBAT precisar.
+			"from_arsenal": false,
+			"hero_hidden":  _hero_was_hidden_at_play[player_idx],
+		})
+
+## Resolve, em ordem FIFO, os efeitos AFTER_COMBAT acumulados no turno.
+## dmg_to_p0/dmg_to_p1 = dano sofrido por cada jogador no combate que acabou de resolver.
+func _drain_after_combat_queue(dmg_to_p0: int, dmg_to_p1: int) -> void:
+	var queue := _m._after_combat_queue
+	_m._after_combat_queue = []  # esvazia antes de resolver (reentrância segura)
+	var dmg_taken := [dmg_to_p0, dmg_to_p1]
+	for entry in queue:
+		var pidx: int = entry["player"]
+		var ctx := CardEffectContext.new()
+		ctx.source_player       = players[pidx]
+		ctx.opponent_player     = players[1 - pidx]
+		ctx.source_card         = entry["card"]
+		ctx.played_from_arsenal = entry["from_arsenal"]
+		ctx.hero_was_hidden     = entry["hero_hidden"]
+		ctx.damage_taken        = dmg_taken[pidx]
+		ctx.damage_dealt        = dmg_taken[1 - pidx]
+		entry["effect"].resolve_after_combat(ctx)
+
 func _reset_action_phase_state() -> void:
 	for p in players:
 		p.reset_hero_turn_state()
@@ -783,6 +816,7 @@ func _reset_action_phase_state() -> void:
 	_pending_effect_card         = null
 	_pending_effect_player       = -1
 	_pending_effect_from_arsenal = false
+	_m._after_combat_queue.clear()
 	_pending_pick_player     = -1
 	_pending_pick_source     = PickSource.DECK
 	_pending_pick_count      = 1
@@ -1052,6 +1086,8 @@ func _resolve_turn_combat() -> void:
 	# Propaga o sinal ao cliente (servidor já recebeu acima via CombatResolver).
 	if multiplayer.has_multiplayer_peer() and not multiplayer.get_peers().is_empty():
 		_notify_combat_resolved(_cap[0], _cap[1])
+	# Resolve os efeitos AFTER_COMBAT enfileirados neste turno (dano já conhecido).
+	_drain_after_combat_queue(_cap[0], _cap[1])
 	# Execução Silenciosa: se marcado, oculta herói para o próximo combate
 	for i in 2:
 		if players[i].next_turn_stealth:

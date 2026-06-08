@@ -42,7 +42,19 @@ func execute_pre_window_effects(ctx: CardEffectContext) -> void:
 
 func execute_effects(ctx: CardEffectContext) -> void:
 	for effect in effects:
+		# Efeitos AFTER_COMBAT são enfileirados pelo GameState e resolvidos após o
+		# combate (resolve_after_combat); não rodam no fechamento da janela de reação.
+		if effect.timing == CardEffect.Timing.AFTER_COMBAT:
+			continue
 		effect.execute(ctx)
+
+## Efeitos desta carta marcados para resolver após o combate do turno.
+func after_combat_effects() -> Array[CardEffect]:
+	var out: Array[CardEffect] = []
+	for effect in effects:
+		if effect.timing == CardEffect.Timing.AFTER_COMBAT:
+			out.append(effect)
+	return out
 
 ## Descrição dos valores para a UI.
 func values_display() -> String:

@@ -33,6 +33,11 @@ var _pending_effect_card: Card          = null
 var _pending_effect_player: int         = -1
 var _pending_effect_from_arsenal: bool  = false
 
+# Fila de efeitos AFTER_COMBAT do turno corrente. Cada entrada é um Dictionary:
+#   { effect: CardEffect, player: int, card: Card, from_arsenal: bool, hero_hidden: bool }
+# Preenchida ao jogar cartas; drenada (FIFO) após o combate em _resolve_turn_combat().
+var _after_combat_queue: Array[Dictionary] = []
+
 # Pick de herói aliado pendente.
 var _pending_ally_pick_player: int  = -1
 var _pending_ally_pick_action: String = ""

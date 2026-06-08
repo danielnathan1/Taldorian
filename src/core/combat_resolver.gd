@@ -15,11 +15,8 @@ static func resolve_turn(p0: Player, p1: Player) -> void:
 	var dmg_to_p0 := _resolve_directed_turn(p1, p0)
 	print("[TCG] Resultado: J0→J1 %d dano | J1→J0 %d dano" % [dmg_to_p1, dmg_to_p0])
 	GameBus.combat_resolved.emit(dmg_to_p0, dmg_to_p1)
-	# Cura após combate (pending_heal_after_combat acumulada por efeitos de cartas)
-	if p0.active_hero and p0.pending_heal_after_combat > 0:
-		p0.active_hero.heal(p0.pending_heal_after_combat)
-	if p1.active_hero and p1.pending_heal_after_combat > 0:
-		p1.active_hero.heal(p1.pending_heal_after_combat)
+	# Cura "após combate" agora é efeito AFTER_COMBAT (effect_heal_after_combat),
+	# resolvido pela fila do GameState após esta função retornar.
 	# Florescer Eterno — cura todos os heróis aliados vivos
 	if p0.pending_heal_all_amount > 0:
 		for h in p0.heroes:
