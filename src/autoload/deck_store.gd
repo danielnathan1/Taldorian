@@ -6,6 +6,14 @@ signal decks_changed
 
 var decks: Array[DeckData] = []
 
+## Deck que o DeckBuilder deve abrir (setado pela DeckList antes de trocar de cena).
+## "" = criar um deck novo.
+var active_deck_id: String = ""
+
+## Deck (UUID no backend) escolhido na Match Room para a próxima partida.
+## O board busca as cartas desse deck na API antes de iniciar. "" = usa deck local.
+var match_deck_id: String = ""
+
 
 func _ready() -> void:
 	_load_all()

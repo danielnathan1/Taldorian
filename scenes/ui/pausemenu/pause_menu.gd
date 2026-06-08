@@ -12,6 +12,11 @@ enum View { MAIN, SETTINGS, CONFIRM }
 ## confirmação de render). Definir ANTES de adicionar o nó à árvore.
 var world_mode: bool = false
 
+## Modo "somente configurações" (ex.: tela de login): ESC abre direto a tela de
+## áudio, sem menu de pausa nem pausar a árvore (música segue tocando). ESC de
+## novo ou "Fechar" fecha o modal. Definir ANTES de adicionar o nó à árvore.
+var settings_only: bool = false
+
 const SETTINGS_PATH := "user://settings.cfg"
 
 const FONT_DECO    := preload("res://assets/fonts/CinzelDecorative-Bold.ttf")
@@ -31,6 +36,7 @@ var _backdrop:      ColorRect
 var _pause_card:    Control
 var _main_view:     Control
 var _settings_view: Control
+var _settings_card: Control
 var _confirm_modal: Control
 
 # settings sliders
@@ -48,9 +54,10 @@ var _fx_pct:       int   = 85
 
 func open() -> void:
 	_is_open = true
-	_show_view(View.MAIN)
+	_show_view(View.SETTINGS if settings_only else View.MAIN)
 	visible = true
-	get_tree().paused = true
+	if not settings_only:
+		get_tree().paused = true
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_animate_in()
 
@@ -83,14 +90,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode != KEY_ESCAPE:
 		return
 	get_viewport().set_input_as_handled()
+	if not _is_open:
+		open()
+		return
 	match _current_view:
 		View.MAIN:
-			if _is_open:
+			close()
+		View.SETTINGS:
+			if settings_only:
 				close()
 			else:
-				open()
-		View.SETTINGS:
-			_show_view(View.MAIN)
+				_show_view(View.MAIN)
 		View.CONFIRM:
 			_show_view(View.MAIN)
 
@@ -228,6 +238,7 @@ func _build_settings_view() -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.custom_minimum_size = Vector2(440, 0)
 	vbox.add_theme_constant_override("separation", 0)
+	_settings_card = vbox
 
 	var crest := _build_crest_control(76)
 	crest.custom_minimum_size = Vector2(76, 76)
@@ -253,12 +264,16 @@ func _build_settings_view() -> Control:
 	# Back button — superior esquerdo, com borda
 	var back_row := HBoxContainer.new()
 	var back_btn := Button.new()
-	back_btn.text = "← Voltar"
+	back_btn.text = "✕ Fechar" if settings_only else "← Voltar"
 	back_btn.add_theme_font_override("font", FONT_REGULAR)
 	back_btn.add_theme_font_size_override("font_size", 12)
 	back_btn.add_theme_color_override("font_color", C_GOLD_MID)
 	back_btn.add_theme_color_override("font_hover_color", C_GOLD)
-	back_btn.pressed.connect(func(): _show_view(View.MAIN))
+	back_btn.pressed.connect(func():
+		if settings_only:
+			close()
+		else:
+			_show_view(View.MAIN))
 
 	var bs_normal := StyleBoxFlat.new()
 	bs_normal.bg_color = Color(0.086, 0.094, 0.188, 0.9)
@@ -772,19 +787,24 @@ func _save_settings() -> void:
 
 # ── Animations ────────────────────────────────────────────────────────────────
 
+func _active_card() -> Control:
+	return _settings_card if settings_only else _pause_card
+
 func _animate_in() -> void:
+	var card := _active_card()
 	_backdrop.modulate.a = 0.0
-	_pause_card.modulate.a = 0.0
-	_pause_card.scale = Vector2(0.92, 0.92)
+	card.modulate.a = 0.0
+	card.scale = Vector2(0.92, 0.92)
 	var t := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	t.tween_property(_backdrop,    "modulate:a", 1.0,       0.35)
-	t.tween_property(_pause_card,  "modulate:a", 1.0,       0.50).set_delay(0.05)
-	t.tween_property(_pause_card,  "scale",      Vector2.ONE, 0.50).set_delay(0.05)
+	t.tween_property(_backdrop, "modulate:a", 1.0,         0.35)
+	t.tween_property(card,      "modulate:a", 1.0,         0.50).set_delay(0.05)
+	t.tween_property(card,      "scale",      Vector2.ONE, 0.50).set_delay(0.05)
 
 func _animate_out() -> void:
+	var card := _active_card()
 	var t := create_tween().set_parallel(true).set_ease(Tween.EASE_IN)
-	t.tween_property(_backdrop,   "modulate:a", 0.0, 0.25)
-	t.tween_property(_pause_card, "modulate:a", 0.0, 0.20)
+	t.tween_property(_backdrop, "modulate:a", 0.0, 0.25)
+	t.tween_property(card,      "modulate:a", 0.0, 0.20)
 
 # ── Modal backdrop click ──────────────────────────────────────────────────────
 

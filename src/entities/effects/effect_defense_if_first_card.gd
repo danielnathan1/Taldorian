@@ -11,8 +11,8 @@ func setup(params: Dictionary) -> void:
 func execute(ctx: CardEffectContext) -> void:
 	var count: int
 	if _scope == "combat":
-		count = ctx.source_player.round_cards.size()
+		count = ctx.source_player.turn_cards.size()
 	else:
-		count = ctx.source_player.cards_this_turn.size()
+		count = ctx.source_player.cards_this_battle.size()
 	if count == 1:
 		ctx.source_player.pending_bonus_defense += _bonus

@@ -2,7 +2,7 @@ class_name EffectBonusIfCardTypePlayed
 extends CardEffect
 
 var _timing_type: Card.TimingType = Card.TimingType.BONUS_ACTION
-var _scope: String = "turn"  # "turn" (cards_this_turn) ou "combat" (round_cards)
+var _scope: String = "turn"  # "turn" (cards_this_battle) ou "combat" (turn_cards)
 var _attack_bonus: int = 0
 var _defense_bonus: int = 0
 
@@ -14,8 +14,8 @@ func setup(params: Dictionary) -> void:
 	_defense_bonus = params.get("defense_bonus", 0)
 
 func execute(ctx: CardEffectContext) -> void:
-	var pool: Array[Card] = ctx.source_player.cards_this_turn if _scope == "turn" \
-		else ctx.source_player.round_cards
+	var pool: Array[Card] = ctx.source_player.cards_this_battle if _scope == "turn" \
+		else ctx.source_player.turn_cards
 	for card in pool:
 		if card == ctx.source_card:
 			continue

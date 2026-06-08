@@ -1,0 +1,295 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/deck_list/deck_list.gd" id="1_decklist"]
+
+[node name="DeckList" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_decklist")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.039, 0.039, 0.094, 1)
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+
+[node name="HBox" type="HBoxContainer" parent="Root/Header"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BackBtn" type="Button" parent="Root/Header/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+flat = true
+text = "← VOLTAR"
+
+[node name="Sep" type="VSeparator" parent="Root/Header/HBox"]
+layout_mode = 2
+
+[node name="Eyebrow" type="VBoxContainer" parent="Root/Header/HBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 0
+
+[node name="EyebrowLine" type="Label" parent="Root/Header/HBox/Eyebrow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "COLEÇÃO"
+
+[node name="EyebrowTitle" type="Label" parent="Root/Header/HBox/Eyebrow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Meus Decks"
+
+[node name="Spacer" type="Control" parent="Root/Header/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Tally" type="Label" parent="Root/Header/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "0 DECKS"
+
+[node name="NewDeckButton" type="Button" parent="Root/Header/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_vertical = 4
+text = "+  NOVO DECK"
+
+[node name="Scroll" type="ScrollContainer" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Margin" type="MarginContainer" parent="Root/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 130
+
+[node name="Col" type="VBoxContainer" parent="Root/Scroll/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="GalleryHead" type="HBoxContainer" parent="Root/Scroll/Margin/Col"]
+layout_mode = 2
+
+[node name="GhTitle" type="Label" parent="Root/Scroll/Margin/Col/GalleryHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ESCOLHA UM DECK PARA JOGAR OU EDITAR"
+
+[node name="GhHint" type="Label" parent="Root/Scroll/Margin/Col/GalleryHead"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clique para selecionar · duplo-clique para editar"
+
+[node name="DeckGrid" type="GridContainer" parent="Root/Scroll/Margin/Col"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 22
+theme_override_constants/v_separation = 22
+columns = 3
+
+[node name="NewTile" type="Control" parent="Root/Scroll/Margin/Col/DeckGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(330, 384)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Panel" type="PanelContainer" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Center" type="CenterContainer" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile/Panel"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile/Panel/Center"]
+layout_mode = 2
+theme_override_constants/separation = 14
+mouse_filter = 2
+
+[node name="Mark" type="Label" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile/Panel/Center/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+"
+horizontal_alignment = 1
+
+[node name="NewLabel" type="Label" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile/Panel/Center/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "NOVO DECK"
+horizontal_alignment = 1
+
+[node name="NewSub" type="Label" parent="Root/Scroll/Margin/Col/DeckGrid/NewTile/Panel/Center/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Forje uma nova trindade de heróis"
+horizontal_alignment = 1
+
+[node name="ActionBar" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = 74.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBox" type="HBoxContainer" parent="ActionBar"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="AbSleeve" type="TextureRect" parent="ActionBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 42)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TextVBox" type="VBoxContainer" parent="ActionBar/HBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 0
+
+[node name="AbLabel" type="Label" parent="ActionBar/HBox/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "SELECIONADO"
+
+[node name="AbName" type="Label" parent="ActionBar/HBox/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="Spacer" type="Control" parent="ActionBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="AbDelete" type="Button" parent="ActionBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_vertical = 4
+text = "🗑  APAGAR"
+
+[node name="AbEdit" type="Button" parent="ActionBar/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_vertical = 4
+text = "✎  EDITAR DECK"
+
+[node name="Modal" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Veil" type="ColorRect" parent="Modal"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.03, 0.07, 0.75)
+
+[node name="Center" type="CenterContainer" parent="Modal"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Modal/Center"]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Modal/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Modal/Center/Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Apagar deck?"
+
+[node name="Body" type="RichTextLabel" parent="Modal/Center/Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(384, 0)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/VBox"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 10
+
+[node name="Cancel" type="Button" parent="Modal/Center/Panel/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Cancelar"
+
+[node name="Confirm" type="Button" parent="Modal/Center/Panel/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Apagar definitivamente"
+
+[node name="ToastLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

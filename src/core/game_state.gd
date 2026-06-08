@@ -4,7 +4,7 @@ extends Node
 # ── Estado da partida (Modelo A — Fase 2.1) ──────────────────────────────────
 # Todo o estado mutável de UMA partida vive em Match (`_m`). As propriedades
 # abaixo são proxies que leem/escrevem em `_m`, mantendo a API GameState.players/
-# turn para as cenas e TODOS os corpos de método inalterados. Na Fase 2.2 o
+# battle para as cenas e TODOS os corpos de método inalterados. Na Fase 2.2 o
 # servidor troca `_m` pela partida do remetente do RPC (multi-sala).
 var _m: MatchState = MatchState.new()
 
@@ -24,11 +24,11 @@ var players: Array[Player]:
 		return _m.players
 	set(value):
 		_m.players = value
-var turn: TurnManager:
+var battle: BattleManager:
 	get:
-		return _m.turn
+		return _m.battle
 	set(value):
-		_m.turn = value
+		_m.battle = value
 
 var _opening_mulligan_done: Array[bool]:
 	get:
@@ -56,11 +56,11 @@ var _active_segment_player: int:
 		return _m._active_segment_player
 	set(value):
 		_m._active_segment_player = value
-var _round_first_player: int:
+var _turn_first_player: int:
 	get:
-		return _m._round_first_player
+		return _m._turn_first_player
 	set(value):
-		_m._round_first_player = value
+		_m._turn_first_player = value
 var _segment_action_done: Array[bool]:
 	get:
 		return _m._segment_action_done
@@ -76,11 +76,11 @@ var _reaction_window_for: int:
 		return _m._reaction_window_for
 	set(value):
 		_m._reaction_window_for = value
-var _consecutive_empty_rounds: int:
+var _consecutive_empty_turns: int:
 	get:
-		return _m._consecutive_empty_rounds
+		return _m._consecutive_empty_turns
 	set(value):
-		_m._consecutive_empty_rounds = value
+		_m._consecutive_empty_turns = value
 var _hero_revealed: Array[bool]:
 	get:
 		return _m._hero_revealed
@@ -243,8 +243,8 @@ func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
 	var p0: Player = _make_player(0, "Jogador 1") if deck0.is_empty() else _make_player_from_deck(0, "Jogador 1", deck0)
 	var p1: Player = _make_player2(1, "Jogador 2") if deck1.is_empty() else _make_player_from_deck(1, "Jogador 2", deck1)
 	players = [p0, p1]
-	turn.players = players
-	turn.current_player_index = 0
+	battle.players = players
+	battle.current_player_index = 0
 	_winner_index = -1
 	_deck_submitted   = [false, false]
 	_submitted_deck   = [{}, {}]
@@ -259,9 +259,9 @@ func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
 	# Para desativar: comente novamente.
 	# Parâmetros:
 	#   player_idx → 0 = host/Jogador1 | 1 = cliente/Jogador2
-	#   card_id    → id da carta em data/cards/base_set.json
+	#   card_id    → id da carta em data/cards/taldorian_origins.json
 	#   hand_slot  → posição na mão (0 = primeira, -1 = última)
-	#_debug_force_card_in_hand(0, 83)  # "Dois Passos à Frente" → mão do Jogador 0
+	_debug_force_card_in_hand(0, 37)  # "Dois Passos à Frente" → mão do Jogador 0
 	# ── fim do bloco DEBUG ───────────────────────────────────────────────────
 
 	_opening_mulligan_done = [false, false]
@@ -269,14 +269,14 @@ func start_match(deck0: Dictionary = {}, deck1: Dictionary = {}) -> void:
 	# antes do primeiro _sync_state chegar.
 	if multiplayer.is_server() and not multiplayer.get_peers().is_empty():
 		_notify_init_players(deck0, deck1)
-	turn.emit_phase_changed()
+	battle.emit_phase_changed()
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_init_players(deck0: Dictionary, deck1: Dictionary) -> void:
 	var p0: Player = _make_player(0, "Jogador 1") if deck0.is_empty() else _make_player_from_deck(0, "Jogador 1", deck0)
 	var p1: Player = _make_player2(1, "Jogador 2") if deck1.is_empty() else _make_player_from_deck(1, "Jogador 2", deck1)
 	players = [p0, p1]
-	turn.players = players
+	battle.players = players
 
 func is_game_over() -> bool:
 	return _winner_index >= 0
@@ -328,7 +328,7 @@ func has_submitted_hero_pick(player_idx: int) -> bool:
 
 
 func get_next_hero_pick_player_index() -> int:
-	if turn.current_phase != TurnManager.Phase.HERO_SELECTION:
+	if battle.current_phase != BattleManager.Phase.HERO_SELECTION:
 		return -1
 	if _hero_submitted[0] and _hero_submitted[1]:
 		return -1
@@ -337,7 +337,7 @@ func get_next_hero_pick_player_index() -> int:
 func submit_opening_mulligan(player_idx: int, idx_a: int, idx_b: int) -> bool:
 	if _winner_index >= 0:
 		return false
-	if turn.current_phase != TurnManager.Phase.OPENING_MULLIGAN:
+	if battle.current_phase != BattleManager.Phase.OPENING_MULLIGAN:
 		return false
 	if player_idx < 0 or player_idx > 1:
 		return false
@@ -355,17 +355,17 @@ func submit_opening_mulligan(player_idx: int, idx_a: int, idx_b: int) -> bool:
 	_opening_mulligan_done[player_idx] = true
 	print("[TCG] Jogador %d (%s): mulligan — devolveu '%s' e '%s'" % [player_idx, pl.player_name, c_a.card_name, c_b.card_name])
 	if _opening_mulligan_done[0] and _opening_mulligan_done[1]:
-		turn.current_player_index = 0
-		_begin_turn_for_active_player()
+		battle.current_player_index = 0
+		_begin_battle_for_active_player()
 	else:
-		turn.emit_phase_changed()
+		battle.emit_phase_changed()
 	return true
 
-func _begin_turn_for_active_player() -> void:
+func _begin_battle_for_active_player() -> void:
 	if _winner_index >= 0:
 		return
 	print("[TCG] ════════════════════════════════")
-	print("[TCG] Início do turno — Jogador %d (%s)" % [turn.current_player_index, players[turn.current_player_index].player_name])
+	print("[TCG] Início da batalha — Jogador %d (%s)" % [battle.current_player_index, players[battle.current_player_index].player_name])
 	# Reseta revelação de heróis: valores do turno anterior (true/true ao final do
 	# COMBAT) não devem vazar para DRAW e HERO_SELECTION do novo turno.
 	# Herois normais voltam face-down para o blefe; starts_face_up permanecem revelados.
@@ -382,12 +382,12 @@ func _begin_turn_for_active_player() -> void:
 	_backline_current_player    = -1
 	_backline_current_hero_idx  = -1
 
-	var idx := turn.current_player_index
+	var idx := battle.current_player_index
 	var player: Player = players[idx]
 
 	# 1. Fase DRAW — compra cartas e sincroniza
-	turn.current_phase = TurnManager.Phase.DRAW
-	GameBus.turn_started.emit(idx)
+	battle.current_phase = BattleManager.Phase.DRAW
+	GameBus.battle_started.emit(idx)
 	player.draw_up_to(Player.HAND_CAP_START)
 	if player.hand.size() >= 2:
 		var hn := player.hand.size()
@@ -396,7 +396,7 @@ func _begin_turn_for_active_player() -> void:
 	_emit_sync()
 
 	# 2. Fase HERO_SELECTION
-	turn.current_phase = TurnManager.Phase.HERO_SELECTION
+	battle.current_phase = BattleManager.Phase.HERO_SELECTION
 	_hero_submitted = [false, false]
 	_next_hero_pick_player = idx
 	_emit_sync()
@@ -404,7 +404,7 @@ func _begin_turn_for_active_player() -> void:
 func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 	if _winner_index >= 0:
 		return false
-	if turn.current_phase != TurnManager.Phase.HERO_SELECTION:
+	if battle.current_phase != BattleManager.Phase.HERO_SELECTION:
 		return false
 	if player_idx < 0 or player_idx > 1 or hero_slot < 0 or hero_slot > 2:
 		return false
@@ -415,7 +415,7 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 	if hero not in pl.get_available_heroes():
 		return false
 	pl.choose_hero(hero)
-	hero.on_turn_start(pl)
+	hero.on_battle_start(pl)
 	if hero.starts_face_up:
 		_hero_revealed[player_idx] = true
 		GameBus.hero_revealed.emit(player_idx, hero)
@@ -434,7 +434,7 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 					if h.has_backline_ability():
 						interactive.append({ "player_idx": i, "hero_idx": sp.heroes.find(h) })
 					else:
-						var desc := h.on_support_turn_start(sp, opp)
+						var desc := h.on_support_battle_start(sp, opp)
 						if not desc.is_empty():
 							var hero_idx := sp.heroes.find(h)
 							GameBus.skill_activated.emit(h, desc)
@@ -452,16 +452,23 @@ func submit_hero_pick(player_idx: int, hero_slot: int) -> bool:
 ## Se a fila estiver vazia, inicia a fase ACTION normalmente.
 func _process_next_backline_ability() -> void:
 	if _backline_queue.is_empty():
-		turn.current_phase = TurnManager.Phase.ACTION
+		battle.current_phase = BattleManager.Phase.ACTION
 		_reset_action_phase_state()
 		_emit_sync()
 		return
 	var entry: Dictionary = _backline_queue.pop_front()
 	_backline_current_player    = entry["player_idx"]
 	_backline_current_hero_idx  = entry["hero_idx"]
-	_backline_awaiting_response = true
-	_backline_awaiting_target   = false
-	turn.current_phase = TurnManager.Phase.BACKLINE_ABILITY
+	battle.current_phase = BattleManager.Phase.BACKLINE_ABILITY
+	var hero := players[_backline_current_player].heroes[_backline_current_hero_idx]
+	# Só pede confirmação quando ativar a habilidade quebra a furtividade do herói.
+	# Se ele já está revelado, não há tradeoff: ativa direto, sem popup.
+	if hero.is_backline_revealed:
+		_backline_awaiting_response = false
+		_begin_backline_target_selection()
+	else:
+		_backline_awaiting_response = true
+		_backline_awaiting_target   = false
 	_emit_sync()
 
 ## Jogador responde se quer usar a habilidade de retaguarda (Sim/Não).
@@ -477,12 +484,17 @@ func rpc_respond_backline_ability(use: bool) -> void:
 		_process_next_backline_ability()
 		return
 	# Confirma uso: revela o herói na backline, pede escolha de alvo
+	_begin_backline_target_selection()
+	_emit_sync()
+
+## Revela o herói de retaguarda atual (quebra a furtividade), dispara o aviso visual
+## da passiva e abre a seleção de alvo. NÃO chama _emit_sync — o chamador cuida disso.
+func _begin_backline_target_selection() -> void:
 	var hero := players[_backline_current_player].heroes[_backline_current_hero_idx]
 	hero.is_backline_revealed = true
 	_backline_awaiting_target = true
 	GameBus.skill_activated.emit(hero, hero.passive_desc)
 	_notify_skill_activated(_backline_current_player, _backline_current_hero_idx, hero.passive_desc)
-	_emit_sync()
 
 ## Jogador escolheu o herói alvo para a habilidade de retaguarda.
 @rpc("any_peer", "call_local", "reliable")
@@ -522,7 +534,7 @@ func rpc_submit_backline_target(target_player_idx: int, target_hero_idx: int) ->
 func action_play_card(player_idx: int, hand_idx: int) -> bool:
 	if _winner_index >= 0:
 		return false
-	if turn.current_phase != TurnManager.Phase.ACTION:
+	if battle.current_phase != BattleManager.Phase.ACTION:
 		return false
 	if _pending_pick_player >= 0:
 		return false
@@ -541,15 +553,15 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			if _segment_action_done[player_idx]: return false
 			if _reaction_window_for != -1: return false
 			pl.hand.remove_at(hand_idx)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_a := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou ACTION '%s' (atk:%d def:%d%s%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_a, " [furtivo]" if card.is_stealth else ""])
 			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_action_done[player_idx] = true
-			_consecutive_empty_rounds = 0
+			_consecutive_empty_turns = 0
 			_pending_effect_card         = card
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = false
@@ -570,8 +582,8 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 			if _segment_bonus_done[player_idx]: return false
 			if _reaction_window_for != -1: return false
 			pl.hand.remove_at(hand_idx)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_b := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou BONUS '%s' (atk:%d def:%d%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_b])
 			_capture_hero_hidden(player_idx)
@@ -592,8 +604,8 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 		Card.TimingType.REACTION:
 			if _reaction_window_for != player_idx: return false
 			pl.hand.remove_at(hand_idx)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_r := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou REACTION '%s'%s" % [player_idx, pl.player_name, card.card_name, _syms_r])
 			_capture_hero_hidden(player_idx)
@@ -613,7 +625,7 @@ func action_play_card(player_idx: int, hand_idx: int) -> bool:
 	return false
 
 func action_play_from_arsenal(player_idx: int) -> bool:
-	if _winner_index >= 0 or turn.current_phase != TurnManager.Phase.ACTION:
+	if _winner_index >= 0 or battle.current_phase != BattleManager.Phase.ACTION:
 		return false
 	var pl: Player = players[player_idx]
 	if pl.arsenal.is_empty():
@@ -626,15 +638,15 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			if _segment_action_done[player_idx]: return false
 			if _reaction_window_for != -1: return false
 			pl.arsenal.remove_at(0)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_aa := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou ACTION '%s' do arsenal (atk:%d def:%d%s%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_aa, " [furtivo]" if card.is_stealth else ""])
 			_capture_hero_hidden(player_idx)
 			_try_reveal_hero(player_idx, card)
 			_on_card_added_to_play(player_idx, card)
 			_segment_action_done[player_idx] = true
-			_consecutive_empty_rounds = 0
+			_consecutive_empty_turns = 0
 			_pending_effect_card         = card
 			_pending_effect_player       = player_idx
 			_pending_effect_from_arsenal = true
@@ -654,8 +666,8 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 			if _segment_bonus_done[player_idx]: return false
 			if _reaction_window_for != -1: return false
 			pl.arsenal.remove_at(0)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_ba := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou BONUS '%s' do arsenal (atk:%d def:%d%s)" % [player_idx, pl.player_name, card.card_name, card.attack_value, card.defense_value, _syms_ba])
 			_capture_hero_hidden(player_idx)
@@ -675,8 +687,8 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 		Card.TimingType.REACTION:
 			if _reaction_window_for != player_idx: return false
 			pl.arsenal.remove_at(0)
-			pl.cards_this_turn.append(card)
-			pl.round_cards.append(card)
+			pl.cards_this_battle.append(card)
+			pl.turn_cards.append(card)
 			var _syms_ra := "" if card.symbols.is_empty() else " {%s}" % ", ".join(Array(card.symbols))
 			print("[TCG] Jogador %d (%s): jogou REACTION '%s' do arsenal%s" % [player_idx, pl.player_name, card.card_name, _syms_ra])
 			_capture_hero_hidden(player_idx)
@@ -696,7 +708,7 @@ func action_play_from_arsenal(player_idx: int) -> bool:
 func action_pass(player_idx: int) -> bool:
 	if _winner_index >= 0:
 		return false
-	if turn.current_phase != TurnManager.Phase.ACTION:
+	if battle.current_phase != BattleManager.Phase.ACTION:
 		return false
 	# Não permite avançar enquanto um pick está aguardando resolução
 	if _pending_pick_player >= 0:
@@ -722,7 +734,7 @@ func action_pass(player_idx: int) -> bool:
 
 # ── helpers da fase ACTION ───────────────────────────────
 
-## Chamado após cada carta ser adicionada a round_cards/cards_this_turn.
+## Chamado após cada carta ser adicionada a turn_cards/cards_this_battle.
 ## Verifica se a cadeia de símbolos ativa a skill do herói e notifica a passiva.
 func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 	var pl: Player = players[player_idx]
@@ -736,9 +748,9 @@ func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 	var active: Hero = pl.active_hero
 	if active == null:
 		return
-	if not active._skill_activated_this_turn and not active.symbols_required.is_empty():
+	if not active._skill_activated_this_battle and not active.symbols_required.is_empty():
 		var chain: Array[String] = []
-		for c in pl.cards_this_turn:
+		for c in pl.cards_this_battle:
 			for sym in c.symbols:
 				chain.append(sym)
 		if SymbolChain.matches_chain(chain, active.symbols_required):
@@ -758,13 +770,13 @@ func _fire_on_card_played(player_idx: int, card: Card) -> void:
 
 func _reset_action_phase_state() -> void:
 	for p in players:
-		p.reset_hero_round_state()
-	_active_segment_player    = turn.current_player_index
-	_round_first_player       = turn.current_player_index
+		p.reset_hero_turn_state()
+	_active_segment_player    = battle.current_player_index
+	_turn_first_player       = battle.current_player_index
 	_segment_action_done      = [false, false]
 	_segment_bonus_done       = [false, false]
 	_reaction_window_for      = -1
-	_consecutive_empty_rounds = 0
+	_consecutive_empty_turns = 0
 	for i in 2:
 		var _active := players[i].active_hero
 		_hero_revealed[i] = _active != null and _active.starts_face_up
@@ -948,7 +960,7 @@ func rpc_submit_ally_pick(hero_idx: int) -> void:
 	_pending_ally_pick_amount = 0
 	# Retoma o fluxo do segmento se possível
 	if _pending_pick_player < 0 and _pending_symbol_player < 0 \
-			and turn.current_phase == TurnManager.Phase.ACTION:
+			and battle.current_phase == BattleManager.Phase.ACTION:
 		var active := _active_segment_player
 		if _segment_action_done[active] and _segment_bonus_done[active]:
 			_finish_segment(active)
@@ -1000,12 +1012,12 @@ func _on_reaction_window_closed() -> void:
 
 func _finish_segment(player_idx: int) -> void:
 	if not _segment_action_done[player_idx]:
-		_consecutive_empty_rounds += 1
+		_consecutive_empty_turns += 1
 	_segment_action_done[player_idx] = false
 	_segment_bonus_done[player_idx]  = false
 	_reaction_window_for = -1
 
-	if player_idx == _round_first_player:
+	if player_idx == _turn_first_player:
 		# Primeiro segmento da rodada concluído → passa para o oponente
 		_active_segment_player = 1 - player_idx
 		_emit_sync()
@@ -1013,42 +1025,42 @@ func _finish_segment(player_idx: int) -> void:
 		# Segundo segmento concluído → rodada terminou
 		# Se qualquer carta foi jogada nesta rodada o combate SEMPRE resolve,
 		# independente de as mãos estarem vazias.
-		var round_had_cards := not players[0].round_cards.is_empty() \
-							or not players[1].round_cards.is_empty()
-		if round_had_cards:
-			_resolve_round_combat()
-		elif _consecutive_empty_rounds >= 2 or _both_hands_empty():
+		var turn_had_cards := not players[0].turn_cards.is_empty() \
+							or not players[1].turn_cards.is_empty()
+		if turn_had_cards:
+			_resolve_turn_combat()
+		elif _consecutive_empty_turns >= 2 or _both_hands_empty():
 			_run_combat_and_enter_end()
 		else:
-			_resolve_round_combat()
+			_resolve_turn_combat()
 
 func _both_hands_empty() -> bool:
 	return players[0].hand.is_empty() and players[1].hand.is_empty()
 
-func _resolve_round_combat() -> void:
+func _resolve_turn_combat() -> void:
 	var preview := _build_combat_preview()
 	if not preview.is_empty():
 		_notify_combat_preview(preview)
 	# Captura os valores de dano para replicar combat_resolved ao(s) cliente(s).
-	# A lambda dispara sincronamente dentro de CombatResolver.resolve_round().
+	# A lambda dispara sincronamente dentro de CombatResolver.resolve_turn().
 	var _cap := [0, 0]
 	GameBus.combat_resolved.connect(
 		func(d0: int, d1: int) -> void: _cap[0] = d0; _cap[1] = d1,
 		CONNECT_ONE_SHOT
 	)
-	CombatResolver.resolve_round(players[0], players[1])
+	CombatResolver.resolve_turn(players[0], players[1])
 	# Propaga o sinal ao cliente (servidor já recebeu acima via CombatResolver).
 	if multiplayer.has_multiplayer_peer() and not multiplayer.get_peers().is_empty():
 		_notify_combat_resolved(_cap[0], _cap[1])
 	# Execução Silenciosa: se marcado, oculta herói para o próximo combate
 	for i in 2:
-		if players[i].next_round_stealth:
+		if players[i].next_turn_stealth:
 			_hero_revealed[i] = false
-			players[i].next_round_stealth = false
-	# Cartas NÃO vão ao cemitério aqui — apenas round_cards é limpo para o
+			players[i].next_turn_stealth = false
+	# Cartas NÃO vão ao cemitério aqui — apenas turn_cards é limpo para o
 	# próximo combate começar do zero. O cemitério só recebe as cartas na END.
-	players[0].clear_round_cards()
-	players[1].clear_round_cards()
+	players[0].clear_turn_cards()
+	players[1].clear_turn_cards()
 
 	# Verifica vencedor geral (todos os heróis mortos)
 	var w := _evaluate_winner()
@@ -1069,9 +1081,9 @@ func _resolve_round_combat() -> void:
 		_run_combat_and_enter_end()
 		return
 	for p in players:
-		p.reset_hero_round_state()
-	_active_segment_player = turn.current_player_index
-	_round_first_player    = turn.current_player_index
+		p.reset_hero_turn_state()
+	_active_segment_player = battle.current_player_index
+	_turn_first_player    = battle.current_player_index
 	_segment_action_done   = [false, false]
 	_segment_bonus_done    = [false, false]
 	_reaction_window_for   = -1
@@ -1085,7 +1097,7 @@ func _any_active_hero_defeated() -> bool:
 
 func _run_combat_and_enter_end() -> void:
 	# Revela heróis que ainda não foram revelados e anuncia fim do turno de ação
-	turn.current_phase = TurnManager.Phase.COMBAT
+	battle.current_phase = BattleManager.Phase.COMBAT
 	for i in 2:
 		var h: Hero = players[i].active_hero
 		if h and not _hero_revealed[i]:
@@ -1094,28 +1106,28 @@ func _run_combat_and_enter_end() -> void:
 	# Onda Reversa: carta vai ao fundo do deck em vez do cemitério
 	for p in players:
 		if p.pending_return_card != null:
-			p.cards_this_turn.erase(p.pending_return_card)
+			p.cards_this_battle.erase(p.pending_return_card)
 			p.deck.append(p.pending_return_card)
 			p.pending_return_card = null
 	# Ciclo Vital: retorna carta à mão se herói ficou com HP cheio
 	for p in players:
 		if p.pending_heal_return_card != null:
-			p.cards_this_turn.erase(p.pending_heal_return_card)
+			p.cards_this_battle.erase(p.pending_heal_return_card)
 			p.hand.append(p.pending_heal_return_card)
 			p.pending_heal_return_card = null
 	# Todas as cartas jogadas no turno inteiro vão ao cemitério agora (END phase).
 	for p in players:
-		p.discard_pile.append_array(p.cards_this_turn)
+		p.discard_pile.append_array(p.cards_this_battle)
 	players[0].clear_combat_cards()
 	players[1].clear_combat_cards()
 
 	# Dispara passivas de fim de turno dos heróis ativos (ex: cura da Irena).
-	# on_turn_end() aplica o efeito e retorna a descrição — GameState emite o sinal
+	# on_battle_end() aplica o efeito e retorna a descrição — GameState emite o sinal
 	# localmente (servidor) e via RPC (clientes) para o popup aparecer em ambos.
 	for i in 2:
 		var h: Hero = players[i].active_hero
 		if h != null:
-			var desc := h.on_turn_end(players[i])
+			var desc := h.on_battle_end(players[i])
 			if not desc.is_empty():
 				var hero_idx := players[i].heroes.find(h)
 				GameBus.skill_activated.emit(h, desc)
@@ -1126,24 +1138,24 @@ func _run_combat_and_enter_end() -> void:
 	players[1].exhaust_active_hero()
 	players[0].active_hero = null
 	players[1].active_hero = null
-	turn.current_phase = TurnManager.Phase.END
+	battle.current_phase = BattleManager.Phase.END
 	_end_submitted = [false, false]
 	_emit_sync()
 	# Jogadores sem cartas na mão pulam o arsenal automaticamente
 	for _auto_i in 2:
 		if players[_auto_i].hand.is_empty() and not _end_submitted[_auto_i]:
 			print("[TCG] Jogador %d sem cartas na mão — pulando arsenal automaticamente" % _auto_i)
-			finish_end_turn(_auto_i, -1)
+			finish_end_battle(_auto_i, -1)
 
 func get_end_submitted(player_idx: int) -> bool:
 	if player_idx < 0 or player_idx > 1:
 		return false
 	return _end_submitted[player_idx]
 
-func finish_end_turn(player_idx: int, arsenal_hand_index: int) -> bool:
+func finish_end_battle(player_idx: int, arsenal_hand_index: int) -> bool:
 	if _winner_index >= 0:
 		return false
-	if turn.current_phase != TurnManager.Phase.END:
+	if battle.current_phase != BattleManager.Phase.END:
 		return false
 	if player_idx < 0 or player_idx > 1:
 		return false
@@ -1158,11 +1170,11 @@ func finish_end_turn(player_idx: int, arsenal_hand_index: int) -> bool:
 	_end_submitted[player_idx] = true
 	_emit_sync()
 	if _end_submitted[0] and _end_submitted[1]:
-		var active_idx := turn.current_player_index
+		var active_idx := battle.current_player_index
 		players[active_idx].draw_up_to(Player.HAND_SIZE_REFILL_DRAW)
-		GameBus.turn_ended.emit(active_idx)
-		turn.current_player_index = (active_idx + 1) % 2
-		_begin_turn_for_active_player()
+		GameBus.battle_ended.emit(active_idx)
+		battle.current_player_index = (active_idx + 1) % 2
+		_begin_battle_for_active_player()
 	return true
 
 func _evaluate_winner() -> int:
@@ -1193,7 +1205,7 @@ static func _make_player(index: int, pname: String) -> Player:
 		HeroNissin.new(),
 		HeroValkar.new(),
 	]
-	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
+	p.deck = DeckLoader.load_from_json("res://data/cards/taldorian_origins.json")
 	p.playmat_key = 'default'
 	return p
 
@@ -1206,7 +1218,7 @@ static func _make_player2(index: int, pname: String) -> Player:
 		HeroPoppy.new(),
 		HeroHakai.new(),
 	]
-	p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
+	p.deck = DeckLoader.load_from_json("res://data/cards/taldorian_origins.json")
 	p.playmat_key = 'default'
 	return p
 
@@ -1226,7 +1238,7 @@ static func _make_player_from_deck(index: int, pname: String, deck_dict: Diction
 	if card_entries is Array and not (card_entries as Array).is_empty():
 		p.deck = _build_deck_from_entries(card_entries as Array)
 	else:
-		p.deck = DeckLoader.load_from_json("res://data/cards/base_set.json")
+		p.deck = DeckLoader.load_from_json("res://data/cards/taldorian_origins.json")
 	p.sleeve_key  = str(deck_dict.get("sleeve",  "default"))
 	p.playmat_key = str(deck_dict.get("playmat", "default"))
 	return p
@@ -1297,23 +1309,23 @@ func _build_combat_preview() -> Dictionary:
 		return {}
 
 	var atk0 := h0.base_attack
-	for card in p0.round_cards:
+	for card in p0.turn_cards:
 		atk0 += card.attack_value
-	atk0 += p0.pending_bonus_attack + p0.passive_attack_bonus + p0.turn_bonus_attack + p0.next_round_bonus_attack
+	atk0 += p0.pending_bonus_attack + p0.passive_attack_bonus + p0.battle_bonus_attack + p0.next_turn_bonus_attack
 
 	var def0 := h0.base_defense
-	for card in p0.round_cards:
+	for card in p0.turn_cards:
 		def0 += card.defense_value
 	def0 -= p0.next_defense_penalty
 	def0 += p0.pending_bonus_defense
 
 	var atk1 := h1.base_attack
-	for card in p1.round_cards:
+	for card in p1.turn_cards:
 		atk1 += card.attack_value
-	atk1 += p1.pending_bonus_attack + p1.passive_attack_bonus + p1.turn_bonus_attack + p1.next_round_bonus_attack
+	atk1 += p1.pending_bonus_attack + p1.passive_attack_bonus + p1.battle_bonus_attack + p1.next_turn_bonus_attack
 
 	var def1 := h1.base_defense
-	for card in p1.round_cards:
+	for card in p1.turn_cards:
 		def1 += card.defense_value
 	def1 -= p1.next_defense_penalty
 	def1 += p1.pending_bonus_defense
@@ -1489,7 +1501,7 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 	# Se o pick foi disparado por um efeito durante o fechamento da janela de reação
 	# e não há outro pick pendente, continua o fluxo do segmento.
 	if _pending_pick_player < 0 and _pending_symbol_player < 0 \
-			and turn.current_phase == TurnManager.Phase.ACTION:
+			and battle.current_phase == BattleManager.Phase.ACTION:
 		var active := _active_segment_player
 		if _segment_action_done[active] and _segment_bonus_done[active]:
 			_finish_segment(active)
@@ -1527,11 +1539,11 @@ func rpc_submit_symbol_pick(chosen_symbols: Array) -> void:
 		_emit_sync()
 
 @rpc("any_peer", "call_local", "reliable")
-func rpc_finish_turn(arsenal_idx: int) -> void:
+func rpc_finish_battle(arsenal_idx: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
-	finish_end_turn(player_idx, arsenal_idx)
+	finish_end_battle(player_idx, arsenal_idx)
 
 # ── sincronização de estado ──────────────────────────────
 
@@ -1539,7 +1551,7 @@ func rpc_finish_turn(arsenal_idx: int) -> void:
 # e dispara os sinais de UI — garante que cliente e servidor fiquem alinhados.
 @rpc("authority", "call_local", "reliable")
 func _sync_state(phase_str: String, snapshot: Dictionary) -> void:
-	turn.current_phase = _phase_from_string(phase_str)
+	battle.current_phase = _phase_from_string(phase_str)
 	_apply_snapshot(snapshot)
 	GameBus.phase_changed.emit(phase_str)
 	GameBus.state_synced.emit()
@@ -1605,7 +1617,7 @@ func _build_snapshot() -> Dictionary:
 			"hand":                 _serialize_cards(p.hand),
 			"arsenal":              _serialize_cards(p.arsenal),
 			"arsenal_face_up":      p.arsenal_face_up,
-			"round_cards":          _serialize_cards(p.round_cards),
+			"turn_cards":          _serialize_cards(p.turn_cards),
 			"heroes":               heroes_data,
 			"active_hero_idx":      p.heroes.find(p.active_hero),
 			"sleeve_key":           p.sleeve_key,
@@ -1615,9 +1627,9 @@ func _build_snapshot() -> Dictionary:
 			"pending_bonus_defense":           p.pending_bonus_defense,
 			"next_defense_penalty":            p.next_defense_penalty,
 			"passive_attack_bonus":            (p.active_hero.get_passive_attack_bonus() if p.active_hero != null else 0),
-			"turn_bonus_attack":               p.turn_bonus_attack,
-			"next_round_bonus_attack":         p.next_round_bonus_attack,
-			"pending_cross_round_if_no_damage": p.pending_cross_round_if_no_damage,
+			"battle_bonus_attack":               p.battle_bonus_attack,
+			"next_turn_bonus_attack":         p.next_turn_bonus_attack,
+			"pending_cross_turn_if_no_damage": p.pending_cross_turn_if_no_damage,
 		})
 	# estado do mulligan de abertura
 	snap["opening_mulligan_done"] = [_opening_mulligan_done[0], _opening_mulligan_done[1]]
@@ -1626,11 +1638,11 @@ func _build_snapshot() -> Dictionary:
 	snap["hero_submitted"]        = [_hero_submitted[0], _hero_submitted[1]]
 	# estado da fase de ação (rodadas + timing)
 	snap["active_segment_player"]    = _active_segment_player
-	snap["round_first_player"]       = _round_first_player
+	snap["round_first_player"]       = _turn_first_player
 	snap["segment_action_done"]      = [_segment_action_done[0], _segment_action_done[1]]
 	snap["segment_bonus_done"]       = [_segment_bonus_done[0],  _segment_bonus_done[1]]
 	snap["reaction_window_for"]      = _reaction_window_for
-	snap["consecutive_empty_rounds"] = _consecutive_empty_rounds
+	snap["consecutive_empty_rounds"] = _consecutive_empty_turns
 	snap["hero_revealed"]            = [_hero_revealed[0], _hero_revealed[1]]
 	snap["end_submitted"]            = [_end_submitted[0], _end_submitted[1]]
 	# pick de carta pendente
@@ -1691,15 +1703,15 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		if not multiplayer.is_server():
 			p.hand           = _deserialize_cards(pd.get("hand", []))
 			p.arsenal        = _deserialize_cards(pd.get("arsenal", []))
-			p.round_cards    = _deserialize_cards(pd.get("round_cards", []))
+			p.turn_cards    = _deserialize_cards(pd.get("turn_cards", []))
 		p.arsenal_face_up = pd.get("arsenal_face_up", false)
 		p.pending_bonus_attack             = pd.get("pending_bonus_attack",             0)
 		p.pending_bonus_defense            = pd.get("pending_bonus_defense",            0)
 		p.next_defense_penalty             = pd.get("next_defense_penalty",             0)
 		p.passive_attack_bonus             = pd.get("passive_attack_bonus",             0)
-		p.turn_bonus_attack                = pd.get("turn_bonus_attack",                0)
-		p.next_round_bonus_attack          = pd.get("next_round_bonus_attack",          0)
-		p.pending_cross_round_if_no_damage = pd.get("pending_cross_round_if_no_damage", 0)
+		p.battle_bonus_attack                = pd.get("battle_bonus_attack",                0)
+		p.next_turn_bonus_attack          = pd.get("next_turn_bonus_attack",          0)
+		p.pending_cross_turn_if_no_damage = pd.get("pending_cross_turn_if_no_damage", 0)
 		if not multiplayer.is_server():
 			var dp: Array = pd.get("discard_pile", [])
 			p.discard_pile = _deserialize_cards(dp)
@@ -1725,9 +1737,9 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		_hero_submitted[0] = hs[0]
 		_hero_submitted[1] = hs[1]
 	_active_segment_player    = snap.get("active_segment_player",    _active_segment_player)
-	_round_first_player       = snap.get("round_first_player",       _round_first_player)
+	_turn_first_player       = snap.get("round_first_player",       _turn_first_player)
 	_reaction_window_for      = snap.get("reaction_window_for",      _reaction_window_for)
-	_consecutive_empty_rounds = snap.get("consecutive_empty_rounds", _consecutive_empty_rounds)
+	_consecutive_empty_turns = snap.get("consecutive_empty_rounds", _consecutive_empty_turns)
 	var sad: Array = snap.get("segment_action_done", [])
 	if sad.size() >= 2:
 		_segment_action_done[0] = sad[0]
@@ -1768,16 +1780,16 @@ static func _deserialize_cards(arr: Array) -> Array[Card]:
 		out.append(Card.from_dict(d))
 	return out
 
-static func _phase_from_string(s: String) -> TurnManager.Phase:
+static func _phase_from_string(s: String) -> BattleManager.Phase:
 	match s:
-		"OPENING_MULLIGAN": return TurnManager.Phase.OPENING_MULLIGAN
-		"DRAW":             return TurnManager.Phase.DRAW
-		"HERO_SELECTION":   return TurnManager.Phase.HERO_SELECTION
-		"BACKLINE_ABILITY": return TurnManager.Phase.BACKLINE_ABILITY
-		"ACTION":           return TurnManager.Phase.ACTION
-		"COMBAT":           return TurnManager.Phase.COMBAT
-		"END":              return TurnManager.Phase.END
-		_:                  return TurnManager.Phase.OPENING_MULLIGAN
+		"OPENING_MULLIGAN": return BattleManager.Phase.OPENING_MULLIGAN
+		"DRAW":             return BattleManager.Phase.DRAW
+		"HERO_SELECTION":   return BattleManager.Phase.HERO_SELECTION
+		"BACKLINE_ABILITY": return BattleManager.Phase.BACKLINE_ABILITY
+		"ACTION":           return BattleManager.Phase.ACTION
+		"COMBAT":           return BattleManager.Phase.COMBAT
+		"END":              return BattleManager.Phase.END
+		_:                  return BattleManager.Phase.OPENING_MULLIGAN
 
 # ── helper ───────────────────────────────────────────────
 
@@ -1849,7 +1861,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 ## Envia o estado autoritativo da partida atual (_m). No servidor multi-sala,
 ## direciona só aos 2 peers da partida; no lobby/standalone, broadcast (call_local).
 func _emit_sync() -> void:
-	var phase := turn.phase_to_string(turn.current_phase)
+	var phase := battle.phase_to_string(battle.current_phase)
 	var snap := _build_snapshot()
 	if multiplayer.is_server() and not _m._match_peer_to_idx.is_empty():
 		for peer in _m._match_peer_to_idx.keys():
@@ -1885,6 +1897,17 @@ func _notify_skill_activated(player_idx: int, hero_idx: int, skill_name: String)
 	else:
 		for peer in t:
 			rpc_id(peer, "_rpc_notify_skill_activated", player_idx, hero_idx, skill_name)
+
+## Emite skill_activated localmente (servidor) e via RPC (clientes) a partir de um
+## Hero. Usado por passivas que disparam de dentro de hooks (ex: Hakai em combate),
+## garantindo que o popup/VFX apareça em ambos os lados. Server-only.
+func notify_skill_activated(hero: Hero, skill_name: String) -> void:
+	for i in players.size():
+		var hero_idx := players[i].heroes.find(hero)
+		if hero_idx != -1:
+			GameBus.skill_activated.emit(hero, skill_name)
+			_notify_skill_activated(i, hero_idx, skill_name)
+			return
 
 func _notify_backline_arrow(source_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
 	var t := _match_targets()
@@ -1943,7 +1966,7 @@ func _deal_direct_damage(target_player_idx: int, amount: int) -> void:
 	var hero: Hero = tp.active_hero
 	if hero == null or not hero.is_alive():
 		return
-	var ctx := BattleContext.new()
+	var ctx := TurnContext.new()
 	ctx.defender = hero
 	ctx.defender_player = tp
 	hero.take_damage(amount, ctx)

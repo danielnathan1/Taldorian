@@ -640,7 +640,7 @@ Execute esta sequência rápida em qualquer build:
 [ ] 7. Turno 2: herói exausto não selecionável
 [ ] 8. Completar cadeia de símbolos de algum herói → skill_activated
 [ ] 9. Herói com 0 HP → hero_defeated → verificar game_over se último
-[ ] 10. DeckLoader.load_from_json("res://data/cards/base_set.json") sem erros no console
+[ ] 10. DeckLoader.load_from_json("res://data/cards/taldorian_origins.json") sem erros no console
 ```
 
 ---

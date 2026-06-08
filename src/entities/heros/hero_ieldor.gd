@@ -11,7 +11,7 @@ func _init() -> void:
 	skill_name       = "Chuva de Flechas"
 	skill_desc       = "Causa 1 de dano a todos os heróis do oponente"
 	passive_name     = "Retaguarda Precisa"
-	passive_desc     = "Se estiver na retaguarda, dispara uma flecha que causa 1 de dano a um herói de sua escolha"
+	passive_desc     = "No inicio de cada batalha se estiver na retaguarda, cause 1 de dano a um herói de sua escolha"
 	base_attack      = 1
 	base_defense     = -1
 	skill_animation  = "arrow_rain"
@@ -23,7 +23,7 @@ func has_backline_ability() -> bool:
 ## Aplica 1 de dano ao herói escolhido pelo jogador.
 ## Retorna string vazia pois o popup já foi exibido ao confirmar o uso da habilidade.
 func apply_backline_ability(player: Player, opponent: Player, target: Hero) -> String:
-	var ctx := BattleContext.new()
+	var ctx := TurnContext.new()
 	ctx.attacker_player = player
 	ctx.defender_player = opponent if target in opponent.heroes else player
 	ctx.attacker = self
@@ -40,7 +40,7 @@ func apply_backline_ability(player: Player, opponent: Player, target: Hero) -> S
 ## Ativa: Ar, Ar, Água → causa 1 de dano a todos os heróis vivos do oponente
 func on_skill_activated(player: Player) -> void:
 	var opponent: Player = GameState.players[1 - player.player_index]
-	var ctx := BattleContext.new()
+	var ctx := TurnContext.new()
 	ctx.attacker_player = player
 	ctx.defender_player = opponent
 	ctx.attacker = self
@@ -54,5 +54,5 @@ func on_skill_activated(player: Player) -> void:
 			if dmg > 0:
 				h.take_damage(dmg, ctx)
 				GameBus.hero_damaged.emit(h, dmg)
-	_skill_activated_this_turn = true
+	_skill_activated_this_battle = true
 	GameBus.skill_activated.emit(self, skill_desc)

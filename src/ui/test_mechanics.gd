@@ -13,8 +13,8 @@ var _mulligan_sel: Array[int] = []
 func _ready() -> void:
 	_title.text = "Teste de mecânicas — Taldorian TCG (hotseat)"
 	GameBus.phase_changed.connect(func(_p): _rebuild())
-	GameBus.turn_started.connect(func(_i): _rebuild())
-	GameBus.turn_ended.connect(func(_i): _rebuild())
+	GameBus.battle_started.connect(func(_i): _rebuild())
+	GameBus.battle_ended.connect(func(_i): _rebuild())
 	GameBus.game_over.connect(_on_game_over)
 	GameBus.combat_resolved.connect(_on_combat_log)
 	_rebuild()
@@ -36,8 +36,8 @@ func _rebuild() -> void:
 		return
 	for c in _content.get_children():
 		c.queue_free()
-	var tm: TurnManager = state.turn
-	if tm.current_phase == TurnManager.Phase.OPENING_MULLIGAN:
+	var tm: BattleManager = state.battle
+	if tm.current_phase == BattleManager.Phase.OPENING_MULLIGAN:
 		var who := state.players[0].player_name if not state.has_completed_opening_mulligan(0) else state.players[1].player_name
 		_phase_row.text = "Fase: abertura (só no início) — escolher 2 ao fundo | vez: %s" % who
 	else:
@@ -47,15 +47,15 @@ func _rebuild() -> void:
 		]
 	_status.text = _build_status_line()
 	match tm.current_phase:
-		TurnManager.Phase.OPENING_MULLIGAN:
+		BattleManager.Phase.OPENING_MULLIGAN:
 			_build_opening_mulligan_ui()
-		TurnManager.Phase.HERO_SELECTION:
+		BattleManager.Phase.HERO_SELECTION:
 			_build_hero_ui()
-		TurnManager.Phase.ACTION:
+		BattleManager.Phase.ACTION:
 			_build_action_ui()
-		TurnManager.Phase.COMBAT:
+		BattleManager.Phase.COMBAT:
 			pass
-		TurnManager.Phase.END:
+		BattleManager.Phase.END:
 			_build_end_ui()
 		_:
 			pass
@@ -163,7 +163,7 @@ func _on_hero_pick(pidx: int, hidx: int) -> void:
 func _build_action_ui() -> void:
 	var act_idx := state.get_next_action_player_index()
 	var pl: Player = state.players[act_idx]
-	var ini := state.turn.current_player_index
+	var ini := state.battle.current_player_index
 	var role := "iniciativa" if act_idx == ini else "reage"
 	_add_label("Vez: %s (%s). Ambos podem jogar Ataque ou Defesa. Dois passes seguidos → combate." % [
 		pl.player_name, role,
@@ -191,7 +191,7 @@ func _on_pass(pidx: int) -> void:
 		_rebuild()
 
 func _build_end_ui() -> void:
-	var pl: Player = state.players[state.turn.current_player_index]
+	var pl: Player = state.players[state.battle.current_player_index]
 	_add_label("%s: 1 carta para o arsenal; depois compra 4. Ambos os heróis de combate ficam exaustos." % pl.player_name)
 	if pl.hand.is_empty():
 		var skip := Button.new()
@@ -211,5 +211,5 @@ func _build_end_ui() -> void:
 		_content.add_child(btn)
 
 func _on_end_confirm(hand_idx: int) -> void:
-	if state.finish_end_turn(hand_idx):
+	if state.finish_end_battle(hand_idx):
 		_rebuild()

@@ -2,17 +2,17 @@
 class_name CombatResolver
 extends RefCounted
 
-## Resolve o combate de uma rodada completa (ambas as direções).
-## Usa round_cards para o dano e cards_this_turn para o chain.
-static func resolve_round(p0: Player, p1: Player) -> void:
-	# Aplica bônus cross-round ganho no combate anterior (ex: Guarda Inabalável confirmado)
-	p0.pending_bonus_attack += p0.next_round_bonus_attack
-	p1.pending_bonus_attack += p1.next_round_bonus_attack
-	p0.next_round_bonus_attack = 0
-	p1.next_round_bonus_attack = 0
-	print("[TCG] ─── Resolução de rodada ───────────────────────")
-	var dmg_to_p1 := _resolve_directed_round(p0, p1)
-	var dmg_to_p0 := _resolve_directed_round(p1, p0)
+## Resolve o combate de um turno completo (ambas as direções).
+## Usa turn_cards para o dano e cards_this_battle para o chain.
+static func resolve_turn(p0: Player, p1: Player) -> void:
+	# Aplica bônus cross-turn ganho no combate anterior (ex: Guarda Inabalável confirmado)
+	p0.pending_bonus_attack += p0.next_turn_bonus_attack
+	p1.pending_bonus_attack += p1.next_turn_bonus_attack
+	p0.next_turn_bonus_attack = 0
+	p1.next_turn_bonus_attack = 0
+	print("[TCG] ─── Resolução de turno ───────────────────────")
+	var dmg_to_p1 := _resolve_directed_turn(p0, p1)
+	var dmg_to_p0 := _resolve_directed_turn(p1, p0)
 	print("[TCG] Resultado: J0→J1 %d dano | J1→J0 %d dano" % [dmg_to_p1, dmg_to_p0])
 	GameBus.combat_resolved.emit(dmg_to_p0, dmg_to_p1)
 	# Cura após combate (pending_heal_after_combat acumulada por efeitos de cartas)
@@ -29,23 +29,23 @@ static func resolve_round(p0: Player, p1: Player) -> void:
 		for h in p1.heroes:
 			if h.is_alive():
 				h.heal(p1.pending_heal_all_amount)
-	# Guarda Inabalável: confirma bônus cross-round SOMENTE se o herói não tomou dano
-	if p0.pending_cross_round_if_no_damage > 0:
+	# Guarda Inabalável: confirma bônus cross-turn SOMENTE se o herói não tomou dano
+	if p0.pending_cross_turn_if_no_damage > 0:
 		if dmg_to_p0 == 0:
-			p0.next_round_bonus_attack += p0.pending_cross_round_if_no_damage
-			print("[TCG]   ★ Guarda Inabalável (J0): bloqueio total → +%d ATK na próxima rodada" % p0.pending_cross_round_if_no_damage)
-	if p1.pending_cross_round_if_no_damage > 0:
+			p0.next_turn_bonus_attack += p0.pending_cross_turn_if_no_damage
+			print("[TCG]   ★ Guarda Inabalável (J0): bloqueio total → +%d ATK na próxima rodada" % p0.pending_cross_turn_if_no_damage)
+	if p1.pending_cross_turn_if_no_damage > 0:
 		if dmg_to_p1 == 0:
-			p1.next_round_bonus_attack += p1.pending_cross_round_if_no_damage
-			print("[TCG]   ★ Guarda Inabalável (J1): bloqueio total → +%d ATK na próxima rodada" % p1.pending_cross_round_if_no_damage)
-	p0.reset_round_modifiers()
-	p1.reset_round_modifiers()
+			p1.next_turn_bonus_attack += p1.pending_cross_turn_if_no_damage
+			print("[TCG]   ★ Guarda Inabalável (J1): bloqueio total → +%d ATK na próxima rodada" % p1.pending_cross_turn_if_no_damage)
+	p0.reset_turn_modifiers()
+	p1.reset_turn_modifiers()
 
 
 ## Dano de `source` → `target` usando as cartas da rodada corrente.
-## source.round_cards contribuem com attack_value; target.round_cards com defense_value.
-static func _resolve_directed_round(source: Player, target: Player) -> int:
-	var ctx := BattleContext.new()
+## source.turn_cards contribuem com attack_value; target.turn_cards com defense_value.
+static func _resolve_directed_turn(source: Player, target: Player) -> int:
+	var ctx := TurnContext.new()
 	ctx.attacker_player = source
 	ctx.defender_player = target
 	ctx.attacker = source.active_hero
@@ -62,16 +62,16 @@ static func _resolve_directed_round(source: Player, target: Player) -> int:
 
 	# Ataque: base do herói + attack_value das cartas da rodada + pending de efeitos
 	var raw_attack := ctx.attacker.base_attack
-	for card in source.round_cards:
+	for card in source.turn_cards:
 		raw_attack += card.attack_value
 	raw_attack += source.pending_bonus_attack
-	raw_attack += source.turn_bonus_attack         # Frenesi: bônus que dura o turno inteiro
+	raw_attack += source.battle_bonus_attack         # Frenesi: bônus que dura o turno inteiro
 	raw_attack += source.pending_stealth_hidden_bonus  # Execução Silenciosa: oculto ao jogar
 	raw_attack -= target.next_attack_penalty  # Finta rara — penaliza próxima carta adversária
 
 	# Defesa: base do herói + defense_value das cartas da rodada + pending de efeitos
 	var raw_defense := ctx.defender.base_defense
-	for card in target.round_cards:
+	for card in target.turn_cards:
 		raw_defense += card.defense_value
 	raw_defense -= target.next_defense_penalty
 	raw_defense += target.pending_bonus_defense
@@ -103,7 +103,7 @@ static func _resolve_directed_round(source: Player, target: Player) -> int:
 	ctx.defender.take_damage(final_dmg, ctx)
 	if final_dmg > 0:
 		GameBus.hero_damaged.emit(ctx.defender, final_dmg)
-		target.took_damage_this_round = true
+		target.took_damage_this_turn = true
 
 	# Bloqueio completo (dano == 0): reações de defesa perfeita
 	if final_dmg == 0:
@@ -135,8 +135,8 @@ static func _resolve_directed_round(source: Player, target: Player) -> int:
 		source.discard_random_from_hand(1)
 
 	# Execução Silenciosa — se causou dano, marca herói para começar oculto no próximo combate
-	if final_dmg > 0 and source.pending_next_round_stealth:
-		source.next_round_stealth = true
+	if final_dmg > 0 and source.pending_next_turn_stealth:
+		source.next_turn_stealth = true
 
 	print("[TCG]   %s (J%d) → %s (J%d): atk=%d def=%d → %d dano (HP restante: %d)" % [
 		ctx.attacker.hero_name, source.player_index,
@@ -160,6 +160,6 @@ static func _resolve_directed_round(source: Player, target: Player) -> int:
 
 ## Mantido para compatibilidade — não é mais chamado no fluxo principal.
 static func resolve_mutual(p0: Player, p1: Player) -> void:
-	var dmg_to_p1_hero := _resolve_directed_round(p0, p1)
-	var dmg_to_p0_hero := _resolve_directed_round(p1, p0)
+	var dmg_to_p1_hero := _resolve_directed_turn(p0, p1)
+	var dmg_to_p0_hero := _resolve_directed_turn(p1, p0)
 	GameBus.combat_resolved.emit(dmg_to_p0_hero, dmg_to_p1_hero)

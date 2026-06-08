@@ -44,6 +44,8 @@ var _footer_status: Label
 var _ready_btn: Button
 var _countdown_overlay: ColorRect
 var _countdown_num: Label
+var _deck_picker: OptionButton
+var _decks: Array = []   # decks do jogador (GET /decks); fallback: locais
 
 
 func _ready() -> void:
@@ -51,9 +53,9 @@ func _ready() -> void:
 	_build_ui()
 	GameBus.match_room_synced.connect(_on_synced)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	RoomService.report_deck_name(_active_deck_name())
 	RoomService.request_room_detail()
 	_render()
+	_load_decks()   # corrotina: popula o picker e reporta o deck escolhido
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -110,9 +112,87 @@ func _build_ui() -> void:
 	_seats_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	arena.add_child(_seats_box)
 
+	shell.add_child(_build_deck_picker_row())
 	shell.add_child(_thin_divider())
 	shell.add_child(_build_footer())
 	_build_countdown_overlay()
+
+
+func _build_deck_picker_row() -> Control:
+	var cc := CenterContainer.new()
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 12)
+	cc.add_child(hb)
+
+	var lbl := Label.new()
+	lbl.text = "SEU DECK"
+	lbl.add_theme_font_override("font", S.FONT_REG)
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_color_override("font_color", GOLD_DIM)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hb.add_child(lbl)
+
+	_deck_picker = OptionButton.new()
+	_deck_picker.custom_minimum_size = Vector2(280, 38)
+	_deck_picker.add_theme_font_override("font", S.FONT_REG)
+	_deck_picker.add_theme_font_size_override("font_size", 14)
+	_deck_picker.add_theme_color_override("font_color", PARCHMENT)
+	var ps := StyleBoxFlat.new()
+	ps.bg_color = Color(0.09, 0.08, 0.14, 0.9)
+	ps.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.4)
+	ps.set_border_width_all(1)
+	ps.set_content_margin(SIDE_LEFT, 12)
+	ps.set_content_margin(SIDE_RIGHT, 12)
+	ps.set_content_margin(SIDE_TOP, 7)
+	ps.set_content_margin(SIDE_BOTTOM, 7)
+	_deck_picker.add_theme_stylebox_override("normal", ps)
+	_deck_picker.add_theme_stylebox_override("hover", ps)
+	_deck_picker.add_theme_stylebox_override("pressed", ps)
+	_deck_picker.add_theme_stylebox_override("focus", ps)
+	_deck_picker.item_selected.connect(_on_deck_chosen)
+	hb.add_child(_deck_picker)
+	return cc
+
+
+func _load_decks() -> void:
+	var res := await ApiClient.get_decks()
+	_decks = []
+	_deck_picker.clear()
+	if res.ok and res.data is Array:
+		for d in res.data:
+			if d is Dictionary:
+				_decks.append(d)
+				_deck_picker.add_item(str(d.get("name", "Deck")))
+	# Fallback: decks locais (sem id de backend) se a API falhar/estiver vazia.
+	if _decks.is_empty():
+		for d in DeckStore.decks:
+			_decks.append({ "id": "", "name": d.deck_name })
+			_deck_picker.add_item(d.deck_name)
+	if _decks.is_empty():
+		_deck_picker.add_item("(sem decks)")
+		_deck_picker.disabled = true
+		return
+	# Seleção padrão: o deck ativo (isActive), senão o primeiro.
+	var sel := 0
+	for i in _decks.size():
+		if bool(_decks[i].get("isActive", false)):
+			sel = i
+			break
+	_deck_picker.select(sel)
+	_deck_picker.disabled = _local_ready
+	_apply_deck_choice(sel)
+
+
+func _on_deck_chosen(idx: int) -> void:
+	_apply_deck_choice(idx)
+
+
+func _apply_deck_choice(idx: int) -> void:
+	if idx < 0 or idx >= _decks.size():
+		return
+	var d: Dictionary = _decks[idx]
+	DeckStore.match_deck_id = str(d.get("id", ""))
+	RoomService.report_deck_name(str(d.get("name", "")))
 
 
 func _build_topbar() -> Control:
@@ -523,6 +603,10 @@ func _update_footer_and_button() -> void:
 	else:
 		_ready_btn.text = "Pronto"
 		_style_button(_ready_btn, Color("1d3a2a"), Color.WHITE, Color(READY.r, READY.g, READY.b, 0.8), 18)
+
+	# Não troca de deck depois de confirmar "Pronto".
+	if _deck_picker != null:
+		_deck_picker.disabled = _local_ready or _deck_picker.item_count == 0
 
 
 # ════════════════════════════════════════════════════════════════════════════

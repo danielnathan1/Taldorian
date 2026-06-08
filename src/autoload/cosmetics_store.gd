@@ -13,6 +13,21 @@ func _ready() -> void:
 	_load_player_cosmetics()
 
 
+## Entrada do catálogo (id/name/art_key) por id, independente de posse. {} se não achar.
+func get_sleeve(p_id: String) -> Dictionary:
+	for s: Dictionary in _catalog.get("sleeves", []):
+		if str(s.get("id", "")) == p_id:
+			return s
+	return {}
+
+
+func get_playmat(p_id: String) -> Dictionary:
+	for p: Dictionary in _catalog.get("playmats", []):
+		if str(p.get("id", "")) == p_id:
+			return p
+	return {}
+
+
 func get_available_sleeves() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for s: Dictionary in _catalog.get("sleeves", []):

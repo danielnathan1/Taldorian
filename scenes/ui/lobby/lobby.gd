@@ -7,6 +7,7 @@ extends Control
 const LOGIN_SCENE          := "res://scenes/ui/login/login.tscn"
 const WORLD_CONNECT_SCENE  := "res://scenes/world/world_connect.tscn"
 const DECK_BUILDER_SCENE   := "res://scenes/ui/deck_builder/deck_builder.tscn"
+const DECK_LIST_SCENE      := "res://scenes/ui/deck_list/deck_list.tscn"
 const BOOSTER_SHOP_SCENE   := "res://scenes/ui/booster_shop/booster_shop.tscn"
 const CHARACTER_CREATOR_SCENE := "res://scenes/ui/character_creator/character_creator.tscn"
 const SETTINGS_PATH        := "user://settings.cfg"
@@ -79,7 +80,7 @@ func _build_ui() -> void:
 	btns.add_child(world_btn)
 
 	var deck_btn := _make_button("⚒   Construir Deck", C_GOLD, 16)
-	deck_btn.pressed.connect(func(): get_tree().change_scene_to_file(DECK_BUILDER_SCENE))
+	deck_btn.pressed.connect(func(): get_tree().change_scene_to_file(DECK_LIST_SCENE))
 	btns.add_child(deck_btn)
 
 	var shop_btn := _make_button("✦   Loja de Boosters", C_GOLD, 16)
@@ -102,6 +103,7 @@ func _on_world() -> void:
 
 func _on_logout() -> void:
 	NetworkState.account_name = ""
+	ApiClient.clear_tokens()
 	if _music:
 		_music.stop()
 	get_tree().change_scene_to_file(LOGIN_SCENE)

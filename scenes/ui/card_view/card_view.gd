@@ -25,6 +25,7 @@ var selected: bool = false
 var is_opponent: bool = false
 var _face_down: bool = false
 var _interactable: bool = true
+var _preview_enabled: bool = true
 var _base_position: Vector2
 var _base_rotation_deg: float
 var _base_z: int
@@ -34,7 +35,7 @@ const _ELEMENT_ICONS := {
 	"fogo":  "res://assets/icons/elements/fire.png",
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
-	"ar":    "res://assets/icons/elements/wind.png",
+	"wind":  "res://assets/icons/elements/wind.png",
 }
 
 func _ready() -> void:
@@ -88,6 +89,9 @@ func set_interactable(value: bool, dim_when_blocked: bool = true) -> void:
 	_interactable = value
 	modulate.a = 1.0 if (value or not dim_when_blocked) else 0.45
 
+func set_preview_enabled(value: bool) -> void:
+	_preview_enabled = value
+
 func setup_fan(base_pos: Vector2, rot_deg: float, pivot: Vector2, z: int) -> void:
 	_base_position     = base_pos
 	_base_rotation_deg = rot_deg
@@ -132,6 +136,8 @@ func _on_mouse_entered() -> void:
 	if card == null:
 		return
 	if is_opponent and _face_down:
+		return
+	if not _preview_enabled:
 		return
 	GameBus.card_hovered.emit({ "type": "card", "card": card })
 	_animate_hover(true)

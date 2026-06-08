@@ -3,7 +3,7 @@
 # Tela de resolução de combate.
 # Exibe os dois heróis ativos, stats de ataque/defesa e anima o dano mútuo.
 #
-# USO — o board.gd chama show_resolve() logo ANTES de CombatResolver.resolve_round(),
+# USO — o board.gd chama show_resolve() logo ANTES de CombatResolver.resolve_turn(),
 # passando os totais já calculados. O sinal animation_finished é emitido ao clicar Continuar.
 #
 # show_resolve(hero0, hero1, dmg_to_0, dmg_to_1, atk0, def0, atk1, def1)

@@ -5,6 +5,7 @@ const MAX_HEROES := 3
 const MAX_CARDS  := 50
 
 var deck_id: String = ""
+var remote_id: String = ""   # UUID do deck no backend ("" = ainda não criado → POST)
 var deck_name: String = "Novo Deck"
 var hero_names: Array[String] = []
 var card_entries: Array[Dictionary] = []  # [{ "name": String, "count": int }]
@@ -78,6 +79,7 @@ func validate() -> Array[String]:
 func duplicate_data() -> DeckData:
 	var d := DeckData.new()
 	d.deck_id   = deck_id
+	d.remote_id = remote_id
 	d.deck_name = deck_name
 	d.hero_names  = hero_names.duplicate()
 	d.card_entries = []
@@ -91,6 +93,7 @@ func duplicate_data() -> DeckData:
 func to_dict() -> Dictionary:
 	return {
 		"deck_id":   deck_id,
+		"remote_id": remote_id,
 		"deck_name": deck_name,
 		"heroes":    hero_names.duplicate(),
 		"cards":     card_entries.duplicate(true),
@@ -104,6 +107,7 @@ static func from_dict(d: Dictionary) -> DeckData:
 		return null
 	var dd := DeckData.new()
 	dd.deck_id   = str(d.get("deck_id", ""))
+	dd.remote_id = str(d.get("remote_id", ""))
 	dd.deck_name = str(d.get("deck_name", "Novo Deck"))
 	var heroes_raw: Variant = d.get("heroes", [])
 	if heroes_raw is Array:

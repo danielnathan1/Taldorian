@@ -33,7 +33,7 @@ func _rebuild_cards() -> void:
 	var already_submitted := GameState.get_end_submitted(local_idx)
 	var has_arsenal       := not GameState.players[local_idx].arsenal.is_empty()
 	if has_arsenal and not already_submitted:
-		GameState.rpc_id(1, "rpc_finish_turn", -1)
+		GameState.rpc_id(1, "rpc_finish_battle", -1)
 		return
 	waiting_label.visible = already_submitted
 	cards_row.visible     = not already_submitted
@@ -76,12 +76,12 @@ func _refresh_confirm_button() -> void:
 func _on_btn_confirmar_pressed() -> void:
 	if _selected_index == -1:
 		return
-	GameState.rpc_id(1, "rpc_finish_turn", _selected_index)
+	GameState.rpc_id(1, "rpc_finish_battle", _selected_index)
 	btn_confirmar.disabled = true
 	btn_pular.disabled     = true
 
 func _on_btn_pular_pressed() -> void:
-	GameState.rpc_id(1, "rpc_finish_turn", -1)
+	GameState.rpc_id(1, "rpc_finish_battle", -1)
 	btn_confirmar.disabled = true
 	btn_pular.disabled     = true
 

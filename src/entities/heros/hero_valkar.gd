@@ -13,20 +13,20 @@ func _init() -> void:
 	skill_name       = "Escudo de Espinhos"
 	skill_desc       = "Recebe metade da defesa atual como bônus de ataque"
 	passive_name     = "Muro de Aço"
-	passive_desc     = "Enquanto ativa, previne 1 de dano no primeiro ataque a um aliado por rodada"
+	passive_desc     = "Enquanto ativa, previne 1 de dano no primeiro ataque a um aliado por batalha"
 	base_attack      = 0
 	base_defense     = 3
 	starts_face_up   = true
 
-func on_turn_start(player: Player) -> void:
+func on_battle_start(player: Player) -> void:
 	super(player)
 	_shield_available = true
 
-func on_round_reset() -> void:
+func on_turn_reset() -> void:
 	_shield_available = true
 
 ## Para dano de área: reduz 1 de dano por herói atingido, sem consumir o escudo de combate.
-func get_aoe_damage_reduction(ctx: BattleContext) -> int:
+func get_aoe_damage_reduction(ctx: TurnContext) -> int:
 	if not is_alive():
 		return 0
 	if self != ctx.defender_player.active_hero:
@@ -36,7 +36,7 @@ func get_aoe_damage_reduction(ctx: BattleContext) -> int:
 
 ## Passiva: reduz o primeiro dano sofrido por um aliado em 1 por rodada,
 ## mas somente enquanto Valkar for o herói ativo do time defensor.
-func get_team_damage_reduction(ctx: BattleContext) -> int:
+func get_team_damage_reduction(ctx: TurnContext) -> int:
 	if not is_alive():
 		return 0
 	if self != ctx.defender_player.active_hero:
@@ -51,5 +51,5 @@ func get_team_damage_reduction(ctx: BattleContext) -> int:
 func on_skill_activated(player: Player) -> void:
 	var bonus := base_defense / 2
 	player.pending_bonus_attack += bonus
-	_skill_activated_this_turn = true
+	_skill_activated_this_battle = true
 	GameBus.skill_activated.emit(self, skill_desc)

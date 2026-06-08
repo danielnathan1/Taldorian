@@ -12,14 +12,14 @@ const SYMBOL_LABELS := {
 	"fogo":  "Fogo",
 	"terra": "Terra",
 	"agua":  "Água",
-	"ar":    "Ar",
+	"wind":  "Ar",
 }
 
 const SYMBOL_ICONS := {
 	"fogo":  "res://assets/icons/elements/fire.png",
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
-	"ar":    "res://assets/icons/elements/wind.png",
+	"wind":  "res://assets/icons/elements/wind.png",
 }
 
 var _required_count: int     = 2

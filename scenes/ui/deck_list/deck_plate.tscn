@@ -1,0 +1,447 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/deck_list/deck_plate.gd" id="1_plate"]
+
+[node name="DeckPlate" type="Control"]
+custom_minimum_size = Vector2(330, 384)
+size_flags_horizontal = 3
+script = ExtResource("1_plate")
+
+[node name="Panel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 0
+mouse_filter = 2
+
+[node name="Showcase" type="Control" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 188)
+layout_mode = 2
+clip_contents = true
+mouse_filter = 2
+
+[node name="PlaymatBg" type="TextureRect" parent="Panel/VBox/Showcase"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Vignette" type="ColorRect" parent="Panel/VBox/Showcase"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.02, 0.08, 0.35)
+
+[node name="SleeveStack" type="Control" parent="Panel/VBox/Showcase"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -54.0
+offset_top = -79.0
+offset_right = 54.0
+offset_bottom = 79.0
+mouse_filter = 2
+
+[node name="SleeveCard2" type="Panel" parent="Panel/VBox/Showcase/SleeveStack"]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 0
+offset_left = -7.0
+offset_top = 16.0
+offset_right = 89.0
+offset_bottom = 156.0
+pivot_offset = Vector2(48, 70)
+rotation = -0.122173
+mouse_filter = 2
+
+[node name="Img" type="TextureRect" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard2"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = -1.0
+offset_bottom = -1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Crest" type="Label" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+text = "✦"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SleeveCard1" type="Panel" parent="Panel/VBox/Showcase/SleeveStack"]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 0
+offset_left = 19.0
+offset_top = 16.0
+offset_right = 115.0
+offset_bottom = 156.0
+pivot_offset = Vector2(48, 70)
+rotation = 0.122173
+mouse_filter = 2
+
+[node name="Img" type="TextureRect" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard1"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = -1.0
+offset_bottom = -1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Crest" type="Label" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+text = "✦"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SleeveCard0" type="Panel" parent="Panel/VBox/Showcase/SleeveStack"]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 0
+offset_left = 6.0
+offset_top = 9.0
+offset_right = 102.0
+offset_bottom = 149.0
+pivot_offset = Vector2(48, 70)
+mouse_filter = 2
+
+[node name="Img" type="TextureRect" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard0"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = -1.0
+offset_bottom = -1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Crest" type="Label" parent="Panel/VBox/Showcase/SleeveStack/SleeveCard0"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+text = "✦"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TopBar" type="HBoxContainer" parent="Panel/VBox/Showcase"]
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 34.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="PlaymatPill" type="PanelContainer" parent="Panel/VBox/Showcase/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="HBox" type="HBoxContainer" parent="Panel/VBox/Showcase/TopBar/PlaymatPill"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="PlaymatPillSwatch" type="TextureRect" parent="Panel/VBox/Showcase/TopBar/PlaymatPill/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 6
+
+[node name="PlaymatPillLabel" type="Label" parent="Panel/VBox/Showcase/TopBar/PlaymatPill/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "PLAYMAT"
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="Panel/VBox/Showcase/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="StatusPill" type="PanelContainer" parent="Panel/VBox/Showcase/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="StatusLabel" type="Label" parent="Panel/VBox/Showcase/TopBar/StatusPill"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "RASCUNHO"
+
+[node name="Body" type="MarginContainer" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 12
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBox/Body"]
+layout_mode = 2
+theme_override_constants/separation = 11
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="Panel/VBox/Body/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Deck"
+
+[node name="HeroChips" type="HBoxContainer" parent="Panel/VBox/Body/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 7
+mouse_filter = 2
+
+[node name="Chip0" type="Panel" parent="Panel/VBox/Body/VBox/HeroChips"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+clip_contents = true
+
+[node name="Portrait0" type="TextureRect" parent="Panel/VBox/Body/VBox/HeroChips/Chip0"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Initial0" type="Label" parent="Panel/VBox/Body/VBox/HeroChips/Chip0"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Chip1" type="Panel" parent="Panel/VBox/Body/VBox/HeroChips"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+clip_contents = true
+
+[node name="Portrait1" type="TextureRect" parent="Panel/VBox/Body/VBox/HeroChips/Chip1"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Initial1" type="Label" parent="Panel/VBox/Body/VBox/HeroChips/Chip1"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Chip2" type="Panel" parent="Panel/VBox/Body/VBox/HeroChips"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+clip_contents = true
+
+[node name="Portrait2" type="TextureRect" parent="Panel/VBox/Body/VBox/HeroChips/Chip2"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Initial2" type="Label" parent="Panel/VBox/Body/VBox/HeroChips/Chip2"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="Panel/VBox/Body/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Counts" type="HBoxContainer" parent="Panel/VBox/Body/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 18
+mouse_filter = 2
+
+[node name="HeroCount" type="HBoxContainer" parent="Panel/VBox/Body/VBox/Counts"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="HeroNum" type="Label" parent="Panel/VBox/Body/VBox/Counts/HeroCount"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0/3"
+
+[node name="Lbl" type="Label" parent="Panel/VBox/Body/VBox/Counts/HeroCount"]
+layout_mode = 2
+size_flags_vertical = 8
+text = "HERÓIS"
+
+[node name="CardCount" type="HBoxContainer" parent="Panel/VBox/Body/VBox/Counts"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CardNum" type="Label" parent="Panel/VBox/Body/VBox/Counts/CardCount"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0/50"
+
+[node name="Lbl" type="Label" parent="Panel/VBox/Body/VBox/Counts/CardCount"]
+layout_mode = 2
+size_flags_vertical = 8
+text = "CARTAS"
+
+[node name="Meta" type="PanelContainer" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBox/Meta"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SleeveRow" type="HBoxContainer" parent="Panel/VBox/Meta/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Key" type="Label" parent="Panel/VBox/Meta/VBox/SleeveRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+text = "SLEEVE"
+
+[node name="MetaSleeveSwatch" type="TextureRect" parent="Panel/VBox/Meta/VBox/SleeveRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(13, 13)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MetaSleeveValue" type="Label" parent="Panel/VBox/Meta/VBox/SleeveRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Padrão"
+
+[node name="PlaymatRow" type="HBoxContainer" parent="Panel/VBox/Meta/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="Key" type="Label" parent="Panel/VBox/Meta/VBox/PlaymatRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+text = "PLAYMAT"
+
+[node name="MetaPlaymatSwatch" type="TextureRect" parent="Panel/VBox/Meta/VBox/PlaymatRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(13, 13)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MetaPlaymatValue" type="Label" parent="Panel/VBox/Meta/VBox/PlaymatRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Padrão"
+
+[node name="Ticks" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Quick" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -42.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 0
+
+[node name="EditBtn" type="Button" parent="Quick"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "✎  EDITAR"
+
+[node name="DeleteBtn" type="Button" parent="Quick"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 42)
+layout_mode = 2
+text = "🗑"

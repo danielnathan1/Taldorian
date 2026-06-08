@@ -3,7 +3,7 @@ extends CardEffect
 
 func execute(ctx: CardEffectContext) -> void:
 	var count := 0
-	for card in ctx.source_player.cards_this_turn:
+	for card in ctx.source_player.cards_this_battle:
 		for sym in card.symbols:
 			if sym == "fogo":
 				count += 1

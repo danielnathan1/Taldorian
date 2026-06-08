@@ -33,8 +33,8 @@ taldorian/
 │   ├── core/
 │   │   ├── game_state.gd         # Autoridade do estado da partida — roda só no servidor
 │   │   ├── combat_resolver.gd    # Resolve dano bidirecional, aplica hooks dos heróis
-│   │   ├── turn_manager.gd       # Rastreia fase atual e jogador ativo (enum Phase)
-│   │   ├── battle_context.gd     # Contexto bidirecional passado ao resolver combate
+│   │   ├── battle_manager.gd     # Rastreia fase atual e jogador ativo (enum Phase)
+│   │   ├── turn_context.gd       # Contexto bidirecional passado ao resolver combate
 │   │   ├── game_symbols.gd       # Constantes de símbolo + display_chain()
 │   │   └── symbol_chain.gd       # Detecta e valida subsequências contíguas (máx 3)
 │   │
@@ -123,7 +123,7 @@ taldorian/
 │
 └── data/
     ├── cards/
-    │   └── base_set.json         # 84 cartas definidas em JSON
+    │   └── taldorian_origins.json # 84 cartas do set base, definidas em JSON
     ├── cosmetics.json            # Catálogo de sleeves e playmats disponíveis
     ├── player_cards.json         # Coleção de cartas do jogador (persistida)
     └── player_cosmetics.json     # Cosméticos desbloqueados (persistido)
@@ -213,7 +213,7 @@ rpc_submit_backline_ability(use: bool, target: int)   # usa ou passa habilidade 
 rpc_play_card(hand_idx: int)                          # jogar carta da mão
 rpc_play_from_arsenal()                               # jogar carta do arsenal
 rpc_pass()                                            # passar janela de reação ou segmento
-rpc_finish_turn(arsenal_idx: int)                     # encerrar turno guardando carta no arsenal (-1 = não guardar)
+rpc_finish_battle(arsenal_idx: int)                   # encerrar batalha guardando carta no arsenal (-1 = não guardar)
 rpc_submit_card_pick(index: int)                      # resolve overlay de pick_card
 rpc_submit_symbol_pick(symbols: Array)                # resolve overlay de pick_symbol
 ```
@@ -263,7 +263,7 @@ Na fase DRAW, o jogador compra cartas. Se já tiver ≥ 6, não compra nada. Car
 
 ### Limite de cópias por deck
 
-- Máximo de cópias definido no campo `"copies"` de cada carta em `data/cards/base_set.json`
+- Máximo de cópias definido no campo `"copies"` de cada carta em `data/cards/taldorian_origins.json`
 - Limite global: `MAX_COPIES = 3`, `MAX_DECK_SIZE = 300` (validado em `DeckLoader`)
 
 O deck é embaralhado no início da partida via Fisher-Yates em `_shuffle_deck()`.
@@ -320,7 +320,7 @@ Estado rastreado em `_hero_revealed[player_idx]: bool` no GameState.
 
 - Não revelam o herói ao serem jogadas
 - Permitem manter o blefe por mais um segmento
-- Alguns heróis podem ganhar `pending_next_round_stealth` para ficar furtivos na próxima rodada
+- Alguns heróis podem ganhar `pending_next_turn_stealth` para ficar furtivos no próximo turno
 
 ---
 
@@ -335,17 +335,17 @@ Estado rastreado em `_hero_revealed[player_idx]: bool` no GameState.
 
 ## Combate — Resolução de Dano
 
-### Fórmula (CombatResolver.resolve_round)
+### Fórmula (CombatResolver.resolve_turn)
 
 ```
 Ataque bruto   = hero.base_attack
-               + soma de attack_value das round_cards
+               + soma de attack_value das turn_cards
                + pending_bonus_attack
-               + next_round_bonus_attack (cross-round, ex: Guarda Inabalável)
+               + next_turn_bonus_attack (cross-turn, ex: Guarda Inabalável)
                - next_attack_penalty (Finta do oponente)
 
 Defesa bruta   = hero.base_defense
-               + soma de defense_value das round_cards
+               + soma de defense_value das turn_cards
                + pending_bonus_defense
                (se pending_defense_scales_attack: defesa = ataque total)
 
@@ -367,7 +367,7 @@ Dano final     = max(0, on_before_damage_taken(Dano bruto))   ← hook do herói
 | `pending_on_full_block_draw` > 0 (dano == 0) | Defensor compra cartas |
 | `pending_on_full_block_heal` > 0 (dano == 0) | Defensor cura |
 
-Todos os `pending_*` são zerados em `reset_round_modifiers()` após cada resolução.
+Todos os `pending_*` são zerados em `reset_turn_modifiers()` após cada resolução.
 
 ---
 
@@ -389,7 +389,7 @@ Sempre usar as constantes — nunca strings literais.
 
 ### Cadeia de símbolos
 
-- Acumulada de `cards_this_turn` (todas as cartas jogadas no turno atual).
+- Acumulada de `cards_this_battle` (todas as cartas jogadas na batalha atual).
 - Cada carta contribui com todos os seus símbolos.
 - Verificada como **subsequência contígua** dentro da cadeia acumulada.
 - **Tamanho máximo da cadeia:** 3 símbolos (`SymbolChain.MAX_CHAIN`).
@@ -418,18 +418,18 @@ var is_backline_revealed: bool
 
 # Hooks virtuais — override só do necessário
 func on_skill_activated(player: Player) -> void: pass
-func on_support_turn_start(player: Player, opponent: Player) -> void: pass  # passiva de retaguarda
-func on_turn_start(player: Player) -> void: pass
+func on_support_battle_start(player: Player, opponent: Player) -> void: pass  # passiva de retaguarda
+func on_battle_start(player: Player) -> void: pass
 func on_card_played(card: Card, player: Player) -> void: pass
-func on_before_attack(ctx: BattleContext) -> void: pass
-func on_after_damage_dealt(damage: int, ctx: BattleContext) -> void: pass
-func on_before_damage_taken(amount: int, ctx: BattleContext) -> int: return amount
-func on_after_damage_taken(ctx: BattleContext) -> void: pass
-func on_turn_end(player: Player) -> void: pass
-func on_round_reset() -> void: pass
+func on_before_attack(ctx: TurnContext) -> void: pass
+func on_after_damage_dealt(damage: int, ctx: TurnContext) -> void: pass
+func on_before_damage_taken(amount: int, ctx: TurnContext) -> int: return amount
+func on_after_damage_taken(ctx: TurnContext) -> void: pass
+func on_battle_end(player: Player) -> void: pass
+func on_turn_reset() -> void: pass
 func has_backline_ability() -> bool: return false
 func apply_backline_ability(player: Player, opponent: Player, target: int) -> void: pass
-func get_team_damage_reduction(ctx: BattleContext) -> int: return 0
+func get_team_damage_reduction(ctx: TurnContext) -> int: return 0
 func get_passive_attack_bonus() -> int: return 0
 ```
 
@@ -476,14 +476,14 @@ Efeitos ficam em `src/entities/effects/` e são registrados via `CardEffectRegis
 ### Player — Modificadores Pendentes (src/entities/player.gd)
 
 ```gdscript
-var cards_this_turn: Array[Card]          # cadeia de símbolos do turno
-var round_cards: Array[Card]              # cartas desta rodada (combate)
+var cards_this_battle: Array[Card]        # cadeia de símbolos da batalha
+var turn_cards: Array[Card]               # cartas deste turno (combate)
 var pending_bonus_attack: int
 var pending_bonus_defense: int
 var pending_heal: int
 var pending_heal_after_combat: int
 var pending_counter_damage: int
-var next_round_bonus_attack: int          # cross-round (Guarda Inabalável)
+var next_turn_bonus_attack: int           # cross-turn (Guarda Inabalável)
 var pending_damage_shield: int            # Fluxo Reativo
 var pending_on_full_block_draw: int
 var pending_on_full_block_heal: int
@@ -492,7 +492,7 @@ var pending_on_zero_damage_draw: int      # All In
 var pending_destroy_opponent_arsenal: bool
 var pending_ricochet: bool                # Ricochetear
 var pending_discard_if_attacked: bool     # Fúria Instável
-var pending_next_round_stealth: bool      # Execução Silenciosa
+var pending_next_turn_stealth: bool       # Execução Silenciosa
 var pending_defense_scales_attack: bool   # Fortaleza Inabalável
 var pending_skill_draw: bool              # Sintonia Primordial
 var next_attack_penalty: int              # Finta
@@ -696,9 +696,9 @@ const BOARD_SCENE := "res://scenes/ui/boardv2/board.tscn"
 ## GameBus — Sinais Existentes
 
 ```gdscript
-# Turno / Fase
-signal turn_started(player_index: int)
-signal turn_ended(player_index: int)
+# Batalha / Fase
+signal battle_started(player_index: int)
+signal battle_ended(player_index: int)
 signal phase_changed(phase: String)
 
 # Herói
@@ -717,7 +717,7 @@ signal symbol_added(symbol: String, chain: Array)
 signal skill_activated(hero: Hero, skill_name: String)
 
 # Combate
-signal combat_resolved(ctx: BattleContext)
+signal combat_resolved(ctx: TurnContext)
 signal combat_preview_ready(atk: int, def: int, damage: int)
 
 # Reação

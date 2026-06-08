@@ -1,21 +1,13 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://gl8nlto5dotk"]
 
-[ext_resource type="Script" path="res://scenes/ui/login/login.gd" id="1_login"]
-[ext_resource type="FontFile" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="2_black"]
-[ext_resource type="FontFile" path="res://assets/fonts/CinzelDecorative-Bold.ttf" id="3_bold"]
-[ext_resource type="FontFile" path="res://assets/fonts/palatino/palr45w.ttf" id="4_body"]
+[ext_resource type="Script" uid="uid://bk4tig1v1qwmu" path="res://scenes/ui/login/login.gd" id="1_login"]
+[ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="2_black"]
+[ext_resource type="FontFile" uid="uid://dmxgycxpbdi5m" path="res://assets/fonts/CinzelDecorative-Bold.ttf" id="3_bold"]
+[ext_resource type="FontFile" uid="uid://bm23jumepppl1" path="res://assets/fonts/palatino/palr45w.ttf" id="4_body"]
 
-[sub_resource type="StyleBoxFlat" id="sb_panel"]
-content_margin_left = 34.0
-content_margin_top = 34.0
-content_margin_right = 34.0
-content_margin_bottom = 34.0
-bg_color = Color(0.063, 0.082, 0.149, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.788, 0.627, 0.298, 0.3)
+[sub_resource type="Gradient" id="grad_embers"]
+offsets = PackedFloat32Array(0, 0.12, 0.85, 1)
+colors = PackedColorArray(0.91, 0.784, 0.337, 0, 0.91, 0.784, 0.337, 0.8, 0.69, 0.125, 0.125, 0.4, 0.69, 0.125, 0.125, 0)
 
 [sub_resource type="StyleBoxFlat" id="sb_input_normal"]
 content_margin_left = 10.0
@@ -28,6 +20,30 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.788, 0.627, 0.298, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="sb_btn_hover"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.1, 0.12, 0.22, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.784, 0.337, 0.85)
+
+[sub_resource type="StyleBoxFlat" id="sb_panel"]
+content_margin_left = 34.0
+content_margin_top = 34.0
+content_margin_right = 34.0
+content_margin_bottom = 34.0
+bg_color = Color(0.063, 0.082, 0.149, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="sb_input_focus"]
 content_margin_left = 10.0
@@ -53,23 +69,7 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.788, 0.627, 0.298, 0.5)
 
-[sub_resource type="StyleBoxFlat" id="sb_btn_hover"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.1, 0.12, 0.22, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.91, 0.784, 0.337, 0.85)
-
-[sub_resource type="Gradient" id="grad_embers"]
-offsets = PackedFloat32Array(0, 0.12, 0.85, 1)
-colors = PackedColorArray(0.91, 0.784, 0.337, 0, 0.91, 0.784, 0.337, 0.8, 0.69, 0.125, 0.125, 0.4, 0.69, 0.125, 0.125, 0)
-
-[node name="Login" type="Control"]
+[node name="Login" type="Control" unique_id=1395545970]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -78,7 +78,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_login")
 
-[node name="BG" type="ColorRect" parent="."]
+[node name="BG" type="ColorRect" parent="." unique_id=176000822]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -88,7 +88,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.043, 0.039, 0.09, 1)
 
-[node name="Embers" type="CPUParticles2D" parent="."]
+[node name="Embers" type="CPUParticles2D" parent="." unique_id=788744387]
 position = Vector2(960, 1080)
 amount = 36
 lifetime = 12.0
@@ -104,19 +104,42 @@ scale_amount_min = 1.5
 scale_amount_max = 4.0
 color_ramp = SubResource("grad_embers")
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="QuitButton" type="Button" parent="." unique_id=699635066]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -68.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 68.0
+grow_horizontal = 0
+tooltip_text = "Fechar o jogo"
+theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 0.7)
+theme_override_colors/font_hover_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/pressed = SubResource("sb_input_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+text = "✕"
+
+[node name="Center" type="CenterContainer" parent="." unique_id=477236187]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
-[node name="Col" type="VBoxContainer" parent="Center"]
+[node name="Col" type="VBoxContainer" parent="Center" unique_id=2082676600]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Eyebrow" type="Label" parent="Center/Col"]
+[node name="Eyebrow" type="Label" parent="Center/Col" unique_id=600046635]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
 theme_override_fonts/font = ExtResource("4_body")
@@ -124,7 +147,7 @@ theme_override_font_sizes/font_size = 13
 text = "O MUNDO DE TALDORIAN"
 horizontal_alignment = 1
 
-[node name="Title" type="Label" parent="Center/Col"]
+[node name="Title" type="Label" parent="Center/Col" unique_id=1510978482]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
 theme_override_fonts/font = ExtResource("2_black")
@@ -132,7 +155,7 @@ theme_override_font_sizes/font_size = 64
 text = "TALDORIAN"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Center/Col"]
+[node name="Subtitle" type="Label" parent="Center/Col" unique_id=560274554]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.69, 0.125, 0.125, 1)
 theme_override_fonts/font = ExtResource("4_body")
@@ -140,20 +163,24 @@ theme_override_font_sizes/font_size = 13
 text = "TRADING CARD GAME"
 horizontal_alignment = 1
 
-[node name="Gap1" type="Control" parent="Center/Col"]
+[node name="Gap1" type="Control" parent="Center/Col" unique_id=1240497166]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 
-[node name="Panel" type="PanelContainer" parent="Center/Col"]
+[node name="Panel" type="PanelContainer" parent="Center/Col" unique_id=2102044849]
 layout_mode = 2
 theme_override_styles/panel = SubResource("sb_panel")
 
-[node name="Inner" type="VBoxContainer" parent="Center/Col/Panel"]
+[node name="Forms" type="VBoxContainer" parent="Center/Col/Panel" unique_id=1060227075]
 custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+
+[node name="LoginForm" type="VBoxContainer" parent="Center/Col/Panel/Forms" unique_id=277767894]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Acesso" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="Acesso" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=1653566264]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
 theme_override_fonts/font = ExtResource("4_body")
@@ -161,7 +188,7 @@ theme_override_font_sizes/font_size = 11
 text = "ACESSO"
 horizontal_alignment = 1
 
-[node name="AcessoSub" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="AcessoSub" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=748810087]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 1)
 theme_override_fonts/font = ExtResource("4_body")
@@ -169,44 +196,44 @@ theme_override_font_sizes/font_size = 12
 text = "Entre com sua conta para começar"
 horizontal_alignment = 1
 
-[node name="Gap2" type="Control" parent="Center/Col/Panel/Inner"]
+[node name="Gap2" type="Control" parent="Center/Col/Panel/Forms/LoginForm" unique_id=642938569]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
-[node name="UserLabel" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="UserLabel" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=1898775941]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
 theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 10
 text = "USUÁRIO"
 
-[node name="UserInput" type="LineEdit" parent="Center/Col/Panel/Inner"]
+[node name="UserInput" type="LineEdit" parent="Center/Col/Panel/Forms/LoginForm" unique_id=2058276068]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
 theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
 theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
 theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("sb_input_normal")
 theme_override_styles/focus = SubResource("sb_input_focus")
 placeholder_text = "seu nome de usuário"
 
-[node name="PassLabel" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="PassLabel" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=755183991]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
 theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 10
 text = "SENHA"
 
-[node name="PassInput" type="LineEdit" parent="Center/Col/Panel/Inner"]
+[node name="PassInput" type="LineEdit" parent="Center/Col/Panel/Forms/LoginForm" unique_id=1262329533]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
 theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
 theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
 theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("sb_input_normal")
@@ -214,7 +241,7 @@ theme_override_styles/focus = SubResource("sb_input_focus")
 placeholder_text = "••••••"
 secret = true
 
-[node name="ErrorLabel" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="ErrorLabel" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=276728589]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -223,11 +250,11 @@ theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
-[node name="Gap3" type="Control" parent="Center/Col/Panel/Inner"]
+[node name="Gap3" type="Control" parent="Center/Col/Panel/Forms/LoginForm" unique_id=247797184]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="EnterButton" type="Button" parent="Center/Col/Panel/Inner"]
+[node name="EnterButton" type="Button" parent="Center/Col/Panel/Forms/LoginForm" unique_id=540234698]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
@@ -236,14 +263,222 @@ theme_override_colors/font_hover_color = Color(1, 0.9, 0.5, 1)
 theme_override_fonts/font = ExtResource("3_bold")
 theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("sb_btn_normal")
-theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_normal")
-text = "⚔  Entrar"
+theme_override_styles/hover = SubResource("sb_btn_hover")
+text = "Entrar"
 
-[node name="Note" type="Label" parent="Center/Col/Panel/Inner"]
+[node name="GoSignup" type="Button" parent="Center/Col/Panel/Forms/LoginForm" unique_id=1388472994]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_colors/font_hover_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 12
+text = "Não tem conta?  Criar conta"
+flat = true
+
+[node name="Note" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=437740310]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 0.6)
 theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 11
 text = "Login local · sem servidor por enquanto"
+horizontal_alignment = 1
+
+[node name="SignupForm" type="VBoxContainer" parent="Center/Col/Panel/Forms" unique_id=1273753793]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Acesso" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=560546796]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 11
+text = "CRIAR CONTA"
+horizontal_alignment = 1
+
+[node name="AcessoSub" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=597921868]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.722, 0.659, 0.549, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 12
+text = "Cadastre-se para entrar em Taldorian"
+horizontal_alignment = 1
+
+[node name="Gap2" type="Control" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1915982619]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="UserLabel" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=260593794]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 10
+text = "USUÁRIO"
+
+[node name="SuUser" type="LineEdit" parent="Center/Col/Panel/Forms/SignupForm" unique_id=817942113]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/focus = SubResource("sb_input_focus")
+placeholder_text = "seu nome de usuário"
+
+[node name="EmailLabel" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1604320968]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 10
+text = "E-MAIL"
+
+[node name="SuEmail" type="LineEdit" parent="Center/Col/Panel/Forms/SignupForm" unique_id=185453536]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/focus = SubResource("sb_input_focus")
+placeholder_text = "voce@exemplo.com"
+
+[node name="PassLabel" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=872768065]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 10
+text = "SENHA"
+
+[node name="SuPass" type="LineEdit" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1657998827]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/focus = SubResource("sb_input_focus")
+placeholder_text = "••••••"
+secret = true
+
+[node name="ConfirmLabel" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1302931103]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 10
+text = "CONFIRMAR SENHA"
+
+[node name="SuConfirm" type="LineEdit" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1129761807]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/focus = SubResource("sb_input_focus")
+placeholder_text = "••••••"
+secret = true
+
+[node name="SignupError" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1670130454]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.69, 0.125, 0.125, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+
+[node name="Gap3" type="Control" parent="Center/Col/Panel/Forms/SignupForm" unique_id=209878399]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+
+[node name="CreateButton" type="Button" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1651509881]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_colors/font_hover_color = Color(1, 0.9, 0.5, 1)
+theme_override_fonts/font = ExtResource("3_bold")
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("sb_btn_normal")
+theme_override_styles/pressed = SubResource("sb_btn_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+text = "✦  Criar"
+
+[node name="GoLogin" type="Button" parent="Center/Col/Panel/Forms/SignupForm" unique_id=779848201]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_colors/font_hover_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 12
+text = "Já tem conta?  Entrar"
+flat = true
+
+[node name="LoadingOverlay" type="Control" parent="." unique_id=1975063740]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="LoadingOverlay" unique_id=1693913598]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.043, 0.039, 0.09, 0.85)
+
+[node name="Center" type="CenterContainer" parent="LoadingOverlay" unique_id=920181470]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="PanelContainer" parent="LoadingOverlay/Center" unique_id=2124437559]
+layout_mode = 2
+theme_override_styles/panel = SubResource("sb_panel")
+
+[node name="VBox" type="VBoxContainer" parent="LoadingOverlay/Center/Card" unique_id=1201469972]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Spinner" type="Label" parent="LoadingOverlay/Center/Card/VBox" unique_id=1384468231]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("2_black")
+theme_override_font_sizes/font_size = 40
+text = "✦"
+horizontal_alignment = 1
+
+[node name="LoadingLabel" type="Label" parent="LoadingOverlay/Center/Card/VBox" unique_id=2058535553]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+text = "Carregando informações…"
 horizontal_alignment = 1

@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Hakai</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #04050a;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #stage-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative; overflow: hidden;
+    background: #07080f;
+  }
+
+  /* ── Board halves (clipped copies that separate during the cut) ── */
+  .board-half { position: absolute; inset: 0; will-change: transform; }
+  .board-half.top    { clip-path: inset(0 0 50% 0); }
+  .board-half.bottom { clip-path: inset(50% 0 0 0); }
+
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.30 0.10 250 / 0.22) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.10 0.04 255) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.30 0.10 250 / 0.20) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.10 0.05 250) 0%, oklch(0.08 0.04 260) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.70 0.13 250 / 0.22) 20%,
+      oklch(0.70 0.13 250 / 0.45) 50%,
+      oklch(0.70 0.13 250 / 0.22) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.03; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none; color: oklch(0.70 0.10 250);
+  }
+  .half-label.opp { top: 14px; }
+  .half-label.pl  { bottom: 14px; }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.12 250 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 250 / 0.60);
+    --slot-label-color: oklch(0.65 0.12 250);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.16 270 / 0.42);
+    --slot-bg:          oklch(0.10 0.04 270 / 0.55);
+    --slot-label-color: oklch(0.62 0.14 270);
+  }
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 268);
+  }
+  .hp-fill { height: 100%; background: linear-gradient(90deg, oklch(0.55 0.18 250), oklch(0.78 0.16 240)); }
+  .hp-fill.enemy { background: linear-gradient(90deg, oklch(0.55 0.18 290), oklch(0.72 0.16 285)); }
+
+  /* ── The Destroyer (active hero) card highlight ── */
+  .hakai-charging {
+    border-color: oklch(0.72 0.18 250) !important;
+    box-shadow:
+      0 0 0 1px oklch(0.72 0.18 250 / 0.85),
+      0 0 24px oklch(0.65 0.20 255 / 0.55),
+      0 0 60px oklch(0.65 0.20 255 / 0.30);
+  }
+
+  /* ── Darkening + fog overlays ── */
+  .darken {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 50%, transparent 0%, oklch(0.02 0.02 260 / 0.55) 60%, oklch(0.01 0.01 260 / 0.92) 100%),
+      oklch(0.02 0.02 260 / 0.55);
+    z-index: 20;
+  }
+  .fog-layer {
+    position: absolute; pointer-events: none; border-radius: 50%;
+    filter: blur(34px);
+    mix-blend-mode: screen;
+    z-index: 22;
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none; z-index: 60;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 52px; font-weight: 900;
+    color: oklch(0.92 0.06 250);
+    letter-spacing: 0.22em; text-transform: uppercase;
+    text-shadow:
+      0 0 26px oklch(0.70 0.20 255 / 0.9),
+      0 0 60px oklch(0.60 0.22 258 / 0.6),
+      0 2px 0 oklch(0.10 0.06 260 / 0.7);
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.5em; text-transform: uppercase;
+    color: oklch(0.78 0.12 250); opacity: 0.9;
+  }
+  .ability-rule {
+    width: 320px; height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(0.72 0.18 252 / 0.85), transparent);
+    margin-top: 2px;
+  }
+
+  /* ── The blue slice ── */
+  .slice-glow {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 45;
+    mix-blend-mode: screen;
+  }
+  .slice-core {
+    position: absolute; left: 0; top: 50%;
+    transform: translateY(-50%);
+    height: 2px; pointer-events: none; z-index: 46;
+    background: linear-gradient(90deg, transparent, oklch(0.99 0.03 240) 12%, oklch(0.99 0.02 240) 88%, transparent);
+    box-shadow:
+      0 0 8px 1px oklch(0.92 0.12 245),
+      0 0 22px 3px oklch(0.78 0.20 250 / 0.9);
+    mix-blend-mode: screen;
+  }
+  .slice-bloom {
+    position: absolute; left: 0; top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none; z-index: 44;
+    background: linear-gradient(180deg,
+      transparent, oklch(0.70 0.20 252 / 0.55) 45%,
+      oklch(0.80 0.18 248 / 0.85) 50%,
+      oklch(0.70 0.20 252 / 0.55) 55%, transparent);
+    filter: blur(6px);
+    mix-blend-mode: screen;
+  }
+  .screen-flash {
+    position: absolute; inset: 0; z-index: 55;
+    background: radial-gradient(ellipse 120% 30% at 50% 50%, oklch(0.97 0.05 240) 0%, oklch(0.80 0.18 250 / 0.6) 30%, transparent 70%);
+    mix-blend-mode: screen; pointer-events: none;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    background: oklch(0.10 0.03 260 / 0.85);
+    border: 1px solid oklch(0.70 0.13 250 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 260 / 0.9);
+    color: oklch(0.82 0.14 250);
+    border: 1px solid oklch(0.70 0.13 250 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 260 / 0.95);
+    border-color: oklch(0.70 0.13 250 / 0.8);
+    box-shadow: 0 0 14px oklch(0.70 0.13 250 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.30 0.14 255 / 0.95), oklch(0.16 0.10 258 / 0.95));
+    color: oklch(0.93 0.10 248);
+    border-color: oklch(0.70 0.18 252 / 0.7);
+  }
+  .ctrl-btn.primary:hover { box-shadow: 0 0 18px oklch(0.65 0.20 255 / 0.5); }
+  .ctrl-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: oklch(0.65 0.10 250); }
+  .ctrl-time { color: oklch(0.82 0.14 250); font-size: 10px; min-width: 48px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Geometry
+// ───────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+const MID_Y = STAGE_H / 2;
+
+// The Destroyer — active hero who channels the passive
+const HAKAI = { x: 720, y: 540 };
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Timing (seconds)
+// ───────────────────────────────────────────────────────────────────────────────
+const T = {
+  DARK_IN     : 0.0,    // darkness begins fading in
+  DARK_FULL   : 0.75,
+  FOG_IN      : 0.15,   // fog drifts in
+  FOG_FULL    : 1.00,
+  CHARGE_AT   : 0.70,   // a point of blue light gathers at center
+  SLICE_AT    : 1.55,   // the blade shoots out horizontally
+  SLICE_DUR   : 0.26,   // time for the beam to reach both edges
+  FLASH_AT    : 1.55,
+  FLASH_DUR   : 0.40,
+  SEP_FROM    : 1.60,   // the two halves begin to separate
+  SEP_DUR     : 0.45,
+  HOLD_UNTIL  : 2.45,   // the seam lingers a beat
+  WIND_FROM   : 2.45,   // everything starts dissipating
+  WIND_DUR    : 1.05,   // dissipation length
+  END         : 3.55,   // fully back to normal
+};
+const MAX_SEP  = 13;    // peak separation right after the cut
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Utilities
+// ───────────────────────────────────────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+const easeInQuad   = t => t * t;
+const clamp01 = v => Math.max(0, Math.min(1, v));
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Fog blobs — slow drifting volumetric mist (deterministic, time-driven)
+// ───────────────────────────────────────────────────────────────────────────────
+const NUM_FOG = 7;
+const fogBlobs = (() => {
+  const rng = mulberry32(71);
+  const list = [];
+  for (let i = 0; i < NUM_FOG; i++) {
+    list.push({
+      id: i,
+      baseX: rng() * STAGE_W,
+      baseY: 120 + rng() * (STAGE_H - 240),
+      w: 320 + rng() * 360,
+      h: 150 + rng() * 180,
+      driftX: 30 + rng() * 70,
+      driftY: 14 + rng() * 26,
+      speed: 0.04 + rng() * 0.06,
+      phase: rng() * Math.PI * 2,
+      hue: 246 + (rng() - 0.5) * 24,
+      maxOp: 0.10 + rng() * 0.12,
+    });
+  }
+  return list;
+})();
+
+// Energy glints that drift along the seam after the cut
+const NUM_GLINTS = 18;
+const glints = (() => {
+  const rng = mulberry32(23);
+  const list = [];
+  for (let i = 0; i < NUM_GLINTS; i++) {
+    list.push({
+      id: i,
+      startX: rng() * STAGE_W,
+      dir: rng() < 0.5 ? -1 : 1,
+      speed: 60 + rng() * 130,
+      period: 1.6 + rng() * 1.8,
+      phase: rng() * 2.4,
+      size: 1.2 + rng() * 2.6,
+      yJit: (rng() - 0.5) * 5,
+    });
+  }
+  return list;
+})();
+
+// Sparks that burst off the seam at the cut moment
+const NUM_SPARKS = 22;
+const sparks = (() => {
+  const rng = mulberry32(48);
+  const list = [];
+  for (let i = 0; i < NUM_SPARKS; i++) {
+    const ang = (rng() - 0.5) * Math.PI * 0.9 + (rng() < 0.5 ? 0 : Math.PI);
+    list.push({
+      id: i,
+      x0: STAGE_W * (0.18 + rng() * 0.64),
+      angle: ang,
+      dist: 30 + rng() * 90,
+      size: 0.8 + rng() * 1.8,
+      delay: rng() * 0.10,
+    });
+  }
+  return list;
+})();
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Static board (rendered inside each clipped half)
+// ───────────────────────────────────────────────────────────────────────────────
+function BoardContent({ scene }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: 30, atk: 24, enemy: true },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: 55, atk: 18, enemy: true },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: 80, atk: 22, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: 70, atk: 32, enemy: true },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std',    label: 'Arqueiro',  hp: 65, atk: 22 },
+    { x: 450, y: 540, size: 'std',    label: 'Sacerdote', hp: 80, atk: 14 },
+    { x: 540, y: 540, size: 'std',    label: 'Maga',      hp: 55, atk: 28 },
+    { x: 720, y: 540, size: 'active', label: 'Destruidor', hp: 90, atk: 36, isHakai: true, scene },
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+  return (
+    <>
+      <div className="bg-opponent"/>
+      <div className="bg-player"/>
+      <div className="bg-center-line"/>
+      <div className="bg-noise"/>
+      <div className="half-label opp">Área do Oponente</div>
+      <div className="half-label pl">Sua Área — Destruidor</div>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}
+      {player.map((s, i) => <Slot key={'p'+i} theme="player" {...s} />)}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, hp, atk, isHakai, scene, enemy }) {
+  const cardClasses = [
+    'slot-card',
+    isHakai && (scene === 'charging') ? 'hakai-charging' : '',
+  ].filter(Boolean).join(' ');
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className={cardClasses}>
+        <CardArt theme={theme} size={size} label={label} />
+        {atk !== undefined && (
+          <div className="atk-badge">{atk}</div>
+        )}
+        {hp !== undefined && (
+          <div className="hp-bar">
+            <div className={`hp-fill ${enemy ? 'enemy' : ''}`} style={{ width: `${hp}%` }} />
+          </div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player'
+    ? 'oklch(0.55 0.12 250 / 0.55)'
+    : 'oklch(0.55 0.16 270 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+
+  if (label === 'Destruidor') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.70 0.16 250 / 0.7)" strokeWidth="0.6"/>
+        {/* hooded silhouette */}
+        <path d={`M ${w/2} ${h/2 - 22} q -16 4 -16 22 q 0 14 16 18 q 16 -4 16 -18 q 0 -18 -16 -22 z`}
+              fill="oklch(0.08 0.03 260 / 0.85)" stroke="oklch(0.60 0.14 252 / 0.7)" strokeWidth="0.6"/>
+        {/* glowing eyes */}
+        <circle cx={w/2 - 5} cy={h/2 + 2} r="1.6" fill="oklch(0.85 0.20 250)"/>
+        <circle cx={w/2 + 5} cy={h/2 + 2} r="1.6" fill="oklch(0.85 0.20 250)"/>
+        {/* horizontal rift glyph */}
+        <line x1="10" y1={h/2 + 26} x2={w-10} y2={h/2 + 26}
+              stroke="oklch(0.82 0.18 248 / 0.85)" strokeWidth="0.8"/>
+        <rect x="6" y={h - 22} width={w-12} height="12" fill="oklch(0.06 0.03 260 / 0.7)"
+              stroke="oklch(0.70 0.16 250 / 0.7)" strokeWidth="0.4" opacity="0.7"/>
+      </svg>
+    );
+  }
+  if (label === 'Sacerdote') {
+    const cx = w/2, cy = h/2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.65 0.16 250 / 0.55)" strokeWidth="0.6"/>
+        <circle cx={cx} cy={cy - 14} r="9" stroke="oklch(0.85 0.14 250 / 0.8)" strokeWidth="0.6" fill="none"/>
+        <line x1={cx} y1={cy - 6} x2={cx} y2={cy + 22}
+              stroke="oklch(0.78 0.10 248 / 0.9)" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2 - 12} ${h/2 - 16} Q ${w/2 - 22} ${h/2}, ${w/2 - 12} ${h/2 + 16}`}
+              stroke="oklch(0.82 0.12 250 / 0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+        <line x1={w/2 - 6} y1={h/2} x2={w/2 + 18} y2={h/2}
+              stroke="oklch(0.85 0.08 250 / 0.95)" strokeWidth="1.0"/>
+      </svg>
+    );
+  }
+  if (label === 'Maga') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${w/2} ${h/2 - 20} L ${w/2 + 11} ${h/2 - 4} L ${w/2 - 11} ${h/2 - 4} Z`}
+              stroke="oklch(0.65 0.16 260 / 0.85)" strokeWidth="0.6" fill="none"/>
+        <path d={`M ${w/2} ${h/2 + 4} l 3 6 l 6 1 l -4.5 4 l 1 6 l -5.5 -3 l -5.5 3 l 1 -6 l -4.5 -4 l 6 -1 z`}
+              fill="none" stroke="oklch(0.85 0.14 258 / 0.85)" strokeWidth="0.5"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Scene derivation
+// ───────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // Card state
+  let scene = 'idle';
+  if (t >= T.CHARGE_AT && t < T.SLICE_AT) scene = 'charging';
+  else if (t >= T.SLICE_AT && t < T.END) scene = 'cut';
+
+  // Global wind-down: everything dissipates after the cut lingers a beat
+  const windFade = t < T.WIND_FROM ? 1 : 1 - clamp01((t - T.WIND_FROM) / T.WIND_DUR);
+
+  // Darkness 0..1
+  let dark = 0;
+  if (t >= T.DARK_IN) dark = clamp01((t - T.DARK_IN) / (T.DARK_FULL - T.DARK_IN));
+  dark *= windFade;
+
+  // Fog 0..1
+  let fog = 0;
+  if (t >= T.FOG_IN) fog = clamp01((t - T.FOG_IN) / (T.FOG_FULL - T.FOG_IN));
+  fog *= windFade;
+
+  // Charge: a bright point gathers at center along the seam
+  let charge = 0;
+  if (t >= T.CHARGE_AT && t < T.SLICE_AT) {
+    charge = easeInQuad(clamp01((t - T.CHARGE_AT) / (T.SLICE_AT - T.CHARGE_AT)));
+  } else if (t >= T.SLICE_AT) {
+    charge = 1;
+  }
+
+  // Slice expansion: half-width fraction 0..1 (then full)
+  let sliceFrac = 0;
+  if (t >= T.SLICE_AT) {
+    sliceFrac = easeOutQuart(clamp01((t - T.SLICE_AT) / T.SLICE_DUR));
+  }
+
+  // Flash
+  let flash = 0;
+  if (t >= T.FLASH_AT && t < T.FLASH_AT + T.FLASH_DUR) {
+    flash = (1 - (t - T.FLASH_AT) / T.FLASH_DUR);
+    flash = flash * flash;
+  }
+
+  // Separation of the two halves
+  let sep = 0;
+  if (t >= T.SEP_FROM) {
+    const u = clamp01((t - T.SEP_FROM) / T.SEP_DUR);
+    const rest = 7;
+    // overshoot to MAX then settle to rest
+    sep = (MAX_SEP + (rest - MAX_SEP) * easeOutCubic(u)) * easeOutQuart(clamp01(u * 2));
+  }
+  sep *= windFade;
+
+  // Seam intensity (post-cut, breathing)
+  let seam = 0;
+  if (t >= T.SLICE_AT) {
+    const u = clamp01((t - T.SLICE_AT) / 0.4);
+    const breath = 0.82 + Math.sin((t - T.SLICE_AT) * 2.2) * 0.12;
+    seam = u * breath;
+  }
+  seam *= windFade;
+
+  // Glints drifting along the seam
+  const liveGlints = [];
+  if (t >= T.SLICE_AT + 0.1) {
+    const st = t - (T.SLICE_AT + 0.1);
+    for (const g of glints) {
+      const local = ((st + g.phase) % g.period) / g.period;
+      let op = 1;
+      if (local < 0.12) op = local / 0.12;
+      else if (local > 0.78) op = (1 - local) / 0.22;
+      const x = ((g.startX + g.dir * g.speed * st) % (STAGE_W + 200) + (STAGE_W + 200)) % (STAGE_W + 200) - 100;
+      liveGlints.push({ id: g.id, x, y: MID_Y + g.yJit, size: g.size, opacity: op * seam });
+    }
+  }
+
+  // Sparks bursting at the cut moment
+  const liveSparks = [];
+  if (t >= T.SLICE_AT && t <= T.SLICE_AT + 0.55) {
+    for (const s of sparks) {
+      const u = (t - T.SLICE_AT - s.delay) / 0.45;
+      if (u > 0 && u < 1) {
+        const d = easeOutQuart(u) * s.dist;
+        liveSparks.push({
+          id: s.id,
+          x: s.x0 + Math.cos(s.angle) * d * 0.4,
+          y: MID_Y + Math.sin(s.angle) * d,
+          size: s.size,
+          opacity: (1 - u) * 0.95,
+        });
+      }
+    }
+  }
+
+  return {
+    scene, dark, fog, charge, sliceFrac, flash, sep, seam,
+    liveGlints, liveSparks, done: t >= T.END,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  App
+// ───────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = Math.min((now - lastRef.current) / 1000, 0.05);
+      lastRef.current = now;
+      if (playing) {
+        setT(prev => {
+          const next = prev + dt;
+          if (next >= T.END) { setPlaying(false); return T.END; }
+          return next;
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  // Debug hook: lets screenshots scrub to a specific time (RAF is throttled offscreen)
+  useEffect(() => { window.__setT = (v) => { setPlaying(false); setT(v); }; }, []);
+
+  const s = deriveScene(t);
+  const finished = t >= T.END;
+
+  function activate() { setT(0); setPlaying(true); }
+  // The two clipped board copies translate apart by sep px
+  const topTransform = { transform: `translateY(${-s.sep}px)` };
+  const botTransform = { transform: `translateY(${s.sep}px)` };
+
+  // Slice geometry: half-extends from center
+  const sliceHalf = s.sliceFrac * (STAGE_W / 2);
+  const sliceLeft = STAGE_W / 2 - sliceHalf;
+  const sliceWidth = sliceHalf * 2;
+
+  // Charge dot: small bright gather at center before the cut
+  const chargeSize = 8 + s.charge * 26;
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        {/* Two clipped halves of the board that pull apart */}
+        <div className="board-half top" style={topTransform}>
+          <BoardContent scene={s.scene}/>
+        </div>
+        <div className="board-half bottom" style={botTransform}>
+          <BoardContent scene={s.scene}/>
+        </div>
+
+        {/* The black void revealed in the gap between the halves */}
+        {s.sep > 0.2 && (
+          <div style={{
+            position: 'absolute', left: 0, right: 0,
+            top: MID_Y - s.sep, height: s.sep * 2,
+            background: 'linear-gradient(180deg, oklch(0.02 0.01 260) 0%, #000 50%, oklch(0.02 0.01 260) 100%)',
+            zIndex: 24, pointerEvents: 'none',
+            boxShadow: '0 0 22px 4px #000 inset',
+          }}/>
+        )}
+
+        {/* Darkening overlay */}
+        <div className="darken" style={{ opacity: s.dark }}/>
+
+        {/* Floating fog */}
+        {fogBlobs.map(b => {
+          const drift = Math.sin(t * b.speed * 6 + b.phase);
+          const drift2 = Math.cos(t * b.speed * 4.4 + b.phase * 1.3);
+          return (
+            <div key={'f' + b.id} className="fog-layer" style={{
+              left: b.baseX + drift * b.driftX - b.w / 2,
+              top: b.baseY + drift2 * b.driftY - b.h / 2,
+              width: b.w, height: b.h,
+              opacity: b.maxOp * s.fog,
+              background: `radial-gradient(ellipse at center, oklch(0.55 0.07 ${b.hue} / 0.9) 0%, oklch(0.40 0.06 ${b.hue} / 0.4) 45%, transparent 72%)`,
+            }}/>
+          );
+        })}
+
+        {/* Charge gather point (before the slice) */}
+        {s.charge > 0.01 && s.sliceFrac < 0.02 && (
+          <div style={{
+            position: 'absolute', left: STAGE_W / 2, top: MID_Y,
+            width: chargeSize, height: chargeSize,
+            transform: 'translate(-50%, -50%)',
+            borderRadius: '50%', zIndex: 46, pointerEvents: 'none',
+            mixBlendMode: 'screen',
+            background: `radial-gradient(circle, oklch(0.99 0.03 240) 0%, oklch(0.80 0.20 250 / 0.8) 35%, transparent 70%)`,
+            boxShadow: `0 0 ${10 + s.charge*30}px ${2 + s.charge*8}px oklch(0.75 0.20 250 / ${0.6 * s.charge})`,
+            opacity: s.charge,
+          }}/>
+        )}
+
+        {/* The blue slice — bloom + core, expanding from center */}
+        {s.sliceFrac > 0.001 && (
+          <>
+            <div className="slice-bloom" style={{
+              left: sliceLeft, width: sliceWidth,
+              height: 30 + s.seam * 16,
+              opacity: 0.5 + s.seam * 0.5,
+            }}/>
+            <div className="slice-core" style={{
+              left: sliceLeft, width: sliceWidth,
+              height: 2 + (s.sliceFrac < 1 ? 2 : 0),
+              opacity: 0.85 + s.seam * 0.15,
+            }}/>
+            {/* leading bright caps at the two advancing ends */}
+            {s.sliceFrac < 1 && (
+              <>
+                <div style={capStyle(sliceLeft)} />
+                <div style={capStyle(sliceLeft + sliceWidth)} />
+              </>
+            )}
+          </>
+        )}
+
+        {/* Glints + sparks on the seam */}
+        <svg style={{ position: 'absolute', inset: 0, zIndex: 47, pointerEvents: 'none', mixBlendMode: 'screen' }}
+             viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {s.liveGlints.map(g => (
+            <g key={'g' + g.id} transform={`translate(${g.x} ${g.y})`} style={{ opacity: g.opacity }}>
+              <circle r={g.size * 2.4} fill="oklch(0.75 0.18 250 / 0.25)"/>
+              <circle r={g.size} fill="oklch(0.97 0.06 245 / 0.95)"/>
+            </g>
+          ))}
+          {s.liveSparks.map(sp => (
+            <circle key={'s' + sp.id} cx={sp.x} cy={sp.y} r={sp.size}
+                    fill="oklch(0.95 0.12 245)" style={{ opacity: sp.opacity }}/>
+          ))}
+        </svg>
+
+        {/* Screen flash at the cut */}
+        {s.flash > 0.001 && (
+          <div className="screen-flash" style={{ opacity: s.flash * 0.85 }}/>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={activate}>✦ Ativar Hakai</button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}
+                disabled={finished}
+                style={finished ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+          {playing ? '❚❚ Pausar' : '▶ Tocar'}
+        </button>
+        <span className="ctrl-label">Estado</span>
+        <span className="ctrl-time" style={{ minWidth: 100 }}>
+          {finished ? 'concluído'
+            : t < T.SLICE_AT ? 'invocando…'
+            : t < T.WIND_FROM ? 'CORTE'
+            : 'dissipando…'}
+        </span>
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+function capStyle(left) {
+  return {
+    position: 'absolute', left, top: MID_Y,
+    width: 14, height: 14, transform: 'translate(-50%, -50%)',
+    borderRadius: '50%', zIndex: 48, pointerEvents: 'none',
+    mixBlendMode: 'screen',
+    background: 'radial-gradient(circle, oklch(0.99 0.02 240) 0%, oklch(0.80 0.20 250 / 0.7) 40%, transparent 72%)',
+    boxShadow: '0 0 14px 3px oklch(0.80 0.20 250 / 0.8)',
+  };
+}
+
+// add ATK badge style inline (kept minimal; matches project look)
+const style = document.createElement('style');
+style.textContent = `
+  .atk-badge {
+    position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700;
+    color: oklch(0.92 0.05 250);
+    background: oklch(0.16 0.04 260 / 0.85);
+    border: 0.5px solid oklch(0.55 0.14 250 / 0.75);
+    z-index: 4;
+  }
+`;
+document.head.appendChild(style);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿# scenes/ui/boardv2/board.gd
+# scenes/ui/boardv2/board.gd
 extends Control
 
 @onready var _player_half     := $VBox/PlayerHalf
@@ -18,9 +18,9 @@ const DiscartCardScene    := preload("res://scenes/ui/boardv2/discart_card/Disca
 const PickSymbolScene     := preload("res://scenes/ui/boardv2/pick_symbol/PickSymbol.tscn")
 const TurnTransitionScene := preload("res://scenes/ui/boardv2/turn_transaction/turn_transition.tscn")
 const GameResultScene     := preload("res://scenes/ui/boardv2/game_result/game_result.tscn")
-const CombatResolveScene  := preload("res://scenes/ui/boardv2/combat_resolve/combat_resolve.tscn")
+const CombatResolutionScene := preload("res://scenes/vfx/combat_resolution/CombatResolution.tscn")
 const DeckShuffleScene        := preload("res://scenes/ui/deck_shuffle/deck_shuffle.tscn")
-const BacklineAbilityScene    := preload("res://scenes/ui/boardv2/backline_ability/backline_ability.tscn")
+const StealthConfirmScene     := preload("res://scenes/ui/boardv2/stealth_confirm/stealth_confirm.tscn")
 const PickHeroScene           := preload("res://scenes/ui/pick_hero/pick_hero.tscn")
 const PauseMenuScene          := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
 const ArrowProjectileScene    := preload("res://scenes/ui/skill_animations/arrow_projectile.tscn")
@@ -28,6 +28,7 @@ const ArrowRainScene          := preload("res://scenes/vfx/arrow_rain/ArrowRain.
 const HolyHealScene           := preload("res://scenes/vfx/holy_heal/HolyHeal.tscn")
 const BattleFuryScene         := preload("res://scenes/vfx/battle_fury/BattleFury.tscn")
 const SingleTargetHealScene   := preload("res://scenes/vfx/single_target_heal/SingleTargetHeal.tscn")
+const AssassinAttackScene     := preload("res://scenes/vfx/assassin_attack/AssassinAttack.tscn")
 const GraveyardViewerScene    := preload("res://scenes/ui/boardv2/graveyard_viewer/graveyard_viewer.tscn")
 const PickAllyScene           := preload("res://scenes/ui/boardv2/pick_ally/PickAlly.tscn")
 
@@ -52,7 +53,7 @@ var _pick_symbol:     Node = null
 var _pick_ally:       Node = null
 var _turn_transition: Control = null
 var _game_result:     Control = null
-var _combat_resolve:  Control = null
+var _combat_vfx:      CombatResolution = null  # VFX one-shot da resolução (em andamento)
 var _game_over_shown: bool = false
 var _pending_transition_type: String = ""
 # Callable guardado quando uma tela precisa abrir mas o popup de habilidade ainda está rodando.
@@ -78,7 +79,7 @@ var _deck_shuffle: Control = null
 var _shuffle_intro_done: bool = false
 var _deck_shuffle_on_done: Callable = Callable()
 
-var _backline_ability:   Control = null
+var _stealth_confirm:    Control = null
 var _pick_hero:          Control = null
 var _graveyard_viewer:   Control = null
 var _pause_menu:       PauseMenu = null
@@ -98,7 +99,7 @@ func _show_loading_overlay() -> void:
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_loading_overlay.add_child(bg)
 	var lbl := Label.new()
-	lbl.text = "Aguardando partida..."
+	lbl.text = "⚔  Preparando sua partida…"
 	lbl.add_theme_font_size_override("font_size", 28)
 	lbl.add_theme_color_override("font_color", Color(0.784, 0.616, 0.290))
 	lbl.set_anchors_preset(Control.PRESET_CENTER)
@@ -144,8 +145,8 @@ func _ready() -> void:
 	_game_result = GameResultScene.instantiate()
 	phase_overlay.add_child(_game_result)
 	_game_result.result_closed.connect(_on_result_closed)
-	_combat_resolve = CombatResolveScene.instantiate()
-	phase_overlay.add_child(_combat_resolve)
+	# A resolução de combate agora é um VFX one-shot instanciado sob demanda
+	# em _on_combat_preview_ready() — não há mais overlay persistente.
 
 	_waiting_label = Label.new()
 	_waiting_label.add_theme_font_size_override("font_size", 26)
@@ -166,10 +167,10 @@ func _ready() -> void:
 	_deck_shuffle.shuffle_done.connect(_on_deck_shuffle_done)
 	phase_overlay.add_child(_deck_shuffle)
 
-	_backline_ability = BacklineAbilityScene.instantiate()
-	phase_overlay.add_child(_backline_ability)
-	_backline_ability.ability_confirmed.connect(_on_backline_ability_confirmed)
-	_backline_ability.ability_skipped.connect(_on_backline_ability_skipped)
+	_stealth_confirm = StealthConfirmScene.instantiate()
+	phase_overlay.add_child(_stealth_confirm)
+	_stealth_confirm.confirmed.connect(_on_backline_ability_confirmed)
+	_stealth_confirm.cancelled.connect(_on_backline_ability_skipped)
 
 	_pick_hero = PickHeroScene.instantiate()
 	phase_overlay.add_child(_pick_hero)
@@ -190,16 +191,37 @@ func _ready() -> void:
 	add_child(_animator)
 	GameBus.game_over.connect(_on_game_over)
 	_show_loading_overlay()
+	_submit_match_deck()   # corrotina: resolve o deck (API ou local) e submete
 
-	var _deck_dict: Dictionary = {}
-	if DeckStore.decks.size() > 0:
-		_deck_dict = DeckStore.decks[0].to_dict()
+
+# Resolve o deck do jogador e o submete ao servidor (gating em rpc_submit_deck).
+# Se a Match Room escolheu um deck (DeckStore.match_deck_id), busca as cartas na API
+# e converte para o formato local; senão cai no deck local (ex.: fila rápida).
+func _submit_match_deck() -> void:
+	var deck_dict := await _resolve_match_deck()
+	DeckStore.match_deck_id = ""   # consome a escolha
 	if multiplayer.is_server():
-		# Standalone ou host: chama diretamente (offline peer não processa rpc_id)
-		GameState.rpc_submit_deck(_deck_dict)
+		GameState.rpc_submit_deck(deck_dict)
 	else:
-		# Cliente: envia ao servidor e aguarda o sync dele
-		GameState.rpc_id(1, "rpc_submit_deck", _deck_dict)
+		GameState.rpc_id(1, "rpc_submit_deck", deck_dict)
+
+
+func _resolve_match_deck() -> Dictionary:
+	var id := DeckStore.match_deck_id
+	if id == "":
+		return DeckStore.decks[0].to_dict() if DeckStore.decks.size() > 0 else {}
+
+	# Heróis vêm como UUID no deck → precisa do inventário para resolver.
+	if not Collection.is_inventory_loaded():
+		var inv := await ApiClient.get_inventory()
+		if inv.ok:
+			Collection.load_inventory(inv.data)
+
+	var res := await ApiClient.get_deck(id)
+	if not res.ok:
+		push_warning("Board: falha ao buscar deck %s (%s) — usando deck local" % [id, res.error])
+		return DeckStore.decks[0].to_dict() if DeckStore.decks.size() > 0 else {}
+	return Collection.resolve_api_deck(res.data)
 
 # ── GameBus → Board ─────────────────────────────────────────────────────────
 func _connect_bus() -> void:
@@ -287,7 +309,7 @@ func _on_phase_changed(phase: String) -> void:
 	$PhaseOverlay/HeroPickScreen.visible = (phase == "HERO_SELECTION") and not GameState.has_submitted_hero_pick(NetworkState.local_player_index)
 	if phase == "END" and not _game_over_shown:
 		_schedule_screen(func() -> void:
-			if GameState.turn.current_phase == TurnManager.Phase.END and not _game_over_shown:
+			if GameState.battle.current_phase == BattleManager.Phase.END and not _game_over_shown:
 				$PhaseOverlay/ArsenalScreen.visible = true
 		)
 	else:
@@ -303,7 +325,7 @@ func _on_phase_changed(phase: String) -> void:
 
 func _show_deck_shuffle_intro() -> void:
 	_deck_shuffle_on_done = func() -> void:
-		var phase := GameState.turn.phase_to_string(GameState.turn.current_phase)
+		var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
 		if phase == "OPENING_MULLIGAN":
 			var done := GameState.has_completed_opening_mulligan(NetworkState.local_player_index)
 			$PhaseOverlay/MulliganScreen.visible = not done
@@ -357,7 +379,7 @@ func _on_hero_damaged(hero: Hero, _amount: int) -> void:
 func _on_hero_healed(hero: Hero, amount: int) -> void:
 	_refresh_hero_slot(hero)
 	# END = Irena passive usa HolyHeal VFX separado; ACTION/COMBAT usam SingleTargetHeal
-	var phase := GameState.turn.phase_to_string(GameState.turn.current_phase)
+	var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
 	if phase not in ["ACTION", "COMBAT"] or _skill_vfx_busy:
 		return
 	_play_single_target_heal_vfx(hero, amount)
@@ -403,19 +425,42 @@ func _on_combat_resolved(_damage_p0: int, _damage_p1: int) -> void:
 	_remove_battle_fury(0)
 	_remove_battle_fury(1)
 
+## Dispara o VFX de Resolução de Combate (substitui o antigo overlay).
+## Chamado em combat_preview_ready — ANTES de o dano ser aplicado ao modelo,
+## então hero.current_hp ainda é o HP pré-golpe (a barra anima a descida).
 func _on_combat_preview_ready(data: Dictionary) -> void:
 	var h0_idx: int = data.get("hero_0_idx", -1)
 	var h1_idx: int = data.get("hero_1_idx", -1)
 	if h0_idx < 0 or h1_idx < 0:
 		return
-	var hero0: Hero = GameState.players[0].heroes[h0_idx]
-	var hero1: Hero = GameState.players[1].heroes[h1_idx]
-	_combat_resolve.show_resolve(
-		hero0, hero1,
-		data["dmg_to_0"], data["dmg_to_1"],
-		data["atk_0"],    data["def_0"],
-		data["atk_1"],    data["def_1"],
-	)
+
+	var local_idx := NetworkState.local_player_index
+	var enemy_idx := 1 - local_idx
+	var ally_hero:  Hero = GameState.players[local_idx].heroes[data["hero_%d_idx" % local_idx]]
+	var enemy_hero: Hero = GameState.players[enemy_idx].heroes[data["hero_%d_idx" % enemy_idx]]
+
+	var cfg := CombatResolution.Config.new()
+	cfg.ally_hero  = ally_hero
+	cfg.enemy_hero = enemy_hero
+	cfg.ally_atk   = data["atk_%d" % local_idx]   # totais já resolvidos (com bônus)
+	cfg.ally_def   = data["def_%d" % local_idx]
+	cfg.enemy_atk  = data["atk_%d" % enemy_idx]
+	cfg.enemy_def  = data["def_%d" % enemy_idx]
+	# atk1/atk2_type ficam em -1 (auto pela classe do herói, resolvido no VFX)
+	cfg.dmg1 = data["dmg_to_%d" % enemy_idx]    # dano que o Aliado causa
+	cfg.dmg2 = data["dmg_to_%d" % local_idx]    # dano que o Inimigo causa
+
+	# Substitui qualquer encenação anterior ainda no ar (rodadas em sequência).
+	if _combat_vfx != null and is_instance_valid(_combat_vfx):
+		_combat_vfx.queue_free()
+	var fx: CombatResolution = CombatResolutionScene.instantiate()
+	add_child(fx)
+	_combat_vfx = fx
+	fx.finished.connect(_on_combat_vfx_finished, CONNECT_ONE_SHOT)
+	fx.play(cfg)
+
+func _on_combat_vfx_finished() -> void:
+	_combat_vfx = null
 
 func _on_skill_activated(hero: Hero, skill_name: String) -> void:
 	var local_idx := NetworkState.local_player_index
@@ -443,9 +488,10 @@ func _on_skill_activated(hero: Hero, skill_name: String) -> void:
 
 func _play_vfx(anim_key: String, is_local: bool) -> void:
 	match anim_key:
-		"arrow_rain":   _play_arrow_rain_vfx(is_local)
-		"battle_fury":  _play_battle_fury_vfx(is_local)
-		"holy_heal":    _play_holy_heal_vfx(is_local)
+		"arrow_rain":      _play_arrow_rain_vfx(is_local)
+		"battle_fury":     _play_battle_fury_vfx(is_local)
+		"holy_heal":       _play_holy_heal_vfx(is_local)
+		"assassin_attack": _play_assassin_attack_vfx(is_local)
 
 func _play_arrow_rain_vfx(is_local: bool) -> void:
 	if not _board_initialized:
@@ -461,6 +507,17 @@ func _play_arrow_rain_vfx(is_local: bool) -> void:
 	add_child(fx)
 	fx.finished.connect(_on_skill_vfx_finished, CONNECT_ONE_SHOT)
 	fx.play(source_pos, target_rect)
+
+## VFX fullscreen one-shot (genérico): o mundo se parte ao meio por um corte azul.
+## Não depende de posições — cobre a tela inteira e se limpa sozinho.
+func _play_assassin_attack_vfx(_is_local: bool) -> void:
+	if not _board_initialized:
+		return
+	_skill_vfx_busy = true
+	var fx: AssassinAttack = AssassinAttackScene.instantiate()
+	add_child(fx)
+	fx.finished.connect(_on_skill_vfx_finished, CONNECT_ONE_SHOT)
+	fx.play()
 
 func _play_holy_heal_vfx(is_local: bool) -> void:
 	if not _board_initialized:
@@ -620,9 +677,9 @@ func _on_state_synced() -> void:
 		_board_initialized = true
 		_hide_loading_overlay()
 		# Dispara a fase atual agora que o board está pronto
-		_on_phase_changed(GameState.turn.phase_to_string(GameState.turn.current_phase))
+		_on_phase_changed(GameState.battle.phase_to_string(GameState.battle.current_phase))
 
-	var phase_str    := GameState.turn.phase_to_string(GameState.turn.current_phase)
+	var phase_str    := GameState.battle.phase_to_string(GameState.battle.current_phase)
 	var reaction_for := GameState.get_reaction_window_for()
 
 	if phase_str == "ACTION":
@@ -664,7 +721,7 @@ func _on_state_synced() -> void:
 	_refresh_arsenals()
 	_refresh_graveyard()
 
-	var phase := GameState.turn.phase_to_string(GameState.turn.current_phase)
+	var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
 	_player_hand.visible = (phase != "OPENING_MULLIGAN")
 	_refresh_pass_button(phase)
 	_refresh_hand_interactivity()
@@ -760,7 +817,7 @@ func _refresh_arsenals() -> void:
 		_opponent_half.set_arsenal_sleeve(_opponent_sleeve)
 
 func _is_arsenal_playable(player_idx: int, card: Card) -> bool:
-	if GameState.turn.phase_to_string(GameState.turn.current_phase) != "ACTION":
+	if GameState.battle.phase_to_string(GameState.battle.current_phase) != "ACTION":
 		return false
 	var reaction_for  := GameState.get_reaction_window_for()
 	var is_my_segment := GameState.get_next_action_player_index() == player_idx
@@ -802,11 +859,11 @@ func _refresh_active_heroes() -> void:
 		return
 	var local_idx    := NetworkState.local_player_index
 	var opponent_idx := 1 - local_idx
-	var phase        := GameState.turn.current_phase
+	var phase        := GameState.battle.current_phase
 
 	var local_active      := GameState.players[local_idx].active_hero
 	var local_is_revealed := GameState.get_hero_revealed(local_idx) \
-						  or phase in [TurnManager.Phase.COMBAT, TurnManager.Phase.END]
+						  or phase in [BattleManager.Phase.COMBAT, BattleManager.Phase.END]
 	if local_active:
 		_player_active_hero.bind(local_active)
 		_player_active_hero.set_face_down(not local_is_revealed)
@@ -821,7 +878,7 @@ func _refresh_active_heroes() -> void:
 
 	var opponent_active  := GameState.players[opponent_idx].active_hero
 	var is_revealed      := GameState.get_hero_revealed(opponent_idx) \
-						 or phase in [TurnManager.Phase.COMBAT, TurnManager.Phase.END]
+						 or phase in [BattleManager.Phase.COMBAT, BattleManager.Phase.END]
 	if opponent_active:
 		_opponent_active_hero.bind(opponent_active)
 		_opponent_active_hero.set_face_down(not is_revealed)
@@ -931,7 +988,7 @@ func _update_slot_combat_stats(player_idx: int, slot) -> void:
 	var pl := GameState.players[player_idx]
 	if pl.active_hero == null:
 		return
-	var phase := GameState.turn.phase_to_string(GameState.turn.current_phase)
+	var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
 	var atk: int
 	var def_: int
 	if phase in ["ACTION", "COMBAT"]:
@@ -939,7 +996,7 @@ func _update_slot_combat_stats(player_idx: int, slot) -> void:
 		def_ = _calc_defense(player_idx)
 	else:
 		atk  = pl.active_hero.base_attack + pl.active_hero.get_passive_attack_bonus() \
-			 + pl.turn_bonus_attack + pl.next_round_bonus_attack
+			 + pl.battle_bonus_attack + pl.next_turn_bonus_attack
 		def_ = pl.active_hero.base_defense
 	(slot as HeroSlot).set_modified_attack(atk)
 	(slot as HeroSlot).set_modified_defense(def_)
@@ -955,31 +1012,31 @@ func _on_hero_preview_hovered(data: Dictionary) -> void:
 		var pl := GameState.players[i]
 		if pl.active_hero != hero:
 			continue
-		var phase := GameState.turn.phase_to_string(GameState.turn.current_phase)
+		var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
 		if phase in ["ACTION", "COMBAT"]:
 			preview_slot.set_modified_attack(_calc_attack(i))
 			preview_slot.set_modified_defense(_calc_defense(i))
 		else:
 			preview_slot.set_modified_attack(pl.active_hero.base_attack + pl.active_hero.get_passive_attack_bonus()
-				+ pl.turn_bonus_attack + pl.next_round_bonus_attack)
+				+ pl.battle_bonus_attack + pl.next_turn_bonus_attack)
 			preview_slot.set_modified_defense(pl.active_hero.base_defense)
 		return
 
 func _calc_attack(player_idx: int) -> int:
 	var pl := GameState.players[player_idx]
 	var total := pl.active_hero.base_attack
-	for card in pl.round_cards:
+	for card in pl.turn_cards:
 		total += card.attack_value
 	total += pl.pending_bonus_attack
 	total += pl.passive_attack_bonus
-	total += pl.turn_bonus_attack          # Frenesi: persiste o turno inteiro
-	total += pl.next_round_bonus_attack    # Guarda Inabalável: acumulado do round anterior
+	total += pl.battle_bonus_attack          # Frenesi: persiste a batalha inteira
+	total += pl.next_turn_bonus_attack    # Guarda Inabalável: acumulado do turno anterior
 	return total
 
 func _calc_defense(player_idx: int) -> int:
 	var pl := GameState.players[player_idx]
 	var total := pl.active_hero.base_defense
-	for card in pl.round_cards:
+	for card in pl.turn_cards:
 		total += card.defense_value
 	total -= pl.next_defense_penalty
 	total += pl.pending_bonus_defense
@@ -1011,7 +1068,7 @@ func _refresh_backline_ability_ui() -> void:
 	if awaiting_r and bl_player == local_idx and not _backline_modal_shown:
 		_backline_modal_shown = true
 		var hero := GameState.players[local_idx].heroes[bl_hero_idx]
-		_backline_ability.setup(hero)
+		_stealth_confirm.setup(hero, hero.passive_name, hero.passive_desc)
 	elif not awaiting_r:
 		_backline_modal_shown = false
 
@@ -1196,9 +1253,9 @@ func _on_game_over(winner_index: int) -> void:
 	if _battle_music:
 		_battle_music.stop()
 	# Se a animação de resolução de combate ainda está rodando, espera ela
-	# terminar (botão "Continuar" é clicado) para só então mostrar o resultado.
-	if _combat_resolve != null and _combat_resolve._busy:
-		_combat_resolve.animation_finished.connect(
+	# terminar para só então mostrar o resultado.
+	if _combat_vfx != null and is_instance_valid(_combat_vfx):
+		_combat_vfx.finished.connect(
 			func() -> void: _show_game_result(winner_index),
 			CONNECT_ONE_SHOT
 		)

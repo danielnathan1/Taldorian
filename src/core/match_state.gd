@@ -11,7 +11,7 @@
 class_name MatchState extends RefCounted
 
 var players: Array[Player] = []
-var turn: TurnManager = TurnManager.new()
+var battle: BattleManager = BattleManager.new()
 
 var _opening_mulligan_done: Array[bool] = [false, false]
 var _hero_submitted: Array[bool] = [false, false]
@@ -20,11 +20,11 @@ var _winner_index: int = -1
 
 # ── estado da fase ACTION ────────────────────────────────
 var _active_segment_player: int       = 0
-var _round_first_player: int          = 0
+var _turn_first_player: int          = 0
 var _segment_action_done: Array[bool] = [false, false]
 var _segment_bonus_done:  Array[bool] = [false, false]
 var _reaction_window_for: int         = -1
-var _consecutive_empty_rounds: int    = 0
+var _consecutive_empty_turns: int    = 0
 var _hero_revealed: Array[bool]       = [false, false]
 var _end_submitted: Array[bool]       = [false, false]
 

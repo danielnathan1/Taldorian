@@ -13,13 +13,13 @@ func _init() -> void:
 	current_hp       = 10
 	symbols_required.assign([GameSymbols.AR, GameSymbols.AR, GameSymbols.AGUA])
 	skill_name       = "Passos Ágeis"
-	skill_desc       = "Compra uma carta (ativa uma vez por turno)"
+	skill_desc       = "Puxe uma carta"
 	passive_name     = "Fluxo Suave"
-	passive_desc     = "Jogou ação + ação bônus: +1 de ataque até o fim do combate"
+	passive_desc     = "Se jogou uma ação e ação bônus no mesmo turno: +1 de ataque até o fim do turno"
 	base_attack      = 1
 	base_defense     = 2
 
-func on_turn_start(player: Player) -> void:
+func on_battle_start(player: Player) -> void:
 	super(player)
 	_action_played = false
 	_bonus_played = false
@@ -37,12 +37,12 @@ func on_card_played(card: Card, _player: Player) -> void:
 func get_passive_attack_bonus() -> int:
 	return 1 if _passive_bonus_active else 0
 
-func on_before_attack(ctx: BattleContext) -> void:
+func on_before_attack(ctx: TurnContext) -> void:
 	if _passive_bonus_active:
 		ctx.bonus_damage += 1
 
-## Ativa: Ar, Ar, Água → compra uma carta (chain só ativa uma vez por turno via _skill_activated_this_turn)
+## Ativa: Ar, Ar, Água → compra uma carta (chain só ativa uma vez por turno via _skill_activated_this_battle)
 func on_skill_activated(player: Player) -> void:
 	player.draw_cards(1)
-	_skill_activated_this_turn = true
+	_skill_activated_this_battle = true
 	GameBus.skill_activated.emit(self, skill_desc)

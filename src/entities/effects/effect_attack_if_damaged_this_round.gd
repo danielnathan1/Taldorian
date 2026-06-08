@@ -7,5 +7,5 @@ func setup(params: Dictionary) -> void:
 	_bonus = params.get("bonus", 1)
 
 func execute(ctx: CardEffectContext) -> void:
-	if ctx.source_player.took_damage_this_round:
+	if ctx.source_player.took_damage_this_turn:
 		ctx.source_player.pending_bonus_attack += _bonus

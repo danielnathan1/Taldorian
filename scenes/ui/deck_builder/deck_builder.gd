@@ -2,6 +2,8 @@ extends Control
 
 const S := preload("res://scenes/ui/deck_builder/db_styles.gd")
 const LOBBY_SCENE := "res://scenes/ui/lobby/lobby.tscn"
+const WORLD_SCENE := "res://scenes/world/world_root.tscn"
+const DECK_LIST_SCENE := "res://scenes/ui/deck_list/deck_list.tscn"
 
 var _current_deck: DeckData   = null
 var _saved_snapshot: DeckData = null
@@ -11,7 +13,45 @@ var _is_dirty: bool           = false
 func _ready() -> void:
 	_style_bg()
 	_connect_signals()
+	await _load_inventory()
 	_load_or_create_deck()
+
+
+# Carrega a coleção do jogador do backend (/players/me/inventory) antes de montar
+# os pickers. Se a API falhar, segue com a coleção local (seed) — o jogo continua
+# testável offline.
+func _load_inventory() -> void:
+	var overlay := _make_loading_overlay("Carregando coleção…")
+	add_child(overlay)
+	print("[DeckBuilder] GET /players/me/inventory (autenticado=%s)" % ApiClient.is_authenticated())
+	var res := await ApiClient.get_inventory()
+	print("[DeckBuilder] inventário → ok=%s status=%d erro=%s" % [res.ok, res.status, res.error])
+	if res.ok:
+		Collection.load_inventory(res.data)
+	else:
+		push_warning("DeckBuilder: inventário indisponível (%s) — usando coleção local." % res.error)
+		_toast("Coleção indisponível: %s" % res.error)
+	if is_instance_valid(overlay):
+		overlay.queue_free()
+
+
+func _make_loading_overlay(p_msg: String) -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(S.C_BG_DEEP, 0.85)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(center)
+	var label := Label.new()
+	label.text = p_msg
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 18)
+	center.add_child(label)
+	return layer
 
 
 func _style_bg() -> void:
@@ -46,11 +86,15 @@ func _connect_signals() -> void:
 
 
 func _load_or_create_deck() -> void:
-	if DeckStore.decks.size() > 0:
-		load_deck(DeckStore.decks[0])
-	else:
-		var new_d := DeckStore.new_deck()
-		load_deck(new_d)
+	# A DeckList escolhe qual deck abrir via DeckStore.active_deck_id ("" = novo).
+	var id := DeckStore.active_deck_id
+	DeckStore.active_deck_id = ""   # consome
+	if id != "":
+		var existing := DeckStore.get_deck(id)
+		if existing != null:
+			load_deck(existing)
+			return
+	load_deck(DeckStore.new_deck())
 
 
 func load_deck(deck: DeckData) -> void:
@@ -126,11 +170,81 @@ func _on_save_requested() -> void:
 		for e in errors:
 			_toast(e)
 		return
+
+	# Mapeia heróis para UUIDs do inventário — sem isso o backend não aceita.
+	var missing := _missing_hero_mappings(_current_deck)
+	if not missing.is_empty():
+		_toast("Heróis sem correspondência no inventário: %s" % ", ".join(missing))
+		return
+
+	var payload := _build_deck_payload(_current_deck)
+	var overlay := _make_loading_overlay("Salvando deck…")
+	add_child(overlay)
+
+	var res: Dictionary
+	if _current_deck.remote_id == "":
+		res = await ApiClient.create_deck(payload)            # POST /decks
+	else:
+		res = await ApiClient.update_deck(_current_deck.remote_id, payload)  # PUT /decks/{id}
+
+	if is_instance_valid(overlay):
+		overlay.queue_free()
+
+	if not res.ok:
+		_toast("Falha ao salvar: %s" % res.error)
+		return
+
+	# Em criação, guarda o id devolvido pelo servidor → próximos saves viram PUT.
+	if _current_deck.remote_id == "":
+		_current_deck.remote_id = _extract_deck_id(res.data)
+
+	# Espelho local (o builder ainda lista daqui — sem endpoint GET /decks ainda).
 	DeckStore.save_deck(_current_deck)
 	_saved_snapshot = _current_deck.duplicate_data()
 	_is_dirty = false
 	_get_header().set_dirty(false)
 	_toast("Deck salvo!")
+
+
+# Monta o corpo de POST/PUT /decks a partir do deck local, resolvendo nomes → UUID.
+func _build_deck_payload(deck: DeckData) -> Dictionary:
+	var hero_uuids: Array[String] = []
+	for hname in deck.hero_names:
+		hero_uuids.append(Collection.get_hero_uuid(hname))
+
+	var cards: Array = []
+	for entry in deck.card_entries:
+		var card_uuid := Collection.get_card_uuid_by_name(entry["name"])
+		if card_uuid == "":
+			push_warning("DeckBuilder: carta sem UUID no inventário, ignorada no payload: %s" % entry["name"])
+			continue
+		cards.append({ "cardId": card_uuid, "quantity": int(entry["count"]) })
+
+	var playmat_uuid := Collection.get_playmat_uuid(deck.playmat)
+	return {
+		"name":  deck.deck_name,
+		"hero1": hero_uuids[0] if hero_uuids.size() > 0 and hero_uuids[0] != "" else null,
+		"hero2": hero_uuids[1] if hero_uuids.size() > 1 and hero_uuids[1] != "" else null,
+		"hero3": hero_uuids[2] if hero_uuids.size() > 2 and hero_uuids[2] != "" else null,
+		"cards": cards,
+		"playmatId": playmat_uuid if playmat_uuid != "" else null,
+		"sleeveId":  null,  # sleeves não vêm em /players/me/inventory ainda — sem UUID p/ mapear
+	}
+
+
+func _missing_hero_mappings(deck: DeckData) -> Array[String]:
+	var missing: Array[String] = []
+	for hname in deck.hero_names:
+		if Collection.get_hero_uuid(hname) == "":
+			missing.append(hname)
+	return missing
+
+
+func _extract_deck_id(data: Dictionary) -> String:
+	for key in ["id", "deckId", "deck_id"]:
+		if data.has(key) and str(data[key]) != "":
+			return str(data[key])
+	return ""
 
 
 func _on_discard_requested() -> void:
@@ -156,7 +270,7 @@ func _on_back_requested() -> void:
 	if _is_dirty:
 		var modal := _get_modal()
 		modal.confirmed.disconnect(_on_delete_confirmed)
-		modal.confirmed.connect(_go_to_lobby, CONNECT_ONE_SHOT)
+		modal.confirmed.connect(_go_back, CONNECT_ONE_SHOT)
 		modal.cancelled.connect(
 			func() -> void:
 				modal.confirmed.connect(_on_delete_confirmed),
@@ -164,11 +278,12 @@ func _on_back_requested() -> void:
 		)
 		modal.show_modal("Sair sem salvar?", "Há alterações não salvas. Deseja sair mesmo assim?")
 	else:
-		_go_to_lobby()
+		_go_back()
 
 
-func _go_to_lobby() -> void:
-	get_tree().change_scene_to_file(LOBBY_SCENE)
+# "Voltar": retorna à listagem de decks (DeckList).
+func _go_back() -> void:
+	get_tree().change_scene_to_file(DECK_LIST_SCENE)
 
 
 func _mark_dirty() -> void:

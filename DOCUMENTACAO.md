@@ -77,7 +77,7 @@ O projeto segue separação rígida de responsabilidades:
 - [x] Habilidade de retaguarda interativa (Ieldor — fase BACKLINE_ABILITY)
 
 #### Cartas e Efeitos
-- [x] 84 cartas no Set Base (`data/cards/base_set.json`)
+- [x] 84 cartas no Set Base (`data/cards/taldorian_origins.json`)
 - [x] Sistema de efeitos modular (`CardEffect` + `CardEffectRegistry`)
 - [x] 70+ implementações concretas de efeitos em `src/entities/effects/`
 - [x] Raridades: Common, Rare, Legendary, Mystic

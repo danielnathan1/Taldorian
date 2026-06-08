@@ -2,8 +2,8 @@
 extends Node
 
 # Turno
-signal turn_started(player_index: int)
-signal turn_ended(player_index: int)
+signal battle_started(player_index: int)
+signal battle_ended(player_index: int)
 signal phase_changed(new_phase: String)
 
 # Herói

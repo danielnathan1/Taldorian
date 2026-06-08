@@ -56,7 +56,7 @@ func _build_symbol_chips() -> void:
 	var row := _get_sym_row()
 	for c in row.get_children(): c.queue_free()
 	row.add_child(_make_chip("Todos", ""))
-	var syms   := ["fogo", "terra", "agua", "ar"]
+	var syms   := ["fogo", "terra", "agua", "wind"]
 	var labels := ["🔥 Fogo", "🌿 Terra", "💧 Água", "💨 Ar"]
 	for i in syms.size():
 		row.add_child(_make_chip(labels[i], syms[i]))
@@ -121,7 +121,7 @@ func _refresh_chip_row(row: HBoxContainer) -> void:
 	var all_btn := row.get_child(0) as Button
 	if all_btn:
 		S.apply_chip(all_btn, _active_symbols.is_empty())
-	var keys_sym := ["fogo", "terra", "agua", "ar"]
+	var keys_sym := ["fogo", "terra", "agua", "wind"]
 	for i in range(1, row.get_child_count()):
 		var btn := row.get_child(i) as Button
 		if not btn: continue

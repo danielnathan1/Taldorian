@@ -30,6 +30,7 @@ CosmeticsStore="*res://src/autoload/cosmetics_store.gd"
 CharacterStore="*res://src/autoload/character_store.gd"
 RoomService="*res://src/world/room_service.gd"
 MatchService="*res://src/world/match_service.gd"
+ApiClient="*res://src/autoload/api_client.gd"
 
 [display]
 

@@ -2,8 +2,10 @@
 extends Node2D
 
 const LOBBY_SCENE         := "res://scenes/ui/lobby/lobby.tscn"
+const LOGIN_SCENE         := "res://scenes/ui/login/login.tscn"
 const REMOTE_PLAYER_SCENE := preload("res://scenes/world/player/remote_player.tscn")
 const DECK_BUILDER_SCENE  := "res://scenes/ui/deck_builder/deck_builder.tscn"
+const DECK_LIST_SCENE     := "res://scenes/ui/deck_list/deck_list.tscn"
 const ROOM_LOBBY_SCENE    := preload("res://scenes/ui/room_lobby/room_lobby.tscn")
 const PAUSE_MENU_SCENE    := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
 const CITY_MUSIC := [
@@ -119,9 +121,9 @@ func _setup_hud() -> void:
 		{ "name": "Vael",    "status": "off",  "status_text": "Offline · 1d" },
 	])
 	world_hud.battle_requested.connect(_on_battle_requested)
-	world_hud.logout_requested.connect(_return_to_lobby)
+	world_hud.logout_requested.connect(_return_to_login)
 	world_hud.decks_requested.connect(func() -> void:
-		get_tree().change_scene_to_file(DECK_BUILDER_SCENE)
+		get_tree().change_scene_to_file(DECK_LIST_SCENE)
 	)
 
 func _on_battle_requested() -> void:
@@ -192,3 +194,10 @@ func _return_to_lobby() -> void:
 	WorldState.reset()
 	multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file(LOBBY_SCENE)
+
+# Botão "Sair" da HUD: desconecta do mundo e volta à tela de login.
+func _return_to_login() -> void:
+	WorldState.reset()
+	multiplayer.multiplayer_peer = null
+	ApiClient.clear_tokens()
+	get_tree().change_scene_to_file(LOGIN_SCENE)

@@ -28,11 +28,11 @@ func refresh() -> void:
 		state = State.ACTIVE
 
 # "virtual" no GDScript — subclasse deve fazer override
-func on_skill_activated(context: BattleContext) -> void:
+func on_skill_activated(context: TurnContext) -> void:
 	push_error("HeroBase.on_skill_activated() não implementado em " + hero_name)
 
-func on_turn_start(context: BattleContext) -> void:
+func on_battle_start(context: TurnContext) -> void:
 	pass  # opcional — subclasse faz override se quiser
 
-func on_damage_taken(amount: int, context: BattleContext) -> int:
+func on_damage_taken(amount: int, context: TurnContext) -> int:
 	return amount  # subclasse pode modificar (ex: Tank reduz dano

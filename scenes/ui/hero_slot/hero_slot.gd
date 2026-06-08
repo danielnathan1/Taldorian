@@ -4,11 +4,12 @@ extends Control
 
 const _HERO_BASE_PATH  := "res://assets/heros/base_card.png"
 const _FONT_REG        := preload("res://assets/fonts/palatino/palr45w.ttf")
+const _FONT_BOLD       := preload("res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf")
 const _ELEMENT_ICONS := {
 	"fogo":  "res://assets/icons/elements/fire.png",
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
-	"ar":    "res://assets/icons/elements/wind.png",
+	"wind":  "res://assets/icons/elements/wind.png",
 }
 const _CLASS_ICONS := {
 	Hero.HeroClass.BARBARIAN: "res://assets/icons/class/Barbarian.png",
@@ -32,8 +33,7 @@ const _CLASS_ICONS := {
 @onready var _hero_base      := $CardZone/HeroContent/HeroLayoutBase
 @onready var _title_lbl      := $CardZone/HeroContent/TitleLabel
 @onready var _class_icon     := $CardZone/HeroContent/ClassIcon
-@onready var _passive_lbl    := $CardZone/HeroContent/PassiveLabel
-@onready var _skill_row      := $CardZone/HeroContent/SkillRow
+@onready var _ability_lbl    := $CardZone/HeroContent/AbilityText
 @onready var _card_atk_lbl   := $CardZone/HeroContent/AtkValueLabel
 @onready var _card_def_lbl   := $CardZone/HeroContent/DefValueLabel
 
@@ -52,12 +52,12 @@ var _base_defense: int       = 0
 var _scale_factor: float     = 1.0
 var _last_symbols: Array[String]  = []
 var _last_skill_desc: String      = ""
+var _last_passive_name: String    = ""
+var _last_passive_desc: String    = ""
 
 # Offsets base lidos do tscn — usados para escalar proporcionalmente
-var _passive_offset_top: float    = 0.0
-var _passive_offset_bottom: float = 0.0
-var _skill_offset_top: float      = 0.0
-var _skill_offset_bottom: float   = 0.0
+var _ability_offset_top: float    = 0.0
+var _ability_offset_bottom: float = 0.0
 
 func _ready() -> void:
 	_setup_styles()
@@ -67,10 +67,8 @@ func _ready() -> void:
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	# Guarda os offsets originais definidos no editor
-	_passive_offset_top    = _passive_lbl.offset_top
-	_passive_offset_bottom = _passive_lbl.offset_bottom
-	_skill_offset_top      = _skill_row.offset_top
-	_skill_offset_bottom   = _skill_row.offset_bottom
+	_ability_offset_top    = _ability_lbl.offset_top
+	_ability_offset_bottom = _ability_lbl.offset_bottom
 
 func _setup_styles() -> void:
 	var capsule_bg := StyleBoxFlat.new()
@@ -134,10 +132,13 @@ func bind(p_hero: Hero) -> void:
 	_card_def_lbl.text = str(_modified_defense)
 	_card_def_lbl.add_theme_color_override("font_color", Color.WHITE)
 
-	_passive_lbl.text = "%s: %s" % [hero.passive_name, hero.passive_desc] if hero.passive_desc != "" else ""
+	_last_passive_name = hero.passive_name
+	_last_passive_desc = hero.passive_desc
+	_last_symbols      = hero.symbols_required
+	_last_skill_desc   = hero.skill_desc
 
 	_class_icon.texture = _load_class_icon(hero.hero_class)
-	_build_symbols_row(hero.symbols_required, hero.skill_desc)
+	_build_ability_text()
 
 	_apply_texture()
 	_update_state_style()
@@ -148,15 +149,12 @@ func bind(p_hero: Hero) -> void:
 func apply_scale(factor: float) -> void:
 	_scale_factor = factor
 	# Escala os pixel offsets proporcionalmente para manter posição relativa
-	_passive_lbl.offset_top    = _passive_offset_top    * factor
-	_passive_lbl.offset_bottom = _passive_offset_bottom * factor
-	_skill_row.offset_top      = _skill_offset_top      * factor
-	_skill_row.offset_bottom   = _skill_offset_bottom   * factor
-	_fit_label(_title_lbl,   int(12 * factor), int(6  * factor))
-	_fit_label(_passive_lbl, int(6  * factor), int(4  * factor))
+	_ability_lbl.offset_top    = _ability_offset_top    * factor
+	_ability_lbl.offset_bottom = _ability_offset_bottom * factor
+	_fit_label(_title_lbl, int(12 * factor), int(6 * factor))
 	_card_atk_lbl.add_theme_font_size_override("font_size", int(9 * factor))
 	_card_def_lbl.add_theme_font_size_override("font_size", int(9 * factor))
-	_build_symbols_row(_last_symbols, _last_skill_desc)
+	_build_ability_text()
 
 ## Ajusta a fonte do label para não ultrapassar o espaço disponível.
 ## Parte de [max_fs] e reduz até o conteúdo caber ou atingir [min_fs].
@@ -180,7 +178,7 @@ func set_modified_attack(value: int) -> void:
 	_modified_attack   = value
 	_card_atk_lbl.text = str(value)
 	if value > _base_attack:
-		_card_atk_lbl.add_theme_color_override("font_color", Color(0.18, 0.62, 0.22))
+		_card_atk_lbl.add_theme_color_override("font_color", Color(0.408, 0.573, 0.373, 1.0))
 	elif value < _base_attack:
 		_card_atk_lbl.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
 	else:
@@ -252,24 +250,44 @@ func _load_class_icon(hero_class: Hero.HeroClass) -> Texture2D:
 		return load(path)
 	return null
 
-func _build_symbols_row(symbols: Array[String], skill_desc: String) -> void:
-	_last_symbols    = symbols
-	_last_skill_desc = skill_desc
+## Monta o bloco unificado de habilidades em um único RichTextLabel:
+##   [b]Passiva[/b]: descrição
+##   [ícones]: descrição da skill ativa
+## As duas linhas fluem juntas, sem âncoras fixas que se sobrepõem.
+func _build_ability_text() -> void:
 	var px: int = int(clamp(6.0 * _scale_factor, 5.0, 13.0))
-	var bb := ""
-	for sym in symbols:
-		var path: String = _ELEMENT_ICONS.get(sym, "")
-		if path == "" or not ResourceLoader.exists(path):
-			continue
-		bb += "[img=%dx%d]%s[/img]" % [px, px, path]
-	if skill_desc != "":
-		if not symbols.is_empty():
-			bb += ": "
-		bb += skill_desc
-	_skill_row.add_theme_font_override("normal_font", _FONT_REG)
-	_skill_row.add_theme_font_size_override("normal_font_size", px)
-	_skill_row.add_theme_color_override("default_color", Color(0.08, 0.06, 0.05, 1))
-	_skill_row.text = bb
+	# Ícones de símbolo são maiores que a fonte para ganhar destaque.
+	var icon_px: int = int(clamp(11.0 * _scale_factor, 10.0, 24.0))
+	var lines: PackedStringArray = []
+
+	# Linha da passiva
+	if _last_passive_desc != "":
+		var passive := ""
+		if _last_passive_name != "":
+			passive += "[b]%s[/b]: " % _last_passive_name
+		passive += _last_passive_desc
+		lines.append(passive)
+
+	# Linha da habilidade ativa (símbolos + descrição)
+	if _last_skill_desc != "" or not _last_symbols.is_empty():
+		var skill := ""
+		for sym in _last_symbols:
+			var path: String = _ELEMENT_ICONS.get(sym, "")
+			if path == "" or not ResourceLoader.exists(path):
+				continue
+			skill += "[img=%dx%d]%s[/img]" % [icon_px, icon_px, path]
+		if _last_skill_desc != "":
+			if not _last_symbols.is_empty():
+				skill += ": "
+			skill += _last_skill_desc
+		lines.append(skill)
+
+	_ability_lbl.add_theme_font_override("normal_font", _FONT_REG)
+	_ability_lbl.add_theme_font_override("bold_font", _FONT_BOLD)
+	_ability_lbl.add_theme_font_size_override("normal_font_size", px)
+	_ability_lbl.add_theme_font_size_override("bold_font_size", px)
+	_ability_lbl.add_theme_color_override("default_color", Color(0.08, 0.06, 0.05, 1))
+	_ability_lbl.text = "\n".join(lines)
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:

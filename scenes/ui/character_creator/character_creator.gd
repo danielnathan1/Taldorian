@@ -4,6 +4,9 @@
 extends Control
 
 const LOBBY_SCENE := "res://scenes/ui/lobby/lobby.tscn"
+const WORLD_SCENE := "res://scenes/world/world_root.tscn"
+const SERVER_IP   := "127.0.0.1"   # MOCK — igual ao login; futuro: vindo da API
+const WORLD_PORT  := 7001
 
 # ── Fontes ────────────────────────────────────────────────────────────────────
 const _FONT_BOLD := preload("res://assets/fonts/CinzelDecorative-Bold.ttf")
@@ -121,6 +124,7 @@ var _race_btns   := {}
 var _sex_btns    := {}
 var _cat_btns    := {}
 var _color_picker: ColorPickerButton
+var _music: AudioStreamPlayer
 
 # ── @onready — nós do .tscn ───────────────────────────────────────────────────
 @onready var _bg            : ColorRect      = $Background
@@ -128,6 +132,7 @@ var _color_picker: ColorPickerButton
 @onready var _eyebrow       : Label          = $RootLayout/Header/HeaderBox/HeaderCenter/Eyebrow
 @onready var _title_lbl     : Label          = $RootLayout/Header/HeaderBox/HeaderCenter/Title
 @onready var _back_btn      : Button         = %BackBtn
+@onready var _menu_btn      : Button         = %MenuBtn
 @onready var _random_top    : Button         = %RandomTopBtn
 @onready var _left_panel    : PanelContainer = $RootLayout/BodyRow/LeftPanel
 @onready var _name_label    : Label          = $RootLayout/BodyRow/LeftPanel/LeftInner/NameSection/NameLabel
@@ -180,6 +185,23 @@ func _ready() -> void:
 	_update_info_labels()
 	_show_category("hair")
 	_animate_entrance()
+	_start_music()
+
+# Mantém a música ambiente do lobby tocando na criação de personagem.
+# (Cada cena inicia sua própria faixa; bus "Music" respeita o volume das config.)
+func _start_music() -> void:
+	var path := "res://audio/theme/lobby_theme.mp3"
+	if not ResourceLoader.exists(path):
+		return
+	var stream := load(path) as AudioStreamMP3
+	if stream == null:
+		return
+	stream.loop = true
+	_music = AudioStreamPlayer.new()
+	_music.bus = "Music"
+	_music.stream = stream
+	add_child(_music)
+	_music.play()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ESTILOS — aplica cores, fontes e StyleBox nos nós do .tscn
@@ -303,6 +325,7 @@ func _apply_styles() -> void:
 	_status_dim.add_theme_color_override("font_color", Color(C_PARCHMENT_D, 0.55))
 
 	_apply_ghost_style(_random_btn)
+	_apply_ghost_style(_menu_btn)
 	_apply_primary_style(_confirm_btn)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -376,6 +399,7 @@ func _setup_dynamic_content() -> void:
 
 func _wire_signals() -> void:
 	_back_btn.pressed.connect(_on_back_pressed)
+	_menu_btn.pressed.connect(_on_back_pressed)
 	_random_top.pressed.connect(_on_randomize)
 	_random_btn.pressed.connect(_on_randomize)
 	_confirm_btn.pressed.connect(_on_confirm)
@@ -514,7 +538,36 @@ func _on_confirm() -> void:
 		_state.name      = RANDOM_NAMES.pick_random()
 		_name_input.text = _state.name
 	CharacterStore.save_character(_build_save_data())
-	get_tree().change_scene_to_file(LOBBY_SCENE)
+	# Entra direto no mundo aberto (mesmo fluxo do login).
+	_connect_to_world()
+
+# ── Conexão com o mundo (IP mockado por enquanto, igual ao login) ──────────────
+func _connect_to_world() -> void:
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_client(SERVER_IP, WORLD_PORT)
+	if err != OK:
+		_confirm_btn.text = "✗ FALHA AO CONECTAR (%d)" % err
+		return
+	multiplayer.multiplayer_peer = peer
+	NetworkState.local_player_index = 1
+	if not multiplayer.connected_to_server.is_connected(_on_world_connected):
+		multiplayer.connected_to_server.connect(_on_world_connected, CONNECT_ONE_SHOT)
+	if not multiplayer.connection_failed.is_connected(_on_world_failed):
+		multiplayer.connection_failed.connect(_on_world_failed, CONNECT_ONE_SHOT)
+	_confirm_btn.disabled = true
+	_confirm_btn.text = "CONECTANDO…"
+
+func _on_world_connected() -> void:
+	if multiplayer.connection_failed.is_connected(_on_world_failed):
+		multiplayer.connection_failed.disconnect(_on_world_failed)
+	get_tree().change_scene_to_file(WORLD_SCENE)
+
+func _on_world_failed() -> void:
+	if multiplayer.connected_to_server.is_connected(_on_world_connected):
+		multiplayer.connected_to_server.disconnect(_on_world_connected)
+	multiplayer.multiplayer_peer = null
+	_confirm_btn.disabled = false
+	_confirm_btn.text = "✗ NÃO FOI POSSÍVEL CONECTAR"
 
 # Constrói o dicionário salvo com paths resolvidos e cores em hex,
 # para que player_character.gd possa carregar sem conhecer RACES/STYLES.

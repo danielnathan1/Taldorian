@@ -9,7 +9,7 @@ func setup(params: Dictionary) -> void:
 	_bonus  = params.get("bonus", 1)
 
 func execute(ctx: CardEffectContext) -> void:
-	for card in ctx.source_player.cards_this_turn:
+	for card in ctx.source_player.cards_this_battle:
 		if card == ctx.source_card:
 			continue
 		if _symbol in card.symbols:

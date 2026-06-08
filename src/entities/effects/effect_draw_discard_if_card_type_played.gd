@@ -14,8 +14,8 @@ func setup(params: Dictionary) -> void:
 	_discard = params.get("discard", 1)
 
 func execute(ctx: CardEffectContext) -> void:
-	var pool: Array[Card] = ctx.source_player.round_cards if _scope == "combat" \
-		else ctx.source_player.cards_this_turn
+	var pool: Array[Card] = ctx.source_player.turn_cards if _scope == "combat" \
+		else ctx.source_player.cards_this_battle
 	var found := false
 	for card in pool:
 		if card == ctx.source_card:

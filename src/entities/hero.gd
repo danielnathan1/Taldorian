@@ -20,8 +20,8 @@ var skill_animation: String = ""            # chave de VFX da habilidade ativa  
 var passive_animation: String = ""          # chave de VFX da habilidade passiva ("" = só floating label)
 var base_attack: int = 0
 var base_defense: int = 0
-var damage_shield: int = 0   # previne dano de qualquer fonte; dura até on_turn_start
-var _skill_activated_this_turn: bool = false
+var damage_shield: int = 0   # previne dano de qualquer fonte; dura até on_battle_start
+var _skill_activated_this_battle: bool = false
 var is_backline_revealed: bool = false
 ## Quando true o herói sempre aparece virado para cima — tanto na backline quanto ao se tornar ativo.
 var starts_face_up: bool = false
@@ -46,35 +46,35 @@ func on_skill_activated(player: Player) -> void:
 
 ## Chamado no início do turno do jogador para heróis vivos e não-exaustos na retaguarda.
 ## Retorna a descrição da passiva se ela foi acionada, "" caso contrário.
-func on_support_turn_start(player: Player, opponent: Player) -> String:
+func on_support_battle_start(player: Player, opponent: Player) -> String:
 	return ""
 
 ## Chamado pelo CombatResolver para heróis de suporte (não-ativos) antes de aplicar dano.
 ## Permite reduzir o dano sofrido pelo herói aliado ativo. Retorna a redução total.
-func get_team_damage_reduction(_ctx: BattleContext) -> int:
+func get_team_damage_reduction(_ctx: TurnContext) -> int:
 	return 0
 
 ## Chamado para dano de área (ex: Chuva de Flechas) — sem limite por rodada.
 ## Permite reduzir 1 de dano por herói atingido independentemente do escudo de combate.
-func get_aoe_damage_reduction(_ctx: BattleContext) -> int:
+func get_aoe_damage_reduction(_ctx: TurnContext) -> int:
 	return 0
 
 ## Chamado no início de cada nova rodada de combate — permite heróis de suporte
 ## resetarem estado de uso por rodada (ex: escudo de Valkar).
-func on_round_reset() -> void:
+func on_turn_reset() -> void:
 	pass
 
 ## Chamado antes do dano ser aplicado — pode modificar o valor
-func on_before_damage_taken(amount: int, ctx: BattleContext) -> int:
+func on_before_damage_taken(amount: int, ctx: TurnContext) -> int:
 	return amount
 
 ## Chamado depois de receber dano (herói ainda vivo)
-func on_after_damage_taken(ctx: BattleContext) -> void:
+func on_after_damage_taken(ctx: TurnContext) -> void:
 	pass
 
 ## Chamado quando o herói é escolhido como ativo — reseta estado do turno
-func on_turn_start(player: Player) -> void:
-	_skill_activated_this_turn = false
+func on_battle_start(player: Player) -> void:
+	_skill_activated_this_battle = false
 	damage_shield = 0
 
 ## Chamado a cada carta adicionada ao jogo pelo jogador deste herói
@@ -82,17 +82,17 @@ func on_card_played(card: Card, player: Player) -> void:
 	pass
 
 ## Chamado ao ser derrotado
-func on_defeated(ctx: BattleContext) -> void:
+func on_defeated(ctx: TurnContext) -> void:
 	pass
 
 ## Chamado no final do turno (antes de exaustar o herói ativo) — passivas de fim de turno.
 ## Retorna a descrição da passiva se ela foi acionada, "" caso contrário.
 ## NÃO emita GameBus aqui — o GameState cuida disso via RPC após receber o retorno.
-func on_turn_end(player: Player) -> String:
+func on_battle_end(player: Player) -> String:
 	return ""
 
 ## Chamado pelo CombatResolver após causar dano (pode ser 0) — permite passivas pós-dano
-func on_after_damage_dealt(damage: int, ctx: BattleContext) -> void:
+func on_after_damage_dealt(damage: int, ctx: TurnContext) -> void:
 	pass
 
 ## Bônus de ataque da passiva para exibição em tempo real no UI.
@@ -101,7 +101,7 @@ func get_passive_attack_bonus() -> int:
 	return 0
 
 ## Chamado antes de calcular o ataque — pode modificar bonus_damage via passiva
-func on_before_attack(ctx: BattleContext) -> void:
+func on_before_attack(ctx: TurnContext) -> void:
 	pass
 
 # ── lógica base (não faz override disso) ────────────────
@@ -122,7 +122,7 @@ func heal(amount: int) -> void:
 	# Emite sempre — mesmo com HP cheio a cura pode trigar efeitos reativos no futuro
 	GameBus.hero_healed.emit(self, effective)
 
-func take_damage(amount: int, ctx: BattleContext) -> void:
+func take_damage(amount: int, ctx: TurnContext) -> void:
 	current_hp = max(0, current_hp - amount)
 	if current_hp == 0:
 		state = State.DEFEATED
