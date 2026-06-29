@@ -1,0 +1,139 @@
+[gd_scene format=3 uid="uid://dwuypaftht0en"]
+
+[ext_resource type="Script" uid="uid://0l1vuc42jnip" path="res://scenes/ui/token_view/token_view.gd" id="1_tv"]
+[ext_resource type="Texture2D" uid="uid://bcyawwoo7krhd" path="res://assets/card/tokens/base_token.png" id="2_base"]
+[ext_resource type="Texture2D" uid="uid://b5tmj4qikkdpj" path="res://assets/icons/activable.png" id="3_act"]
+[ext_resource type="FontFile" uid="uid://bm23jumepppl1" path="res://assets/fonts/palatino/palr45w.ttf" id="4_reg"]
+[ext_resource type="FontFile" uid="uid://oe74r7bbi6u8" path="res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf" id="5_bold"]
+[ext_resource type="Shader" uid="uid://dvg3whf1rabgy" path="res://scenes/ui/shared/activable_glow.gdshader" id="6_glow"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glow"]
+shader = ExtResource("6_glow")
+shader_parameter/glow_color = Color(1, 0.82, 0.28, 1)
+shader_parameter/speed = 3.0
+shader_parameter/thickness = 0.12
+shader_parameter/sharpness = 1.6
+
+[node name="TokenView" type="Control" unique_id=773273666]
+custom_minimum_size = Vector2(160, 240)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 160.0
+offset_bottom = 240.0
+size_flags_horizontal = 4
+size_flags_vertical = 8
+script = ExtResource("1_tv")
+
+[node name="TokenContent" type="Control" parent="." unique_id=685594834]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Art" type="TextureRect" parent="TokenContent" unique_id=354581686]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TokenLayoutBase" type="TextureRect" parent="TokenContent" unique_id=2025845223]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_base")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="TokenContent" unique_id=430240463]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.1
+anchor_top = 0.025
+anchor_right = 0.9
+anchor_bottom = 0.085
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
+[node name="DescLabel" type="Label" parent="TokenContent" unique_id=379810735]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.08
+anchor_top = 0.7
+anchor_right = 0.92
+anchor_bottom = 0.93
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/font = ExtResource("4_reg")
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="CounterBadge" type="Panel" parent="TokenContent" unique_id=1333431977]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.72
+anchor_top = 0.02
+anchor_right = 0.97
+anchor_bottom = 0.13
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CounterLabel" type="Label" parent="TokenContent/CounterBadge" unique_id=1207270680]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 11
+text = "x1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActivableGlow" type="ColorRect" parent="TokenContent" unique_id=2051629383]
+visible = false
+z_index = 10
+material = SubResource("ShaderMaterial_glow")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ActivableIcon" type="TextureRect" parent="TokenContent" unique_id=1257309998]
+visible = false
+z_index = 11
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3
+anchor_right = 0.7
+anchor_bottom = 0.22
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_act")
+expand_mode = 1
+stretch_mode = 5

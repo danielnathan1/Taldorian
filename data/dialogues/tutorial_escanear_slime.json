@@ -1,0 +1,9 @@
+{
+  "id": "tutorial_escanear_slime",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "text": "Chegue perto dela e use o Olho Arcano para escaneá-la. Deixe que ele faça o resto." }
+  ]
+}

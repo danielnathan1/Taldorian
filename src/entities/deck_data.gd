@@ -8,7 +8,7 @@ var deck_id: String = ""
 var remote_id: String = ""   # UUID do deck no backend ("" = ainda não criado → POST)
 var deck_name: String = "Novo Deck"
 var hero_names: Array[String] = []
-var card_entries: Array[Dictionary] = []  # [{ "name": String, "count": int }]
+var card_entries: Array[Dictionary] = []  # [{ "name": String, "count": int, "foil": int }]
 var sleeve: String  = "default"
 var playmat: String = "default"
 
@@ -22,7 +22,8 @@ func add_card(card_name: String, max_copies: int) -> bool:
 				return false
 			entry["count"] += 1
 			return true
-	card_entries.append({ "name": card_name, "count": 1 })
+	# Cópia recém-adicionada começa normal; o jogador escolhe foil depois (set_foil).
+	card_entries.append({ "name": card_name, "count": 1, "foil": 0 })
 	return true
 
 
@@ -32,6 +33,9 @@ func remove_card(card_name: String) -> bool:
 			card_entries[i]["count"] -= 1
 			if card_entries[i]["count"] <= 0:
 				card_entries.remove_at(i)
+			else:
+				# foil nunca pode exceder a contagem após remover cópias.
+				card_entries[i]["foil"] = mini(int(card_entries[i].get("foil", 0)), card_entries[i]["count"])
 			return true
 	return false
 
@@ -41,6 +45,22 @@ func count_of(card_name: String) -> int:
 		if entry["name"] == card_name:
 			return entry["count"]
 	return 0
+
+
+func foil_of(card_name: String) -> int:
+	for entry in card_entries:
+		if entry["name"] == card_name:
+			return int(entry.get("foil", 0))
+	return 0
+
+
+# Define quantas cópias deste card no deck são foil. Clampa à contagem; o limite
+# pela posse (não pode marcar mais foil do que possui) é responsabilidade de quem chama.
+func set_foil(card_name: String, foil: int) -> void:
+	for entry in card_entries:
+		if entry["name"] == card_name:
+			entry["foil"] = clampi(foil, 0, int(entry["count"]))
+			return
 
 
 func total_cards() -> int:
@@ -117,7 +137,7 @@ static func from_dict(d: Dictionary) -> DeckData:
 	if cards_raw is Array:
 		for c in cards_raw:
 			if c is Dictionary and c.has("name") and c.has("count"):
-				dd.card_entries.append({ "name": str(c["name"]), "count": int(c["count"]) })
+				dd.card_entries.append({ "name": str(c["name"]), "count": int(c["count"]), "foil": int(c.get("foil", 0)) })
 	dd.sleeve  = str(d.get("sleeve",  "default"))
 	dd.playmat = str(d.get("playmat", "default"))
 	return dd

@@ -9,3 +9,4 @@ func setup(params: Dictionary) -> void:
 func execute(ctx: CardEffectContext) -> void:
 	if ctx.source_player.took_damage_this_turn:
 		ctx.source_player.pending_bonus_attack += _bonus
+		ctx.request_empower(_bonus, 0)

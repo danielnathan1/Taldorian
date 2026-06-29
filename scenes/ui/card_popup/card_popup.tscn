@@ -46,7 +46,7 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 
 [node name="CardView" parent="Overlay/Container/VBox" unique_id=1754183775 instance=ExtResource("2_538k5")]
-custom_minimum_size = Vector2(310, 460)
+custom_minimum_size = Vector2(300, 450)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+size_flags_horizontal = 4
+size_flags_vertical = 4

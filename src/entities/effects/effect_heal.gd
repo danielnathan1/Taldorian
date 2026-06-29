@@ -11,3 +11,4 @@ func execute(ctx: CardEffectContext) -> void:
 	if hero == null:
 		return
 	hero.heal(_amount)
+	ctx.request_vfx("heal")

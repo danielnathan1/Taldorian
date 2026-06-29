@@ -22,4 +22,5 @@ func execute(ctx: CardEffectContext) -> void:
 		if card.timing == _timing_type:
 			ctx.source_player.pending_bonus_attack  += _attack_bonus
 			ctx.source_player.pending_bonus_defense += _defense_bonus
+			ctx.request_empower(_attack_bonus, _defense_bonus)
 			return

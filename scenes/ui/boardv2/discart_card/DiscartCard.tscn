@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://1orqwtd3un0k"]
 
 [ext_resource type="Script" path="res://scenes/ui/boardv2/discart_card/discart_card.gd" id="1_discard"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="2_font_regular"]
 
 [node name="DiscartCard" type="Control" unique_id=1909096607]
 visible = false
@@ -22,6 +23,16 @@ offset_bottom = -100.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
+theme_override_constants/separation = 24
+
+[node name="InstructionLabel" type="Label" parent="VBoxContainer" unique_id=1111111111]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "Escolha as cartas"
+theme_override_fonts/font = ExtResource("2_font_regular")
+theme_override_font_sizes/font_size = 22
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer" unique_id=1123456790]
 layout_mode = 2

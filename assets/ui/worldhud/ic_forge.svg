@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- ANVIL -->
+  <!-- Top working surface with left horn -->
+  <path d="M3 16 L7 13.5 H19 V16 H8 Z" fill="white"/>
+  <!-- Neck + foot -->
+  <path d="M10 16 h4 v1.5 h2 l-1.5 4 h-5 l-1.5 -4 h2 z" fill="white"/>
+  <!-- HAMMER (striking from upper right) -->
+  <g transform="rotate(38 13 8)">
+    <!-- Handle -->
+    <rect x="12" y="6.5" width="2" height="9.5" rx="1" fill="white"/>
+    <!-- Head -->
+    <rect x="8.5" y="3.5" width="9" height="4" rx="1.2" fill="white"/>
+  </g>
+</svg>

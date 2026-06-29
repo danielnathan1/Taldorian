@@ -59,7 +59,8 @@ func _rpc_join_queue() -> void:
 	if _queue.size() >= 2:
 		var a: int = _queue.pop_front()
 		var b: int = _queue.pop_front()
-		begin_match_between(a, b)
+		# A fila é alimentada pelo botão de Fila Rankeada (RoomService) → partida rankeada.
+		begin_match_between(a, b, true)
 
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_leave_queue() -> void:
@@ -71,14 +72,16 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	if multiplayer.is_server():
 		_queue.erase(peer_id)
 
-## Inicia uma partida entre dois peers (servidor). Usado pela fila rápida e pelo
+## Inicia uma partida entre dois peers (servidor). Usado pela fila rankeada e pelo
 ## RoomService quando uma sala enche. Define o mapeamento peer→player_index no
-## GameState e envia cada cliente ao board com seu índice.
-func begin_match_between(p_a: int, p_b: int) -> void:
+## GameState e envia cada cliente ao board com seu índice. p_ranked=true marca a
+## partida como rankeada (resultado reportado ao backend ao fim). p_debug=true marca
+## a partida como sala de teste (libera o botão DEBUG no board — dar carta à mão).
+func begin_match_between(p_a: int, p_b: int, p_ranked: bool = false, p_debug: bool = false) -> void:
 	if not multiplayer.is_server():
 		return
 	# Registra uma partida isolada (sala) no servidor e roteia ambos ao board.
-	GameState.register_match(p_a, p_b)
+	GameState.register_match(p_a, p_b, p_ranked, p_debug)
 	_rpc_begin_match.rpc_id(p_a, 0)
 	_rpc_begin_match.rpc_id(p_b, 1)
 

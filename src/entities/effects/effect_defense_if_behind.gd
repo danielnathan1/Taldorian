@@ -13,3 +13,4 @@ func execute(ctx: CardEffectContext) -> void:
 		return
 	if my_hero.current_hp < opp_hero.current_hp:
 		ctx.source_player.pending_bonus_defense += _bonus
+		ctx.request_empower(0, _bonus)

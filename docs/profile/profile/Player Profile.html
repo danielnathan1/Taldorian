@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Taldorian TCCG — Perfil do Jogador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@700;900&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #14161c;
+    --panel:       21 24 31;
+    --panel-2:     #20242e;
+    --line:        #2a2e3a;
+    --line-bright: #3a4150;
+    --ink:         #e7e3da;
+    --ink-dim:     #b7b6ad;
+    --muted:       #8b8f9c;
+    --muted-2:     #6b6f7c;
+    --accent:      #87cee4;
+    --accent-deep: #4f97ad;
+    --gold:        #e0b04a;
+    --gold-bright: #f5cf6a;
+    --whisper:     #b89cff;
+    --guild:       #8fd99a;
+    --danger:      #e0795f;
+
+    /* avatar frame — driven by Tweaks */
+    --frame-main:  #6b7385;
+    --frame-glow:  0.0;
+    --frame-corner: square;
+  }
+
+  html, body { width: 100%; height: 100%; background: #0e0f13; }
+  body { font-family: 'Crimson Pro', ui-serif, Georgia, serif; color: var(--ink); }
+  img { image-rendering: auto; }
+
+  .mono-label {
+    font-family: 'Silkscreen', monospace;
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+
+  /* ───────── pixel HUD panel primitives ───────── */
+  .panel {
+    background: rgba(var(--panel), .94);
+    border: 2px solid var(--line-bright);
+    box-shadow:
+      0 0 0 2px rgba(0,0,0,.55),
+      inset 0 2px 0 rgba(255,255,255,.05),
+      inset 0 -2px 0 rgba(0,0,0,.35),
+      0 18px 44px rgba(0,0,0,.55);
+  }
+  .panel-inset {
+    background: rgba(10,12,17,.55);
+    border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 1px rgba(0,0,0,.4);
+  }
+
+  /* ───────── avatar frame (shared) ───────── */
+  .avatar-frame {
+    position: relative; flex: none; padding: 3px;
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--frame-main) 78%, #fff),
+      var(--frame-main) 52%,
+      color-mix(in srgb, var(--frame-main) 60%, #14161c));
+    box-shadow:
+      0 0 0 2px #14161c,
+      0 0 0 3px color-mix(in srgb, var(--frame-main) 70%, #14161c),
+      0 0 14px calc(var(--frame-glow) * 6px) color-mix(in srgb, var(--frame-main) 80%, transparent);
+  }
+  .avatar-frame image-slot {
+    display: block; width: 100%; height: 100%; --is-bg: #181b22;
+  }
+  .av-lg {
+    width: 104px; height: 104px; border-radius: 50%; padding: 5px;
+    background: conic-gradient(from 220deg,
+      color-mix(in srgb, var(--frame-main) 92%, #fff),
+      var(--frame-main) 28%,
+      color-mix(in srgb, var(--frame-main) 50%, #000) 50%,
+      var(--frame-main) 72%,
+      color-mix(in srgb, var(--frame-main) 92%, #fff));
+    box-shadow:
+      0 0 0 2px #14161c,
+      0 0 0 3px color-mix(in srgb, var(--frame-main) 65%, #000),
+      0 0 16px calc(var(--frame-glow) * 7px) color-mix(in srgb, var(--frame-main) 80%, transparent);
+  }
+  .av-lg image-slot { border-radius: 50%; background: #2c313c; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); --is-bg: #2c313c; }
+  .av-round { width: 116px; height: 116px; border-radius: 50%; }
+  .av-round image-slot { border-radius: 50%; }
+
+  .level-badge {
+    position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); z-index: 4;
+    font-family: 'Silkscreen', monospace; font-size: 9px; font-weight: 700;
+    color: #1a1205; background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    padding: 2px 7px 1px; letter-spacing: .03em; white-space: nowrap;
+    box-shadow: 0 0 0 2px #14161c, 0 1px 3px rgba(0,0,0,.5);
+  }
+
+  /* ───────── rank shield ───────── */
+  .shield-wrap { position: relative; flex: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .shield {
+    width: 100%; height: 100%; position: relative;
+    clip-path: polygon(50% 0, 100% 13%, 100% 56%, 50% 100%, 0 56%, 0 13%);
+    background:
+      linear-gradient(168deg,
+        color-mix(in srgb, var(--sc) 85%, #fff) 0%,
+        var(--sc) 42%,
+        var(--sd) 100%);
+    box-shadow: 0 0 0 2px #14161c, inset 0 0 0 2px rgba(0,0,0,.25);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .shield::before {
+    content: ''; position: absolute; inset: 14% 16% 22%;
+    clip-path: polygon(50% 0, 100% 13%, 100% 56%, 50% 100%, 0 56%, 0 13%);
+    border: 1.5px solid color-mix(in srgb, var(--sd) 70%, #000);
+    opacity: .45;
+  }
+  .shield-shine {
+    position: absolute; top: 0; left: 0; right: 0; height: 46%;
+    background: linear-gradient(180deg, rgba(255,255,255,.5), transparent);
+    mix-blend-mode: screen; pointer-events: none;
+  }
+  .shield-star {
+    width: 46%; height: 46%; margin-top: -6%;
+    fill: color-mix(in srgb, var(--sd) 78%, #000);
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,.3));
+  }
+  .shield-div {
+    position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+    font-family: 'Silkscreen', monospace; font-weight: 700;
+    font-size: calc(var(--sz, 86px) * 0.16);
+    color: #faf6ea; text-shadow: 0 1px 2px rgba(0,0,0,.7); letter-spacing: .04em;
+  }
+
+  /* peak seal */
+  .seal {
+    position: relative; flex: none; border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--sc) 85%, #fff), var(--sc) 55%, var(--sd));
+    box-shadow: 0 0 0 2px #14161c, 0 0 0 3px color-mix(in srgb, var(--sd) 80%, #000),
+      inset 0 1px 2px rgba(255,255,255,.4), 0 0 10px var(--sg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .seal-star { position: absolute; width: 64%; height: 64%; fill: color-mix(in srgb, var(--sd) 75%, #000); opacity: .85; }
+  .seal-div {
+    position: relative; z-index: 2;
+    font-family: 'Silkscreen', monospace; font-weight: 700; font-size: 10px;
+    color: #1c1304; text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  }
+
+  /* ───────── favorite card ───────── */
+  .favcard { transform: rotate(var(--tilt, 0deg)); filter: drop-shadow(0 8px 14px rgba(0,0,0,.55)); }
+  .favcard-frame {
+    position: relative; border-radius: 6px; overflow: hidden;
+    aspect-ratio: 912 / 1328;
+    border: 2px solid #0c0d11;
+    box-shadow: 0 0 0 2px var(--gold), inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .favcard-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .favcard-gloss {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,255,255,.22), transparent 40%);
+    mix-blend-mode: screen;
+  }
+  .favcard-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 4px; padding: 0 2px;
+  }
+  .favcard-atk {
+    font-family: 'Silkscreen', monospace; font-size: 11px; color: var(--danger);
+    text-shadow: 0 1px 0 #000;
+  }
+  .favcard-el {
+    font-family: 'Silkscreen', monospace; font-size: 8px; color: var(--gold-bright);
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+
+  /* ───────── win bar ───────── */
+  .winbar { width: 100%; }
+  .winbar-meta {
+    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;
+    font-family: 'Silkscreen', monospace; font-size: 10px;
+  }
+  .winbar-meta i { font-style: normal; font-size: 8px; opacity: .7; margin-left: 1px; }
+  .wb-w { color: var(--guild); } .wb-l { color: var(--danger); }
+  .wb-rate { color: var(--ink); font-size: 11px; }
+  .winbar-track {
+    height: 8px; background: #11131a; position: relative; overflow: hidden;
+    box-shadow: inset 0 0 0 1px #000, inset 0 1px 2px rgba(0,0,0,.6);
+  }
+  .winbar-fill {
+    height: 100%; background: linear-gradient(180deg, var(--guild), color-mix(in srgb, var(--guild) 60%, #1c5a3a));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  .winbar-track::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, transparent calc(var(--wr,65%) - 1px), var(--danger) calc(var(--wr,65%) - 1px));
+    opacity: 0;
+  }
+
+  /* stat rows */
+  .statrow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .statrow-k { font-family: 'Silkscreen', monospace; font-size: 8px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .statrow-v { font-family: 'Crimson Pro', serif; font-size: 14px; color: var(--ink-dim); font-weight: 600; }
+
+  /* ════════════════ MODAL A — DOSSIÊ ════════════════ */
+  .modal { position: relative; }
+
+  .modal-dossier { width: 600px; }
+  .md-titlebar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; border-bottom: 2px solid var(--line-bright);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+  }
+  .md-title { font-size: 10px; color: var(--gold-bright); }
+  .md-close {
+    width: 24px; height: 24px; display: grid; place-items: center;
+    background: transparent; border: 1px solid var(--line-bright); color: var(--muted);
+    cursor: pointer; transition: color .12s, border-color .12s;
+  }
+  .md-close:hover { color: var(--danger); border-color: #7a4035; }
+
+  .md-body { display: grid; grid-template-columns: 152px 1fr 132px; gap: 0; }
+  .md-id {
+    display: flex; flex-direction: column; align-items: center; gap: 9px;
+    padding: 20px 14px 16px; border-right: 1px solid var(--line);
+  }
+  .md-nick {
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 19px; color: var(--ink);
+    letter-spacing: .02em; margin-top: 4px; text-align: center; line-height: 1;
+  }
+  .md-guildchip {
+    display: flex; align-items: center; gap: 6px; max-width: 100%;
+    padding: 4px 8px; background: rgba(143,217,154,.08);
+    border: 1px solid rgba(143,217,154,.2);
+  }
+  .gc-name { font-family: 'Crimson Pro', serif; font-size: 12px; color: var(--guild); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .md-role { font-size: 8px; color: var(--muted-2); }
+
+  .md-detail { padding: 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .md-ranks { display: flex; align-items: stretch; gap: 14px; }
+  .md-rank-main { display: flex; align-items: center; gap: 12px; flex: 1; }
+  .md-rank-text { display: flex; flex-direction: column; gap: 3px; }
+  .rk-label { font-size: 8px; color: var(--muted); }
+  .rk-tier { font-family: 'Cinzel', serif; font-weight: 700; font-size: 21px; color: var(--gold-bright); line-height: 1; }
+  .rk-pts { font-family: 'Silkscreen', monospace; font-size: 9px; color: var(--ink-dim); }
+  .md-rank-peak { display: flex; align-items: center; gap: 9px; padding-left: 14px; border-left: 1px solid var(--line); }
+  .md-peak-text { display: flex; flex-direction: column; gap: 2px; }
+  .pk-label { font-size: 8px; color: var(--muted); }
+  .pk-tier { font-family: 'Cinzel', serif; font-weight: 600; font-size: 14px; color: var(--ink-dim); line-height: 1; }
+  .pk-season { font-family: 'Silkscreen', monospace; font-size: 7px; color: var(--muted-2); }
+
+  .md-stats { padding: 12px 13px; display: flex; flex-direction: column; gap: 11px; }
+  .ms-block { display: flex; flex-direction: column; gap: 6px; }
+  .ms-k { font-size: 8px; color: var(--muted); }
+  .ms-grid { display: flex; gap: 22px; padding-top: 9px; border-top: 1px solid var(--line); }
+
+  .md-fav {
+    display: flex; flex-direction: column; align-items: center; gap: 9px;
+    padding: 18px 14px 16px; border-left: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(224,176,74,.04), transparent);
+  }
+  .md-fav-label { font-size: 8px; color: var(--gold); }
+  .md-fav-name { font-family: 'Cinzel', serif; font-size: 12px; font-weight: 600; color: var(--ink-dim); text-align: center; }
+
+  /* ════════════════ MODAL B — SELO DA GUILDA ════════════════ */
+  .modal-seal {
+    width: 440px; padding: 26px 30px 30px;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% 0%, rgba(224,176,74,.10), transparent 60%),
+      linear-gradient(180deg, #1b1a20, #15151b 60%, #121117);
+    border: 2px solid var(--gold);
+    box-shadow:
+      0 0 0 2px #14161c, 0 0 0 3px rgba(224,176,74,.25),
+      inset 0 0 60px rgba(0,0,0,.5),
+      0 24px 60px rgba(0,0,0,.6);
+    text-align: center;
+  }
+  .filigree {
+    position: absolute; inset: 8px; pointer-events: none;
+    border: 1px solid rgba(224,176,74,.28);
+    -webkit-mask: linear-gradient(#000,#000) padding-box, linear-gradient(#000,#000);
+  }
+  .filigree::before, .filigree::after {
+    content: '✦'; position: absolute; color: var(--gold); font-size: 13px; opacity: .55;
+  }
+  .filigree::before { top: -8px; left: 50%; transform: translateX(-50%); }
+  .filigree::after  { bottom: -8px; left: 50%; transform: translateX(-50%); }
+  .ms-close {
+    position: absolute; top: 14px; right: 14px; z-index: 5;
+    width: 24px; height: 24px; display: grid; place-items: center;
+    background: transparent; border: 1px solid rgba(224,176,74,.35); color: var(--gold);
+    cursor: pointer; transition: color .12s, border-color .12s;
+  }
+  .ms-close:hover { color: var(--gold-bright); border-color: var(--gold-bright); }
+
+  .sl-head { position: relative; }
+  .sl-eyebrow {
+    font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: .28em; text-transform: uppercase;
+    color: var(--gold); opacity: .85;
+  }
+  .sl-nick {
+    font-family: 'Cinzel Decorative', serif; font-weight: 900; font-size: 33px;
+    color: var(--gold-bright); letter-spacing: .02em; line-height: 1.05; margin: 5px 0 6px;
+    text-shadow: 0 2px 10px rgba(224,176,74,.25);
+  }
+  .sl-guild {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: 'Crimson Pro', serif; font-size: 14px; color: var(--guild);
+  }
+  .sl-role { color: var(--muted); font-style: italic; }
+
+  .sl-medallion { display: flex; justify-content: center; margin: 18px 0 4px; }
+  .medal-ring {
+    position: relative; padding: 7px; border-radius: 50%;
+    background: conic-gradient(from 220deg, var(--gold-bright), var(--gold) 30%, #7a5c14 50%, var(--gold) 70%, var(--gold-bright));
+    box-shadow: 0 0 0 2px #14161c, 0 0 24px rgba(224,176,74,.22), inset 0 0 0 1px rgba(0,0,0,.4);
+  }
+  .medal-level {
+    position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+    font-family: 'Silkscreen', monospace; font-size: 9px; color: #1a1205;
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    padding: 2px 8px 1px; letter-spacing: .03em;
+    box-shadow: 0 0 0 2px #14161c;
+  }
+
+  .sl-rank { margin-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sl-rank-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 24px; color: var(--gold-bright); margin-top: 8px; letter-spacing: .03em; }
+  .sl-rank-sub { font-family: 'Crimson Pro', serif; font-style: italic; font-size: 13px; color: var(--muted); }
+  .sl-peak {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 9px;
+    padding: 5px 12px 5px 6px; border: 1px solid rgba(224,176,74,.22);
+    background: rgba(224,176,74,.05);
+  }
+  .sl-peak-txt { font-family: 'Crimson Pro', serif; font-size: 12.5px; color: var(--ink-dim); }
+  .sl-peak-txt b { color: var(--ink); font-weight: 600; }
+
+  .sl-rule { display: flex; align-items: center; gap: 12px; margin: 20px 4px 16px; color: rgba(224,176,74,.5); }
+  .sl-rule::before, .sl-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(224,176,74,.4), transparent); }
+  .sl-rule span { font-size: 12px; }
+
+  .sl-stats { display: flex; flex-direction: column; gap: 12px; }
+  .sl-wins-row {
+    display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: baseline; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .sw-num { font-family: 'Cinzel', serif; font-weight: 700; font-size: 24px; line-height: 1; }
+  .sw-w { color: var(--guild); text-align: right; } .sw-l { color: var(--danger); text-align: left; }
+  .sw-cap { font-family: 'Silkscreen', monospace; font-size: 7px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; align-self: center; }
+  .sw-rate { font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px; color: var(--gold-bright); padding: 0 4px; }
+  .sl-since { font-family: 'Crimson Pro', serif; font-size: 13px; color: var(--muted); font-style: italic; }
+  .sl-since b { color: var(--ink-dim); font-style: normal; font-weight: 600; }
+
+  .sl-fav {
+    display: flex; align-items: center; gap: 16px; margin-top: 20px;
+    padding: 14px; border: 1px solid var(--line-bright);
+    background: linear-gradient(180deg, rgba(224,176,74,.05), rgba(0,0,0,.2));
+    text-align: left;
+  }
+  .sl-fav-info { display: flex; flex-direction: column; gap: 3px; }
+  .sl-fav-label { font-family: 'Silkscreen', monospace; font-size: 8px; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; }
+  .sl-fav-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 18px; color: var(--ink); }
+  .sl-fav-meta { font-family: 'Crimson Pro', serif; font-style: italic; font-size: 12.5px; color: var(--muted); }
+
+  /* ───────── HUD backdrop (context behind modal) ───────── */
+  .hud-backdrop { position: absolute; inset: 0; overflow: hidden; }
+  .hud-world {
+    position: absolute; inset: 0;
+    background-color: #4c5742;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,.022) 1px, transparent 1.5px),
+      linear-gradient(0deg, rgba(0,0,0,.10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,.10) 1px, transparent 1px),
+      radial-gradient(ellipse 120% 90% at 50% 55%, transparent 35%, rgba(0,0,0,.55) 100%);
+    background-size: 16px 16px, 32px 32px, 32px 32px, 100% 100%;
+    filter: saturate(.85) brightness(.8);
+  }
+  .hud-dim { position: absolute; inset: 0; background: rgba(8,9,13,.62); backdrop-filter: blur(2px); }
+  .hud-ghost {
+    position: absolute; border: 2px solid var(--line-bright);
+    background: rgba(var(--panel), .5); opacity: .5;
+  }
+  .ghost-pc { top: 16px; left: 16px; width: 200px; height: 78px; }
+  .ghost-bar { bottom: 16px; right: 16px; width: 220px; height: 56px; }
+  .hud-stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 28px; }
+
+  .board { background: #0e0f13; min-height: 100%; }
+</style>
+</head>
+<body>
+
+<div id="root" class="board"></div>
+
+<script src="image-slot.js"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="profile-cards.jsx"></script>
+
+<script type="text/babel">
+const { useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "frameColor": "#e0b04a",
+  "frameGlow": false
+}/*EDITMODE-END*/;
+
+function HudBackdrop({ children }) {
+  return (
+    <div className="hud-backdrop">
+      <div className="hud-world"></div>
+      <div className="hud-ghost ghost-pc panel"></div>
+      <div className="hud-ghost ghost-bar panel"></div>
+      <div className="hud-dim"></div>
+      <div className="hud-stage">{children}</div>
+    </div>
+  );
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  // push tweak values to CSS custom props + corner attribute on both boards
+  useEffect(() => {
+    document.querySelectorAll('.board').forEach((el) => {
+      el.style.setProperty('--frame-main', t.frameColor);
+      el.style.setProperty('--frame-glow', t.frameGlow ? '1' : '0');
+    });
+  }, [t.frameColor, t.frameGlow]);
+
+  return (
+    <React.Fragment>
+      <DesignCanvas>
+        <DCSection id="profile" title="Perfil do Jogador" subtitle="Modal sobre o HUD · clique no avatar">
+          <DCArtboard id="dossier" label="A · Dossiê de Campo" width={760} height={470}>
+            <HudBackdrop><ProfileDossier /></HudBackdrop>
+          </DCArtboard>
+          <DCArtboard id="seal" label="B · Selo da Guilda" width={560} height={940}>
+            <HudBackdrop><ProfileSeal /></HudBackdrop>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel>
+        <TweakSection label="Moldura do avatar" />
+        <TweakColor label="Cor / metal" value={t.frameColor}
+          options={['#6b7385', '#e0b04a', '#b89cff', '#8fd99a', '#e0795f']}
+          onChange={(v) => setTweak('frameColor', v)} />
+        <TweakToggle label="Brilho rúnico" value={t.frameGlow}
+          onChange={(v) => setTweak('frameGlow', v)} />
+      </TweaksPanel>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

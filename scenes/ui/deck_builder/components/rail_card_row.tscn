@@ -43,6 +43,13 @@ stretch_mode = 6
 layout_mode = 2
 text = ""
 
+[node name="FoilBtn" type="Button" parent="MarginContainer/HBox"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "✦1"
+
 [node name="RemoveBtn" type="Button" parent="MarginContainer/HBox"]
 layout_mode = 2
 text = "✕"

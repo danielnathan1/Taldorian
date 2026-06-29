@@ -3,6 +3,7 @@ class_name BattleManager
 extends RefCounted
 
 enum Phase {
+	OPENING_ROLL,       # rolagem de dados (2d6) — decide quem escolhe quem começa
 	OPENING_MULLIGAN,
 	DRAW,
 	HERO_SELECTION,
@@ -18,6 +19,8 @@ var players: Array[Player] = []
 
 func phase_to_string(p: Phase) -> String:
 	match p:
+		Phase.OPENING_ROLL:
+			return "OPENING_ROLL"
 		Phase.OPENING_MULLIGAN:
 			return "OPENING_MULLIGAN"
 		Phase.DRAW:

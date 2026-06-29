@@ -50,11 +50,11 @@ func refresh() -> void:
 	elif multiplayer.multiplayer_peer != null:
 		rpc_id(1, "_rpc_request_rooms")
 
-func create_room(p_name: String, p_type: String, p_locked: bool, p_password: String) -> void:
+func create_room(p_name: String, p_type: String, p_locked: bool, p_password: String, p_debug: bool = false) -> void:
 	if multiplayer.is_server():
-		_srv_create_room(_self_peer(), p_name, p_type, p_locked, p_password)
+		_srv_create_room(_self_peer(), p_name, p_type, p_locked, p_password, p_debug)
 	else:
-		rpc_id(1, "_rpc_create_room", p_name, p_type, p_locked, p_password)
+		rpc_id(1, "_rpc_create_room", p_name, p_type, p_locked, p_password, p_debug)
 
 func join_room(p_id: int, p_password: String = "") -> void:
 	if multiplayer.is_server():
@@ -122,10 +122,10 @@ func _rpc_request_rooms() -> void:
 	_sync_rooms.rpc_id(multiplayer.get_remote_sender_id(), _serialize_rooms())
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_create_room(p_name: String, p_type: String, p_locked: bool, p_password: String) -> void:
+func _rpc_create_room(p_name: String, p_type: String, p_locked: bool, p_password: String, p_debug: bool = false) -> void:
 	if not multiplayer.is_server():
 		return
-	_srv_create_room(multiplayer.get_remote_sender_id(), p_name, p_type, p_locked, p_password)
+	_srv_create_room(multiplayer.get_remote_sender_id(), p_name, p_type, p_locked, p_password, p_debug)
 
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_join_room(p_id: int, p_password: String) -> void:
@@ -144,7 +144,7 @@ func _rpc_join_random() -> void:
 #  LÓGICA DO SERVIDOR
 # ════════════════════════════════════════════════════════════════════════════
 
-func _srv_create_room(p_creator: int, p_name: String, p_type: String, p_locked: bool, p_password: String) -> void:
+func _srv_create_room(p_creator: int, p_name: String, p_type: String, p_locked: bool, p_password: String, p_debug: bool = false) -> void:
 	# Um jogador só pode estar em uma sala por vez: remove de qualquer outra antes.
 	_remove_peer_from_rooms(p_creator, false)
 
@@ -158,6 +158,7 @@ func _srv_create_room(p_creator: int, p_name: String, p_type: String, p_locked: 
 	room.players   = 1
 	room.capacity  = 2
 	room.locked    = p_locked
+	room.debug     = p_debug
 	if p_locked:
 		_passwords[room.id] = p_password
 	_occupants[room.id] = [p_creator]
@@ -251,9 +252,11 @@ func _on_countdown_done(p_id: int) -> void:
 		and bool(_ready_state[p_id].get(occ[1], false)):
 		var a: int = occ[0]
 		var b: int = occ[1]
+		var room := get_room(p_id)
+		var is_debug := room != null and room.debug
 		_destroy_room(p_id)        # a sala vira partida; some da lista
 		_broadcast_rooms()
-		MatchService.begin_match_between(a, b)
+		MatchService.begin_match_between(a, b, false, is_debug)
 
 func _srv_leave_match_room(p_peer: int) -> void:
 	var rid := _room_of_peer(p_peer)
@@ -274,14 +277,17 @@ func _build_room_detail(p_id: int) -> Dictionary:
 		if i < occ.size():
 			var peer: int = occ[i]
 			var pname := "Jogador"
+			var appearance: Dictionary = {}
 			if players.has(peer):
 				pname = str(players[peer].get("player_name", "Jogador"))
+				appearance = players[peer].get("appearance", {})
 			seats.append({
-				"peer":    peer,
-				"name":    pname,
-				"deck":    str(_peer_deck.get(peer, "")),
-				"ready":   bool(ready.get(peer, false)),
-				"is_host": i == 0,
+				"peer":       peer,
+				"name":       pname,
+				"deck":       str(_peer_deck.get(peer, "")),
+				"ready":      bool(ready.get(peer, false)),
+				"is_host":    i == 0,
+				"appearance": appearance,
 			})
 		else:
 			seats.append(null)
@@ -441,14 +447,27 @@ func _rpc_join_result(p_success: bool, p_msg: String) -> void:
 	join_result.emit(p_success, p_msg)
 
 
-# ── Fila rankeada (ainda mock — fora do escopo da criação de sala) ────────────
+# ── Fila rankeada ─────────────────────────────────────────────────────────────
+# Fase 0: pareamento FIFO real reusando a fila do MatchService (mesma usada pela
+# fila rápida). Ainda SEM rating/MMR — isso entra na Fase 1 junto do backend real
+# (ladder, seasons, reportar resultado server-to-server). Ver docs/roadmap-beta.md.
 func enter_ranked_queue() -> void:
-	in_ranked_queue = true
-	ranked_queue_changed.emit(true)
+	_ensure_match_queue_link()
+	MatchService.request_quick_match()
 
 func leave_ranked_queue() -> void:
-	in_ranked_queue = false
-	ranked_queue_changed.emit(false)
+	MatchService.cancel_quick_match()
+
+# Espelha o estado da fila do MatchService em `in_ranked_queue` e reemite o sinal
+# que a UI escuta. Conectado de forma preguiçosa (em runtime o autoload já existe;
+# no _ready do RoomService o MatchService ainda não foi registrado).
+func _ensure_match_queue_link() -> void:
+	if not MatchService.queue_state_changed.is_connected(_on_match_queue_changed):
+		MatchService.queue_state_changed.connect(_on_match_queue_changed)
+
+func _on_match_queue_changed(p_in_queue: bool) -> void:
+	in_ranked_queue = p_in_queue
+	ranked_queue_changed.emit(p_in_queue)
 
 
 # ── Util ──────────────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 # src/entities/effects/effect_draw_discard.gd
-# O jogador escolhe N cartas da mão para descartar; depois compra M cartas.
+# Compra M cartas e DEPOIS o jogador escolhe N cartas da mão para descartar.
+# A ordem é "compra primeiro, descarta depois": as cartas recém-compradas entram
+# na mão antes do overlay, então podem ser descartadas também.
 class_name EffectDrawDiscard
 extends CardEffect
 
@@ -13,18 +15,27 @@ func setup(params: Dictionary) -> void:
 func execute(ctx: CardEffectContext) -> void:
 	var p := ctx.source_player
 
-	# Se não há cartas suficientes na mão, descarta tudo sem prompt
+	# Compra primeiro — as cartas novas já ficam disponíveis para o descarte.
+	p.draw_cards(_draw_count)
+	if _draw_count > 0:
+		ctx.request_vfx("draw")
+
+	if _discard_count <= 0 or p.hand.is_empty():
+		return
+
+	# Mão menor ou igual ao que precisa descartar: descarta tudo sem prompt
+	# (o overlay exigiria mais seleções do que há cartas).
 	if p.hand.size() <= _discard_count:
 		var cards := p.hand.duplicate()
 		p.hand.clear()
-		p.discard_pile.append_array(cards)
-		p.draw_cards(_draw_count)
+		for c in cards:
+			p.send_to_discard(c)
 		return
 
-	# Abre o overlay de descarte — jogador escolhe _discard_count cartas
+	# Abre o overlay de descarte sobre a mão completa (inclui as cartas compradas).
 	var indices: Array[int] = []
 	for i in p.hand.size():
 		indices.append(i)
 
-	GameState.begin_hand_discard(p.player_index, indices, _discard_count, _draw_count,
-		"Descarte %d carta(s) para comprar %d nova(s)" % [_discard_count, _draw_count])
+	GameState.begin_hand_discard(p.player_index, indices, _discard_count, 0,
+		"Compre %d e descarte %d carta(s)" % [_draw_count, _discard_count])

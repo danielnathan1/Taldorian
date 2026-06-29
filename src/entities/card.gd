@@ -15,6 +15,7 @@ var defense_value: int = 0   # contribuição à defesa (pode ser negativo)
 var symbols: Array[String] = []
 var is_stealth: bool = false  # carta furtiva não revela herói
 var is_heal: bool = false     # carta temática de cura — dispara VFX de cura ao ser jogada
+var is_foil: bool = false     # cosmético — versão holográfica; flag vem do backend (booster/inventário)
 var art_key: String = ""
 var description: String = ""
 var effects: Array[CardEffect] = []
@@ -42,17 +43,22 @@ func execute_pre_window_effects(ctx: CardEffectContext) -> void:
 
 func execute_effects(ctx: CardEffectContext) -> void:
 	for effect in effects:
-		# Efeitos AFTER_COMBAT são enfileirados pelo GameState e resolvidos após o
+		# Efeitos AFTER_TURN são enfileirados pelo GameState e resolvidos após o
 		# combate (resolve_after_combat); não rodam no fechamento da janela de reação.
-		if effect.timing == CardEffect.Timing.AFTER_COMBAT:
+		if effect.timing == CardEffect.Timing.AFTER_TURN:
 			continue
 		effect.execute(ctx)
+
+## Dispara os efeitos com gatilho de descarte desta carta (ex.: Descarga Residual).
+func execute_discard_effects(player: Player) -> void:
+	for effect in effects:
+		effect.on_discarded(player)
 
 ## Efeitos desta carta marcados para resolver após o combate do turno.
 func after_combat_effects() -> Array[CardEffect]:
 	var out: Array[CardEffect] = []
 	for effect in effects:
-		if effect.timing == CardEffect.Timing.AFTER_COMBAT:
+		if effect.timing == CardEffect.Timing.AFTER_TURN:
 			out.append(effect)
 	return out
 
@@ -75,6 +81,7 @@ static func from_dict(data: Dictionary) -> Card:
 	c.set_symbols(data.get("symbols", []))
 	c.is_stealth   = data.get("stealth", false)
 	c.is_heal      = data.get("is_heal", false)
+	c.is_foil      = data.get("is_foil", false)
 	c.art_key      = data.get("art_key", "")
 	c.description  = data.get("description", "")
 	c.rarity       = Rarity[data.get("rarity", "COMMON").to_upper()]

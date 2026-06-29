@@ -1,0 +1,94 @@
+[gd_scene load_steps=3 format=3 uid="uid://tradewindow_whud"]
+
+[ext_resource type="Script" path="res://scenes/world/ui/trade/trade_window.gd" id="1_tw"]
+
+[sub_resource type="StyleBoxFlat" id="Style_window"]
+bg_color = Color(0.0706, 0.0784, 0.1216, 0.99)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7843, 0.6157, 0.2902, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 24
+
+[node name="TradeWindow" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tw")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Window" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(1300, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Style_window")
+
+[node name="Margin" type="MarginContainer" parent="Center/Window"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="VBox" type="VBoxContainer" parent="Center/Window/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TitleBar" type="HBoxContainer" parent="Center/Window/Margin/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Window/Margin/VBox/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9019, 0.7137, 0.3373, 1)
+theme_override_font_sizes/font_size = 26
+text = "TROCA"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Center/Window/Margin/VBox/TitleBar"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7176, 0.7137, 0.6784, 1)
+theme_override_font_sizes/font_size = 18
+text = "✕"
+
+[node name="HSep" type="HSeparator" parent="Center/Window/Margin/VBox"]
+layout_mode = 2
+
+[node name="Body" type="HBoxContainer" parent="Center/Window/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="HSep2" type="HSeparator" parent="Center/Window/Margin/VBox"]
+layout_mode = 2
+
+[node name="Footer" type="Label" parent="Center/Window/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.62, 0.66, 1)
+theme_override_font_sizes/font_size = 13
+text = "Negociação em andamento"
+horizontal_alignment = 1

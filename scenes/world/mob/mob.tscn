@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://cmob0w0rld1x2"]
+
+[ext_resource type="Script" path="res://scenes/world/mob/mob.gd" id="1_mob"]
+
+[node name="Mob" type="Node2D"]
+script = ExtResource("1_mob")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+
+[node name="Placeholder" type="Node2D" parent="."]
+
+[node name="Blob" type="Polygon2D" parent="Placeholder"]
+color = Color(0.35, 0.78, 0.45, 1)
+polygon = PackedVector2Array(16, 2, 11, 12, 0, 16, -11, 12, -16, 2, -12, -8, 0, -12, 12, -8)

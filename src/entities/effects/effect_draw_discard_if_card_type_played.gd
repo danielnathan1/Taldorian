@@ -27,6 +27,7 @@ func execute(ctx: CardEffectContext) -> void:
 		return
 	var p := ctx.source_player
 	p.draw_cards(_draw)
+	ctx.request_vfx("draw")
 	if p.hand.is_empty():
 		return
 	var indices: Array[int] = []

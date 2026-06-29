@@ -10,15 +10,18 @@ const _ELEMENT_ICONS := {
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
+	"lightning": "res://assets/icons/elements/lightning.png",
 }
 const _CLASS_ICONS := {
 	Hero.HeroClass.BARBARIAN: "res://assets/icons/class/Barbarian.png",
 	Hero.HeroClass.WARRIOR:   "res://assets/icons/class/Warrior.png",
-	Hero.HeroClass.MONK:      "res://assets/icons/class/Monk.png",
+	Hero.HeroClass.MONK:      "res://assets/icons/class/monk.png",
 	Hero.HeroClass.ROGUE:     "res://assets/icons/class/Rogue.png",
 	Hero.HeroClass.CLERIC:    "res://assets/icons/class/Cleric.png",
 	Hero.HeroClass.RANGER:    "res://assets/icons/class/Ranger.png",
 	Hero.HeroClass.GUARDIAN:  "res://assets/icons/class/Guardian.png",
+	Hero.HeroClass.WIZARD:    "res://assets/icons/class/wizard.png",
+	Hero.HeroClass.SORCERER:  "res://assets/icons/class/sorcerer.png",
 }
 
 @onready var hp_capsule      := $Layout/CardRow/CardColumn/HPCapsule
@@ -58,6 +61,18 @@ var _last_passive_desc: String    = ""
 # Offsets base lidos do tscn — usados para escalar proporcionalmente
 var _ability_offset_top: float    = 0.0
 var _ability_offset_bottom: float = 0.0
+var _class_icon_offset_top: float    = 0.0
+var _class_icon_offset_bottom: float = 0.0
+
+const _ACTIVABLE_ICON_PATH   := "res://assets/icons/activable.png"
+const _ACTIVABLE_GLOW_SHADER := preload("res://scenes/ui/shared/activable_glow.gdshader")
+var _activable_icon: TextureRect = null
+var _activable_glow: ColorRect = null
+
+# Aura de fogo (skill da Poppy) — chamas lambendo a borda do card, via o shader do
+# booster. Renderizada pelo próprio slot → aparece no tabuleiro, preview e combate.
+const _SKILL_FIRE_SHADER := preload("res://scenes/ui/booster_shop/card_fire.gdshader")
+var _skill_fire: ColorRect = null
 
 func _ready() -> void:
 	_setup_styles()
@@ -66,9 +81,100 @@ func _ready() -> void:
 	_back.texture = _sleeve_texture
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	_build_activable_icon()
+	_build_skill_fire()
+	set_process(true)
 	# Guarda os offsets originais definidos no editor
 	_ability_offset_top    = _ability_lbl.offset_top
 	_ability_offset_bottom = _ability_lbl.offset_bottom
+	_class_icon_offset_top    = _class_icon.offset_top
+	_class_icon_offset_bottom = _class_icon.offset_bottom
+
+## Indicador "activable" no canto superior do slot — aceso quando o herói tem uma
+## habilidade ativável agora (ex.: Alastar criar míssil no seu segmento).
+func _build_activable_icon() -> void:
+	# Borda brilhante pulsante ao redor da carta (overlay full-rect sobre o CardZone).
+	_activable_glow = ColorRect.new()
+	_activable_glow.name = "ActivableGlow"
+	_activable_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_activable_glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = _ACTIVABLE_GLOW_SHADER
+	_activable_glow.material = mat
+	_activable_glow.z_index = 10
+	_activable_glow.visible = false
+	$CardZone.add_child(_activable_glow)
+
+	# Ícone (na frente), maior e centralizado no topo.
+	_activable_icon = TextureRect.new()
+	_activable_icon.name = "ActivableIcon"
+	_activable_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_activable_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_activable_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_activable_icon.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_activable_icon.offset_left   = -30.0
+	_activable_icon.offset_right  = 30.0
+	_activable_icon.offset_top    = -16.0
+	_activable_icon.offset_bottom = 44.0
+	_activable_icon.z_index = 11
+	if ResourceLoader.exists(_ACTIVABLE_ICON_PATH):
+		_activable_icon.texture = load(_ACTIVABLE_ICON_PATH)
+	_activable_icon.visible = false
+	add_child(_activable_icon)
+
+## Acende/apaga o indicador de "pode ativar" (ícone + halo pulsante via shader).
+## Mostra mesmo com a carta face-down — é o dono que precisa do aviso, e só o
+## lado local recebe activable=true (o board nunca acende no oponente).
+func set_activable(value: bool) -> void:
+	if _activable_icon != null:
+		_activable_icon.visible = value
+	if _activable_glow != null:
+		_activable_glow.visible = value
+
+## Aura de fogo: ColorRect filho do CardZone (atrás do conteúdo, pra chama lamber a
+## borda por fora), com o shader de fogo. Acende/apaga conforme hero.skill_fire_active.
+func _build_skill_fire() -> void:
+	_skill_fire = ColorRect.new()
+	_skill_fire.name = "SkillFire"
+	_skill_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_skill_fire.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = _SKILL_FIRE_SHADER
+	mat.set_shader_parameter("mode", 1)        # vermelho/laranja/ouro
+	mat.set_shader_parameter("intensity", 1.25)
+	mat.set_shader_parameter("speed", 1.0)
+	_skill_fire.material = mat
+	_skill_fire.visible = false
+	$CardZone.add_child(_skill_fire)
+	$CardZone.move_child(_skill_fire, 0)       # atrás do conteúdo
+
+func _apply_skill_fire() -> void:
+	if _skill_fire == null:
+		return
+	_skill_fire.visible = hero != null and hero.skill_fire_active and not _face_down
+
+func _process(_dt: float) -> void:
+	# Mantém o overlay de fogo dimensionado ao card real (CardZone), que varia de
+	# tamanho por contexto (slot, preview 2x, resolução de combate). Só quando aceso.
+	if _skill_fire == null or not _skill_fire.visible:
+		return
+	var cz_size: Vector2 = $CardZone.size
+	if cz_size.x <= 1.0:
+		return
+	var g: float = cz_size.x * 0.20            # quanto o fogo extrapola a borda
+	_skill_fire.offset_left   = -g
+	_skill_fire.offset_top    = -g
+	_skill_fire.offset_right  = g
+	_skill_fire.offset_bottom = g
+	var mat: ShaderMaterial = _skill_fire.material
+	mat.set_shader_parameter("overlay_px", cz_size + Vector2(g, g) * 2.0)
+	mat.set_shader_parameter("card_px",    cz_size)
+	mat.set_shader_parameter("reach_px",   g - 2.0)
+	mat.set_shader_parameter("corner_px",  cz_size.x * 0.07)
+
+## Bônus de ataque atual (modificado − base) — usado para feedback de buff.
+func get_attack_buff() -> int:
+	return _modified_attack - _base_attack
 
 func _setup_styles() -> void:
 	var capsule_bg := StyleBoxFlat.new()
@@ -144,6 +250,7 @@ func bind(p_hero: Hero) -> void:
 	_update_state_style()
 	_update_hp_bar_color()
 	_apply_face_down_visibility()
+	_apply_skill_fire()
 	apply_scale(1.0)
 
 func apply_scale(factor: float) -> void:
@@ -151,6 +258,8 @@ func apply_scale(factor: float) -> void:
 	# Escala os pixel offsets proporcionalmente para manter posição relativa
 	_ability_lbl.offset_top    = _ability_offset_top    * factor
 	_ability_lbl.offset_bottom = _ability_offset_bottom * factor
+	_class_icon.offset_top     = _class_icon_offset_top    * factor
+	_class_icon.offset_bottom  = _class_icon_offset_bottom * factor
 	_fit_label(_title_lbl, int(12 * factor), int(6 * factor))
 	_card_atk_lbl.add_theme_font_size_override("font_size", int(9 * factor))
 	_card_def_lbl.add_theme_font_size_override("font_size", int(9 * factor))
@@ -234,6 +343,7 @@ func _apply_face_down_visibility() -> void:
 	_back.visible          = _face_down
 	hp_capsule.visible     = show_stats and _show_hp
 	exhausted_veil.visible = show_stats and hero != null and hero.state == Hero.State.EXHAUSTED
+	_apply_skill_fire()
 
 func _apply_texture() -> void:
 	_art.texture = hero.get_texture() if hero else null

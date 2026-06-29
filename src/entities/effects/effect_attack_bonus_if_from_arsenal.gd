@@ -9,3 +9,4 @@ func setup(params: Dictionary) -> void:
 func execute(ctx: CardEffectContext) -> void:
 	if ctx.played_from_arsenal:
 		ctx.source_player.pending_bonus_attack += _bonus
+		ctx.request_empower(_bonus, 0)

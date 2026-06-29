@@ -6,7 +6,8 @@ const PLAYER_CARD_SAVE_PATH := "user://player_cards.json"
 
 var all_card_dicts: Array[Dictionary] = []
 var all_heroes: Array[Hero] = []
-var _owned: Dictionary = {}   # card_id (int) -> quantity (int)
+var _owned: Dictionary = {}        # card_id (int) -> quantidade TOTAL (normal + foil)
+var _foil_owned: Dictionary = {}   # card_id (int) -> quantas dessas são foil (subconjunto de _owned)
 
 # Posse vinda do backend (/players/me/inventory). Enquanto _inventory_loaded for
 # false, a coleção usa o seed local (player_cards.json + todos os heróis).
@@ -17,8 +18,9 @@ var owned_playmats: Array[Dictionary] = []   # playmats do inventário (cru)
 # Mapeamentos nome/chave → UUID do backend (usados ao salvar decks na API).
 var _hero_uuid_by_key: Dictionary = {}       # art_key/nome (lower) -> heroId (UUID)
 var _card_uuid_by_id: Dictionary = {}        # card_id local (int)  -> cardId (UUID)
-var _playmat_uuid_by_key: Dictionary = {}    # nome/artKey (lower)  -> playmatId (UUID)
 var _hero_name_by_uuid: Dictionary = {}      # heroId (UUID) -> nome do herói local
+# Cosméticos (playmat/sleeve): identidade/UUID é master data no cosmetics.json e mora no
+# CosmeticsStore (get_*_backend_id / find_*_id_by_backend_id). Collection não mapeia.
 
 
 func _ready() -> void:
@@ -46,10 +48,18 @@ func _load_player_cards() -> void:
 			var qty: int = entry.get("quantity", 0)
 			if cid >= 0:
 				_owned[cid] = qty
+				var fq: int = entry.get("foil_quantity", 0)
+				if fq > 0:
+					_foil_owned[cid] = fq
 
 
 func get_owned_quantity(card_id: int) -> int:
 	return _owned.get(card_id, 0)
+
+
+## Quantas das cópias possuídas desta carta são foil (cosmético). 0..get_owned_quantity().
+func get_foil_quantity(card_id: int) -> int:
+	return _foil_owned.get(card_id, 0)
 
 
 func is_inventory_loaded() -> bool:
@@ -65,11 +75,11 @@ func is_inventory_loaded() -> bool:
 #   - playmats: guardados crus em owned_playmats (integração com CosmeticsStore depois).
 func load_inventory(data: Dictionary) -> void:
 	_owned.clear()
+	_foil_owned.clear()
 	_owned_hero_keys.clear()
 	owned_playmats.clear()
 	_hero_uuid_by_key.clear()
 	_card_uuid_by_id.clear()
-	_playmat_uuid_by_key.clear()
 	_hero_name_by_uuid.clear()
 
 	var cards: Variant = data.get("cards", [])
@@ -86,6 +96,9 @@ func load_inventory(data: Dictionary) -> void:
 				continue
 			var cid := int(local.get("id", -1))
 			_owned[cid] = qty
+			var fq := int(entry.get("foilQuantity", 0))
+			if fq > 0:
+				_foil_owned[cid] = fq
 			var card_uuid := str(entry.get("cardId", ""))
 			if card_uuid != "":
 				_card_uuid_by_id[cid] = card_uuid
@@ -112,21 +125,13 @@ func load_inventory(data: Dictionary) -> void:
 				if local_hero != null:
 					_hero_name_by_uuid[hero_uuid] = local_hero.hero_name
 
+	# Playmats possuídos (cru) — a posse exibida no painel vem do CosmeticsStore (local).
+	# A identidade/UUID do cosmético é resolvida pelo cosmetics.json (não pelo inventário).
 	var playmats: Variant = data.get("playmats", [])
 	if playmats is Array:
 		for entry in playmats:
-			if not entry is Dictionary:
-				continue
-			owned_playmats.append(entry)
-			var pm_uuid := str(entry.get("playmatId", ""))
-			if pm_uuid == "":
-				continue
-			var pm_name := str(entry.get("name", "")).strip_edges().to_lower()
-			var pm_art  := str(entry.get("artKey", "")).strip_edges().to_lower()
-			if pm_name != "":
-				_playmat_uuid_by_key[pm_name] = pm_uuid
-			if pm_art != "":
-				_playmat_uuid_by_key[pm_art] = pm_uuid
+			if entry is Dictionary:
+				owned_playmats.append(entry)
 
 	_inventory_loaded = true
 
@@ -145,9 +150,6 @@ func get_card_uuid_by_name(card_name: String) -> String:
 	if uuid != "":
 		return uuid
 	return str(_card_uuid_by_id.get(int(d.get("id", -1)), ""))
-
-func get_playmat_uuid(playmat_key: String) -> String:
-	return str(_playmat_uuid_by_key.get(playmat_key.strip_edges().to_lower(), ""))
 
 
 # ── Resolução reversa (deck vindo da API → formato local) ──────────────────────
@@ -204,13 +206,17 @@ func resolve_api_deck(p_deck: Dictionary) -> Dictionary:
 			if local.is_empty():
 				push_warning("Collection: carta do deck sem correspondência local (cardId=%s, cardKey=%s, name=%s)" % [c.get("cardId", ""), c.get("cardKey", ""), c.get("name", "")])
 				continue
-			cards.append({ "name": str(local.get("name", "")), "count": qty })
+			cards.append({ "name": str(local.get("name", "")), "count": qty, "foil": int(c.get("foilQuantity", 0)) })
 
+	# Cosméticos vêm como UUID no deck → resolve pra id local via cosmetics.json (CosmeticsStore).
+	# Fallback "default" quando o UUID não casa com nenhum cosmético do catálogo.
+	var playmat_key := CosmeticsStore.find_playmat_id_by_backend_id(str(p_deck.get("playmatId", "")))
+	var sleeve_key  := CosmeticsStore.find_sleeve_id_by_backend_id(str(p_deck.get("sleeveId", "")))
 	return {
 		"heroes":  heroes,
 		"cards":   cards,
-		"sleeve":  "default",   # cosmético; mapeamento UUID→id local ainda não disponível
-		"playmat": "default",
+		"sleeve":  sleeve_key  if sleeve_key  != "" else "default",
+		"playmat": playmat_key if playmat_key != "" else "default",
 	}
 
 
@@ -306,7 +312,14 @@ func query_cards(search: String, symbols: Array[String], timing: String, only_in
 			continue
 		if not only_in_deck.is_empty() and not (name_str in only_in_deck):
 			continue
-		out.append(d)
+		# Duplica antes de injetar is_foil — d é referência do catálogo (all_card_dicts);
+		# mutar direto vazaria o flag foil para todos os consumidores.
+		var foil_qty := int(_foil_owned.get(card_id, 0))
+		var view := d.duplicate()
+		view["is_foil"] = foil_qty > 0                  # liga o shader holo no CardView
+		view["foil_quantity"] = foil_qty                # quantas cópias possuídas são foil
+		view["owned_quantity"] = int(_owned.get(card_id, 0))  # total possuído (normal + foil)
+		out.append(view)
 	return out
 
 
@@ -329,6 +342,13 @@ func query_heroes(search: String, hero_classes: Array[String]) -> Array[Hero]:
 func get_card_dict(card_name: String) -> Dictionary:
 	for d in all_card_dicts:
 		if d.get("name", "") == card_name:
+			return d
+	return {}
+
+
+func get_card_dict_by_id(card_id: int) -> Dictionary:
+	for d in all_card_dicts:
+		if int(d.get("id", -1)) == card_id:
 			return d
 	return {}
 
@@ -357,13 +377,40 @@ func add_cards(card_dicts: Array) -> void:
 		var cid: int = d.get("id", -1)
 		if cid >= 0:
 			_owned[cid] = _owned.get(cid, 0) + 1
+			if bool(d.get("is_foil", false)):
+				_foil_owned[cid] = _foil_owned.get(cid, 0) + 1
+	_save_player_cards()
+
+
+# Consome cópias possuídas (forja do Ferreiro). card_ids: Array[int]. Nunca vai abaixo
+# de 0. Persiste no cache local (user://player_cards.json), igual a add_cards.
+# ⚠️ Persistência real depende do inventário do backend (/players/me/inventory); aqui
+# só mexemos no cache local — ver TODO de endpoint /forge no Ferreiro.
+func remove_cards(card_ids: Array) -> void:
+	for cid_var in card_ids:
+		var cid := int(cid_var)
+		var cur: int = _owned.get(cid, 0)
+		if cur <= 0:
+			continue
+		_owned[cid] = cur - 1
+		# Foil é subconjunto da posse; some junto se a contagem normal acabar.
+		var fq: int = _foil_owned.get(cid, 0)
+		if fq > _owned[cid]:
+			_foil_owned[cid] = _owned[cid]
+		if _owned[cid] <= 0:
+			_owned.erase(cid)
+			_foil_owned.erase(cid)
 	_save_player_cards()
 
 
 func _save_player_cards() -> void:
 	var out: Array = []
 	for cid in _owned:
-		out.append({ "card_id": cid, "quantity": _owned[cid] })
+		var entry := { "card_id": cid, "quantity": _owned[cid] }
+		var fq: int = _foil_owned.get(cid, 0)
+		if fq > 0:
+			entry["foil_quantity"] = fq
+		out.append(entry)
 	var file := FileAccess.open(PLAYER_CARD_SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		push_error("Collection: não conseguiu salvar em %s" % PLAYER_CARD_SAVE_PATH)

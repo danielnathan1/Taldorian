@@ -10,8 +10,7 @@ const SETTINGS_PATH := "user://settings.cfg"
 const WORLD_SCENE   := "res://scenes/world/world_root.tscn"
 const CHARACTER_CREATOR_SCENE := "res://scenes/ui/character_creator/character_creator.tscn"
 const PAUSE_MENU_SCENE := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
-const SERVER_IP     := "127.0.0.1"   # MOCK — futuro: configurável / vindo da API
-const WORLD_PORT    := 7001
+const WORLD_PORT    := 7001   # host vem do ServerConfig (resolve por ambiente)
 const MIN_PASS_LEN  := 8
 
 # Login
@@ -179,6 +178,10 @@ func _login_as(p_user: String) -> void:
 	NetworkState.account_name = p_user
 	NetworkState.player_name = p_user   # nome no mundo (até ter personagem próprio)
 	_save_user(p_user)
+	# Busca o perfil para cachear o playerId (NetworkState.player_id) — usado em trocas.
+	await ApiClient.get_me()
+	# Busca o personagem no backend (popula o cache do CharacterStore) antes de decidir o destino.
+	await CharacterStore.fetch()
 	# Sem personagem criado: vai para a criação antes de entrar no mundo.
 	if not CharacterStore.has_character():
 		get_tree().change_scene_to_file(CHARACTER_CREATOR_SCENE)
@@ -187,7 +190,7 @@ func _login_as(p_user: String) -> void:
 
 func _connect_to_world() -> void:
 	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_client(SERVER_IP, WORLD_PORT)
+	var err := peer.create_client(ServerConfig.server_host(), WORLD_PORT)
 	if err != OK:
 		_show_loading(false)
 		_show_error("Falha ao iniciar a conexão (%d)." % err)
@@ -211,7 +214,7 @@ func _on_world_failed() -> void:
 	multiplayer.multiplayer_peer = null
 	_set_connecting(false)
 	_show_loading(false)
-	_show_error("Não foi possível conectar ao servidor (%s)." % SERVER_IP)
+	_show_error("Não foi possível conectar ao servidor (%s)." % ServerConfig.server_host())
 
 func _set_connecting(p_on: bool) -> void:
 	_enter_btn.disabled = p_on

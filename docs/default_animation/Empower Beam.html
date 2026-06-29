@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Feixe de Fortalecimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050c;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #stage-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage {
+    width: 1280px; height: 720px;
+    flex: 0 0 auto;
+    transform-origin: center center;
+    position: relative; overflow: hidden;
+    background: #08080f;
+  }
+
+  /* ── Board halves ── */
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.30 0.12 300 / 0.20) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.10 0.05 295) 0%, oklch(0.08 0.04 270) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.30 0.12 290 / 0.18) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.10 0.05 285) 0%, oklch(0.08 0.04 270) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0;
+    height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg,
+      transparent 0%, oklch(0.72 0.16 300 / 0.22) 20%,
+      oklch(0.72 0.16 300 / 0.48) 50%,
+      oklch(0.72 0.16 300 / 0.22) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.028; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30;
+    pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.66 0.16 300); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.66 0.14 288); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border);
+    background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.18s, border-color 0.18s, transform 0.18s;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border:      oklch(0.55 0.14 288 / 0.45);
+    --slot-bg:          oklch(0.10 0.04 285 / 0.60);
+    --slot-label-color: oklch(0.66 0.14 288);
+  }
+  .theme-opponent {
+    --slot-border:      oklch(0.55 0.18 300 / 0.42);
+    --slot-bg:          oklch(0.10 0.04 300 / 0.55);
+    --slot-label-color: oklch(0.62 0.16 300);
+  }
+  .hp-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: oklch(0.15 0.04 290);
+  }
+  .hp-fill { height: 100%; transition: width 0.35s ease-out;
+    background: linear-gradient(90deg, oklch(0.55 0.18 288), oklch(0.78 0.16 285)); }
+
+  /* ── Caster charging state ── */
+  .caster-charging {
+    border-color: var(--cast-c, oklch(0.85 0.10 90)) !important;
+    box-shadow:
+      0 0 0 1px var(--cast-c, oklch(0.85 0.10 90)),
+      0 0 22px var(--cast-glow, oklch(0.80 0.14 90 / 0.5)),
+      0 0 54px var(--cast-glow, oklch(0.80 0.14 90 / 0.28));
+    transform: translateY(-1px) scale(1.02);
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: calc(50% - 14px);
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none; z-index: 60;
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: 0.45em; text-transform: uppercase;
+    color: var(--banner-sub, oklch(0.80 0.10 90)); opacity: 0.92;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 34px; font-weight: 700;
+    color: var(--banner-name, oklch(0.95 0.06 90));
+    letter-spacing: 0.16em; text-transform: uppercase;
+    text-shadow:
+      0 0 22px var(--banner-shadow, oklch(0.80 0.16 90 / 0.85)),
+      0 0 50px var(--banner-shadow2, oklch(0.70 0.18 90 / 0.5)),
+      0 2px 0 oklch(0.14 0.06 290 / 0.7);
+  }
+  .ability-rule {
+    width: 300px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--banner-sub, oklch(0.80 0.14 90 / 0.85)), transparent);
+    margin-top: 4px;
+  }
+
+  .fx-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* ── Buff popups (+ATK / +DEF) ── */
+  .buff-stack {
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+    pointer-events: none; z-index: 70;
+  }
+  .buff-chip.side { position: absolute; z-index: 70; pointer-events: none; white-space: nowrap; }
+  .buff-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 12px 4px 8px;
+    background: oklch(0.10 0.03 290 / 0.66);
+    border: 1px solid var(--buff-c);
+    box-shadow: 0 0 16px var(--buff-glow), inset 0 0 10px var(--buff-soft);
+    backdrop-filter: blur(2px);
+  }
+  .buff-icon { flex: 0 0 auto; filter: drop-shadow(0 0 5px var(--buff-glow)); }
+  .buff-num {
+    font-family: 'Cinzel Decorative', serif; font-weight: 700;
+    font-size: 26px; line-height: 1; color: var(--buff-text);
+    text-shadow: 0 0 12px var(--buff-glow), 0 2px 0 oklch(0.14 0.05 290 / 0.8);
+  }
+  .buff-tag {
+    font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--buff-text); opacity: 0.8; margin-left: 2px;
+  }
+
+  .screen-flash {
+    position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none;
+    z-index: 55;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 9px;
+    padding: 11px 18px;
+    background: oklch(0.10 0.03 290 / 0.85);
+    border: 1px solid oklch(0.72 0.14 300 / 0.30);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-row { display: flex; align-items: center; gap: 14px; }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 290 / 0.9);
+    color: oklch(0.82 0.16 300);
+    border: 1px solid oklch(0.72 0.14 300 / 0.45);
+    padding: 6px 14px;
+    font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 290 / 0.95);
+    border-color: oklch(0.72 0.14 300 / 0.8);
+    box-shadow: 0 0 14px oklch(0.72 0.14 300 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.32 0.16 300 / 0.95), oklch(0.18 0.10 298 / 0.95));
+    color: oklch(0.94 0.10 305); border-color: oklch(0.72 0.20 302 / 0.7);
+  }
+  .ctrl-btn.primary:hover { box-shadow: 0 0 18px oklch(0.66 0.22 302 / 0.5); }
+  .ctrl-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: oklch(0.65 0.10 300); }
+  .ctrl-scrub { width: 200px; accent-color: oklch(0.72 0.16 300); }
+  .ctrl-time { color: oklch(0.82 0.16 300); font-size: 10px; min-width: 48px; }
+
+  .swatches { display: flex; align-items: center; gap: 7px; }
+  .swatch {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 9px 4px 5px;
+    background: oklch(0.14 0.04 290 / 0.8);
+    border: 1px solid oklch(0.50 0.06 290 / 0.5);
+    cursor: pointer; transition: all 0.14s;
+  }
+  .swatch:hover { border-color: oklch(0.72 0.12 290 / 0.85); }
+  .swatch.active { border-color: oklch(0.92 0.10 290); background: oklch(0.20 0.05 290 / 0.92); }
+  .swatch-dot { width: 13px; height: 13px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  .swatch-name {
+    font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: oklch(0.80 0.04 290);
+  }
+  .swatch.active .swatch-name { color: oklch(0.95 0.04 290); }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Geometry
+// ───────────────────────────────────────────────────────────────────────────────
+const STAGE_W = 1280;
+const STAGE_H = 720;
+
+// Conjurador (Arquimaga, herói ativo do jogador) — origem do feixe
+const SOURCE = { x: 720, y: 512 };
+// Alvo aliado a ser fortalecido (Cavaleiro, na linha de frente)
+const TARGET = { x: 360, y: 524 };
+// Pico do arco do feixe (controle da bézier quadrática)
+const BOW = 70;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Cores selecionáveis — pintam feixe + luz + números
+// ───────────────────────────────────────────────────────────────────────────────
+const COLORS = {
+  vermelho: { label: 'Vermelho', h: 28,  c: 0.19, lB: 0.70, lC: 0.93 },
+  amarelo:  { label: 'Amarelo',  h: 92,  c: 0.17, lB: 0.83, lC: 0.97 },
+  azul:     { label: 'Azul',     h: 256, c: 0.16, lB: 0.70, lC: 0.94 },
+  branco:   { label: 'Branco',   h: 280, c: 0.018, lB: 0.92, lC: 0.99 },
+  marrom:   { label: 'Marrom',   h: 66,  c: 0.085, lB: 0.60, lC: 0.82 },
+};
+
+function makeTheme(key) {
+  const C = COLORS[key];
+  const col = (l, cm, a) => `oklch(${l.toFixed(3)} ${(C.c * cm).toFixed(3)} ${C.h} / ${a})`;
+  return {
+    key,
+    swatch: col(C.lB, 1, 1),
+    core:   col(C.lC, 0.45, 1),                       // núcleo quase branco
+    bright: col(C.lB, 1, 1),
+    mid:    col(Math.max(0.3, C.lB - 0.06), 1, 0.9),
+    glow:   col(C.lB, 1.05, 0.5),
+    soft:   col(C.lB, 1, 0.22),
+    faint:  col(C.lB, 1, 0.10),
+    deep:   col(Math.max(0.28, C.lB - 0.24), 1, 1),
+    text:   col(Math.min(0.97, C.lC + 0.02), 0.5, 1),
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Timing (segundos)
+// ───────────────────────────────────────────────────────────────────────────────
+const T = {
+  CHARGE_START   : 0.0,
+  CHARGE_END     : 0.5,
+  BANNER_IN      : 0.1,
+  BANNER_OUT     : 2.7,
+  BEAM_START     : 0.42,
+  BEAM_CONNECT   : 1.0,    // o feixe alcança o alvo → luz floresce
+  BUFF_POP       : 1.18,   // +ATK / +DEF aparecem
+  BEAM_FADE_START: 1.85,
+  BEAM_FADE_END  : 2.35,
+  HOLD_END       : 3.3,
+};
+
+// Valores do buff
+const ATK_GAIN = 3;
+const DEF_GAIN = 2;
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Utilities
+// ───────────────────────────────────────────────────────────────────────────────
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeOutBack  = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Bézier quadrática (feixe em arco suave)
+const PC = { x: (SOURCE.x + TARGET.x) / 2, y: (SOURCE.y + TARGET.y) / 2 - BOW };
+function qbez(t) {
+  const u = 1 - t;
+  return {
+    x: u*u*SOURCE.x + 2*u*t*PC.x + t*t*TARGET.x,
+    y: u*u*SOURCE.y + 2*u*t*PC.y + t*t*TARGET.y,
+  };
+}
+const BEAM_SAMPLES = 56;
+const BEAM_PTS = Array.from({ length: BEAM_SAMPLES + 1 }, (_, i) => qbez(i / BEAM_SAMPLES));
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Static board
+// ───────────────────────────────────────────────────────────────────────────────
+function StaticBoard({ casterState, buffGlow, theme }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm',     label: 'Deck' },
+    { x: 100, y: 232, size: 'sm',     label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std',    label: 'Herói 3', hp: 70, enemy: true },
+    { x: 470, y: 200, size: 'std',    label: 'Herói 2', hp: 55, enemy: true },
+    { x: 560, y: 200, size: 'std',    label: 'Herói 1', hp: 80, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: 70, enemy: true },
+    { x: 1180, y: 180, size: 'std',   label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std',    label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std',    label: 'Cavaleiro', hp: 90, buffTarget: true },
+    { x: 450, y: 540, size: 'std',    label: 'Sacerdote', hp: 60 },
+    { x: 540, y: 540, size: 'std',    label: 'Arqueiro',  hp: 65 },
+    { x: 720, y: 540, size: 'active', label: 'Arquimaga', hp: 70, isCaster: true, casterState },
+    { x: 1180, y: 510, size: 'sm',    label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm',    label: 'Cemitério' },
+  ];
+  return (
+    <>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}
+      {player.map((s, i) => <Slot key={'p'+i} themeColors={theme} buffGlow={buffGlow} {...s} />)}
+    </>
+  );
+}
+
+function Slot({ x, y, size, label, theme, themeColors, hp, enemy, isCaster, casterState, buffTarget, buffGlow }) {
+  const isCharging = isCaster && casterState === 'charging';
+  const g = buffTarget ? (buffGlow || 0) : 0;
+
+  const castVars = isCharging && themeColors ? {
+    '--cast-c': themeColors.bright,
+    '--cast-glow': themeColors.glow,
+  } : {};
+
+  const buffStyle = g > 0.01 && themeColors ? {
+    borderColor: themeColors.bright,
+    boxShadow:
+      `0 0 0 1px ${themeColors.bright}, ` +
+      `0 0 ${(16 + g * 26).toFixed(0)}px ${themeColors.glow}, ` +
+      `0 0 ${(40 + g * 60).toFixed(0)}px ${themeColors.soft}`,
+    transform: `translateY(${(-g * 3).toFixed(1)}px) scale(${(1 + g * 0.05).toFixed(3)})`,
+  } : {};
+
+  const cardCls = ['slot-card', isCharging ? 'caster-charging' : ''].filter(Boolean).join(' ');
+  return (
+    <div className={`slot size-${size} theme-${theme || 'player'}`} style={{ left: x, top: y, ...castVars }}>
+      <div className={cardCls} style={buffStyle}>
+        <CardArt theme={theme || 'player'} size={size} label={label} />
+        {hp !== undefined && (
+          <div className="hp-bar"><div className="hp-fill" style={{ width: `${hp}%` }} /></div>
+        )}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player' ? 'oklch(0.55 0.14 288 / 0.55)' : 'oklch(0.55 0.18 300 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+  const cx = w/2, cy = h/2;
+
+  if (label === 'Arquimaga') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.74 0.16 300 / 0.7)" strokeWidth="0.6"/>
+        <path d={`M ${cx} ${cy-30} L ${cx+13} ${cy-6} L ${cx-13} ${cy-6} Z`}
+              stroke="oklch(0.70 0.18 300 / 0.9)" strokeWidth="0.7" fill="oklch(0.14 0.05 290 / 0.6)"/>
+        <circle cx={cx} cy={cy-30} r="1.6" fill="oklch(0.92 0.16 305)"/>
+        <line x1={cx-14} y1={cy+26} x2={cx+8} y2={cy-2}
+              stroke="oklch(0.62 0.10 290 / 0.85)" strokeWidth="1.1" strokeLinecap="round"/>
+        <circle cx={cx+8} cy={cy-2} r="3.4" fill="oklch(0.90 0.16 305)"/>
+        <circle cx={cx+8} cy={cy-2} r="6" fill="none" stroke="oklch(0.78 0.20 305 / 0.5)" strokeWidth="0.6"/>
+        <rect x="6" y={h - 22} width={w-12} height="12" fill="oklch(0.07 0.03 290 / 0.7)"
+              stroke="oklch(0.74 0.16 300 / 0.5)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+  if (label === 'Cavaleiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        {/* escudo */}
+        <path d={`M ${cx} ${cy-20} L ${cx+15} ${cy-13} L ${cx+15} ${cy+6} Q ${cx} ${cy+24} ${cx} ${cy+24} Q ${cx} ${cy+24} ${cx-15} ${cy+6} L ${cx-15} ${cy-13} Z`}
+              stroke="oklch(0.82 0.10 290 / 0.85)" strokeWidth="0.8" fill="oklch(0.16 0.05 290 / 0.5)"/>
+        {/* espada cruzada */}
+        <line x1={cx} y1={cy-16} x2={cx} y2={cy+18} stroke="oklch(0.88 0.08 290 / 0.9)" strokeWidth="1.2" strokeLinecap="round"/>
+        <line x1={cx-7} y1={cy-6} x2={cx+7} y2={cy-6} stroke="oklch(0.80 0.10 290 / 0.85)" strokeWidth="1.1" strokeLinecap="round"/>
+        <rect x="6" y={h - 20} width={w-12} height="11" fill="oklch(0.07 0.03 290 / 0.65)"
+              stroke="oklch(0.74 0.12 290 / 0.45)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+  if (label === 'Arqueiro') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <path d={`M ${cx-12} ${cy-16} Q ${cx-22} ${cy}, ${cx-12} ${cy+16}`}
+              stroke="oklch(0.80 0.12 295 / 0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+        <line x1={cx-6} y1={cy} x2={cx+18} y2={cy} stroke="oklch(0.85 0.08 295 / 0.95)" strokeWidth="1.0"/>
+      </svg>
+    );
+  }
+  if (label === 'Sacerdote') {
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.6"/>
+        <circle cx={cx} cy={cy-14} r="9" stroke="oklch(0.85 0.14 290 / 0.8)" strokeWidth="0.6" fill="none"/>
+        <line x1={cx} y1={cy-6} x2={cx} y2={cy+22} stroke="oklch(0.78 0.10 290 / 0.9)" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${cx} ${h*0.18} L ${w*0.78} ${cy} L ${cx} ${h*0.82} L ${w*0.22} ${cy} Z`}
+            stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={cx} cy={cy} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={cx} cy={cy} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Feixe (beam)
+// ───────────────────────────────────────────────────────────────────────────────
+function Beam({ drawLen, intensity, theme, t, connected }) {
+  if (drawLen <= 0.001 || intensity <= 0.001) return null;
+  const lastIdx = Math.max(1, Math.floor(drawLen * BEAM_SAMPLES));
+  const pts = BEAM_PTS.slice(0, lastIdx + 1).slice();
+  const tip = qbez(drawLen);
+  pts[pts.length - 1] = tip;
+  const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  // pulso sutil quando conectado
+  const pulse = connected ? 0.85 + 0.15 * Math.sin(t * 11) : 1;
+  const w0 = (15 + (connected ? 4 : 0)) * intensity * pulse;
+  const w1 = 6.5 * intensity * pulse;
+  const w2 = 2.6 * intensity;
+
+  // motes de energia fluindo da origem ao alvo
+  const motes = [];
+  const MOTE_N = 7;
+  for (let i = 0; i < MOTE_N; i++) {
+    let u = ((t * 0.85) + i / MOTE_N) % 1;
+    if (u > drawLen) continue;
+    const p = qbez(u);
+    const fade = Math.sin(u * Math.PI);
+    motes.push({ x: p.x, y: p.y, r: 1.6 + fade * 1.6, op: (0.5 + fade * 0.5) * intensity });
+  }
+
+  return (
+    <g style={{ mixBlendMode: 'screen' }}>
+      <polyline points={poly} fill="none" stroke={theme.soft} strokeWidth={w0}
+        strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={poly} fill="none" stroke={theme.mid} strokeWidth={w1}
+        strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={poly} fill="none" stroke={theme.core} strokeWidth={w2}
+        strokeLinecap="round" strokeLinejoin="round" />
+      {motes.map((m, i) => (
+        <circle key={i} cx={m.x} cy={m.y} r={m.r} fill={theme.core} opacity={m.op} />
+      ))}
+      {/* cabeça brilhante na ponta enquanto o feixe se estende */}
+      {drawLen < 0.999 && (
+        <g transform={`translate(${tip.x} ${tip.y})`}>
+          <circle r={11 * intensity} fill={theme.glow} />
+          <circle r={5 * intensity}  fill={theme.bright} />
+          <circle r={2.4 * intensity} fill={theme.core} />
+        </g>
+      )}
+      {/* nó luminoso na origem */}
+      <g transform={`translate(${SOURCE.x} ${SOURCE.y})`}>
+        <circle r={6 * intensity} fill={theme.bright} opacity="0.8" />
+        <circle r={2.6 * intensity} fill={theme.core} />
+      </g>
+    </g>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Florescer de luz no alvo (fortalecimento)
+// ───────────────────────────────────────────────────────────────────────────────
+function Bloom({ x, y, life, sustain, theme }) {
+  // life: 0..1 do flash inicial (~0.65s) ; sustain: 0..1 brilho contínuo
+  const g = (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      {/* halo contínuo enquanto fortalecido */}
+      {sustain > 0.01 && (
+        <>
+          <circle r={46} fill={theme.faint} opacity={sustain} />
+          <circle r={26} fill={theme.soft}  opacity={sustain * 0.9} />
+        </>
+      )}
+      {/* flash de conexão */}
+      {life > 0 && life < 1 && (() => {
+        const op = 1 - life;
+        const r = 8 + life * 58;
+        return (
+          <>
+            <circle r={r} fill="none" stroke={theme.bright} strokeWidth={2.4} opacity={op * 0.9} />
+            <circle r={r * 0.6} fill="none" stroke={theme.core} strokeWidth={1.2} opacity={op * 0.8} />
+            {life < 0.4 && <circle r={20 * (1 - life / 0.4)} fill={theme.core} opacity={(1 - life / 0.4) * 0.9} />}
+            {/* raios ascendentes */}
+            {[0,1,2,3,4,5,6,7,8,9,10,11].map(i => {
+              const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+              const d1 = 14 + life * 30, d2 = 22 + life * 64;
+              return (
+                <line key={i}
+                  x1={Math.cos(a) * d1} y1={Math.sin(a) * d1}
+                  x2={Math.cos(a) * d2} y2={Math.sin(a) * d2}
+                  stroke={theme.bright} strokeWidth={1.4} opacity={op * 0.75} strokeLinecap="round" />
+              );
+            })}
+          </>
+        );
+      })()}
+    </g>
+  );
+  return g;
+}
+
+// Partículas ascendentes (a energia "subindo" no aliado fortalecido)
+function Rising({ x, y, t, amount, theme }) {
+  if (amount <= 0.01) return null;
+  const N = 9;
+  const items = [];
+  for (let i = 0; i < N; i++) {
+    const cycle = ((t * 0.6) + i / N) % 1;
+    const px = x + Math.sin(i * 2.1 + t * 1.3) * 26;
+    const py = y + 34 - cycle * 78;
+    const op = Math.sin(cycle * Math.PI) * amount;
+    items.push(<circle key={i} cx={px} cy={py} r={1.5} fill={theme.bright} opacity={op} />);
+  }
+  return <g style={{ mixBlendMode: 'screen' }}>{items}</g>;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Glyphs ATK / DEF
+// ───────────────────────────────────────────────────────────────────────────────
+function SwordGlyph({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" className="buff-icon" style={{ '--ico': color }}>
+      <path d="M9 1.5 L9 11" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
+      <path d="M5.5 11 L12.5 11" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
+      <path d="M9 11 L9 15.5" stroke={color} strokeWidth="2.1" strokeLinecap="round"/>
+      <path d="M9 1.5 L7.4 4 L9 4.6 L10.6 4 Z" fill={color}/>
+    </svg>
+  );
+}
+function ShieldGlyph({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" className="buff-icon" style={{ '--ico': color }}>
+      <path d="M9 1.6 L15 4 L15 9 Q15 14 9 16.4 Q3 14 3 9 L3 4 Z"
+            fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M9 5 L9 12" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.85"/>
+    </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  Scene derivation
+// ───────────────────────────────────────────────────────────────────────────────
+function deriveScene(t) {
+  // Conjurador
+  const casterState = (t >= T.CHARGE_START && t < T.BEAM_CONNECT + 0.2) ? 'charging' : 'idle';
+
+  // Banner
+  const bIn  = clamp01((t - T.BANNER_IN) / 0.35);
+  const bOut = clamp01((T.BANNER_OUT - t) / 0.4);
+  const bannerOpacity = (t >= T.BANNER_IN && t < T.BANNER_OUT) ? Math.min(bIn, bOut) : 0;
+  const bannerLabel = t < T.BEAM_CONNECT ? 'Canalizando o encantamento' : 'O aliado é fortalecido';
+
+  // Feixe
+  let drawLen = 0, beamIntensity = 0, connected = false;
+  if (t >= T.BEAM_START) {
+    drawLen = easeOutCubic(clamp01((t - T.BEAM_START) / (T.BEAM_CONNECT - T.BEAM_START)));
+    connected = t >= T.BEAM_CONNECT;
+    // intensidade: sobe rápido, segura, some no fim
+    if (t < T.BEAM_FADE_START) beamIntensity = clamp01((t - T.BEAM_START) / 0.18);
+    else beamIntensity = clamp01((T.BEAM_FADE_END - t) / (T.BEAM_FADE_END - T.BEAM_FADE_START));
+  }
+
+  // Flash de conexão (luz no alvo)
+  let bloomLife = -1;
+  if (t >= T.BEAM_CONNECT && t < T.BEAM_CONNECT + 0.65) bloomLife = (t - T.BEAM_CONNECT) / 0.65;
+
+  // Brilho sustentado / glow da carta fortalecida
+  let buffGlow = 0, sustain = 0;
+  if (t >= T.BEAM_CONNECT) {
+    const ramp = clamp01((t - T.BEAM_CONNECT) / 0.22);
+    let tail = 1;
+    if (t > T.BEAM_FADE_START) tail = lerp(1, 0.55, clamp01((t - T.BEAM_FADE_START) / 0.6)); // mantém glow residual (segue fortalecido)
+    buffGlow = ramp * tail;
+    sustain = ramp * (t > T.HOLD_END - 0.3 ? clamp01((T.HOLD_END - t) / 0.3) : 1);
+  }
+
+  // Partículas ascendentes
+  let rising = 0;
+  if (t >= T.BEAM_CONNECT) rising = clamp01((t - T.BEAM_CONNECT) / 0.2) * (t > T.HOLD_END - 0.4 ? clamp01((T.HOLD_END - t) / 0.4) : 1);
+
+  // Popups +ATK / +DEF
+  let buff = null;
+  if (t >= T.BUFF_POP) {
+    const since = t - T.BUFF_POP;
+    const appear = easeOutBack(clamp01(since / 0.4));
+    const rise = Math.min(since, 1.4) * 26;
+    const fadeIn = clamp01(since / 0.2);
+    const fadeOut = t > T.HOLD_END - 0.35 ? clamp01((T.HOLD_END - t) / 0.35) : 1;
+    buff = { scale: 0.4 + appear * 0.6, rise, opacity: Math.min(fadeIn, fadeOut) };
+  }
+
+  // Flash de tela na conexão
+  let screenFlash = 0;
+  if (t >= T.BEAM_CONNECT - 0.02 && t < T.BEAM_CONNECT + 0.32) {
+    screenFlash = (1 - clamp01((t - (T.BEAM_CONNECT - 0.02)) / 0.34)) * 0.5;
+  }
+
+  return { casterState, bannerOpacity, bannerLabel, drawLen, beamIntensity, connected, bloomLife, buffGlow, sustain, rising, buff, screenFlash };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+//  App
+// ───────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [colorKey, setColorKey] = useState('azul');
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = Math.min((now - lastRef.current) / 1000, 0.05);
+      lastRef.current = now;
+      if (playing) {
+        setT(prev => {
+          const next = prev + dt;
+          if (next >= T.HOLD_END) { if (next >= T.HOLD_END + 1.0) return 0; return next; }
+          return next;
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  useEffect(() => { window.__setT = (v) => { setPlaying(false); setT(v); }; }, []);
+  useEffect(() => { window.__setColor = (k) => { if (COLORS[k]) setColorKey(k); }; }, []);
+
+  const theme = makeTheme(colorKey);
+  const s = deriveScene(t);
+
+  const bannerVars = {
+    '--banner-sub': theme.bright,
+    '--banner-name': theme.text,
+    '--banner-shadow': theme.glow,
+    '--banner-shadow2': theme.soft,
+  };
+  const buffVars = {
+    '--buff-c': theme.bright,
+    '--buff-glow': theme.glow,
+    '--buff-soft': theme.soft,
+    '--buff-text': theme.text,
+  };
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente</div>
+        <div className="half-label pl">Sua Área — Encantamento</div>
+
+        <StaticBoard casterState={s.casterState} buffGlow={s.buffGlow} theme={theme} />
+
+        {/* Ability banner */}
+        <div className="ability-banner" style={{ opacity: s.bannerOpacity, ...bannerVars }}>
+          <div className="ability-sub">Encantamento</div>
+          <div className="ability-name">Fortalecer</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.72 }}>{s.bannerLabel}</div>
+        </div>
+
+        {/* FX layer — feixe + luz */}
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          <Beam drawLen={s.drawLen} intensity={s.beamIntensity} theme={theme} t={t} connected={s.connected} />
+          {(s.bloomLife >= 0 || s.sustain > 0.01) &&
+            <Bloom x={TARGET.x} y={TARGET.y} life={s.bloomLife} sustain={s.sustain} theme={theme} />}
+          <Rising x={TARGET.x} y={TARGET.y} t={t} amount={s.rising} theme={theme} />
+        </svg>
+
+        {/* Popups — +ATK pela esquerda, +DEF pela direita da carta */}
+        {s.buff && (
+          <>
+            <div className="buff-chip side" style={{
+              left: TARGET.x - 50, top: TARGET.y - 6 - s.buff.rise,
+              opacity: s.buff.opacity,
+              transform: `translate(-100%, -50%) scale(${s.buff.scale})`,
+              transformOrigin: 'right center',
+              ...buffVars,
+            }}>
+              <SwordGlyph color={theme.text} />
+              <span className="buff-num">+{ATK_GAIN}</span>
+              <span className="buff-tag">ATK</span>
+            </div>
+            <div className="buff-chip side" style={{
+              left: TARGET.x + 50, top: TARGET.y - 6 - s.buff.rise,
+              opacity: s.buff.opacity,
+              transform: `translate(0, -50%) scale(${s.buff.scale})`,
+              transformOrigin: 'left center',
+              ...buffVars,
+            }}>
+              <ShieldGlyph color={theme.text} />
+              <span className="buff-num">+{DEF_GAIN}</span>
+              <span className="buff-tag">DEF</span>
+            </div>
+          </>
+        )}
+
+        {/* Screen flash */}
+        {s.screenFlash > 0.001 && (
+          <div className="screen-flash" style={{
+            opacity: s.screenFlash,
+            background: `radial-gradient(ellipse 60% 70% at ${(TARGET.x/STAGE_W*100).toFixed(1)}% ${(TARGET.y/STAGE_H*100).toFixed(1)}%, ${theme.core} 0%, ${theme.soft} 34%, transparent 70%)`,
+          }}/>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <div className="ctrl-row swatches">
+          {Object.keys(COLORS).map(k => {
+            const tc = makeTheme(k);
+            return (
+              <div key={k} className={`swatch ${colorKey === k ? 'active' : ''}`}
+                   onClick={() => setColorKey(k)}>
+                <span className="swatch-dot" style={{ background: tc.swatch, color: tc.swatch }}/>
+                <span className="swatch-name">{COLORS[k].label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="ctrl-row">
+          <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>✦ Conjurar</button>
+          <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>{playing ? '❚❚ Pausar' : '▶ Tocar'}</button>
+          <span className="ctrl-label">Tempo</span>
+          <input type="range" className="ctrl-scrub" min="0" max={T.HOLD_END + 1.0} step="0.01"
+                 value={t} onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}/>
+          <span className="ctrl-time">{t.toFixed(2)}s</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 116, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>

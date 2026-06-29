@@ -2,6 +2,9 @@
 # Moldura de avatar customizável — foto + moldura + badge de nível.
 extends Control
 
+# Emitido ao clicar no avatar (abre o perfil do próprio jogador).
+signal clicked
+
 const FRAMES: Dictionary = {
 	"iron": {
 		"a": Color(0.2902, 0.3176, 0.3725, 1.0),
@@ -28,6 +31,23 @@ const FRAMES: Dictionary = {
 @onready var corner_tr   : ColorRect   = $CornerTR
 @onready var corner_bl   : ColorRect   = $CornerBL
 @onready var corner_br   : ColorRect   = $CornerBR
+
+func _ready() -> void:
+	# Botão transparente por cima do avatar — captura o clique acima dos ColorRects
+	# (que por padrão consomem o input). Emite `clicked` para abrir o perfil.
+	var btn := Button.new()
+	btn.flat = true
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.tooltip_text = "Ver perfil"
+	btn.z_index = 5
+	var empty := StyleBoxEmpty.new()
+	btn.add_theme_stylebox_override("normal", empty)
+	btn.add_theme_stylebox_override("hover", empty)
+	btn.add_theme_stylebox_override("pressed", empty)
+	btn.add_theme_stylebox_override("focus", empty)
+	btn.pressed.connect(func() -> void: clicked.emit())
+	add_child(btn)
 
 func set_photo(p_tex: Texture2D) -> void:
 	photo.texture = p_tex

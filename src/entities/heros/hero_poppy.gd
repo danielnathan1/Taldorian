@@ -15,7 +15,7 @@ func _init() -> void:
 	passive_name     = "Ataque Descuidado"
 	passive_desc     = "Enquanto Poppy não aumentar sua defesa, o ataque dela recebe +1"
 	base_attack      = 2
-	base_defense     = 1
+	base_defense     = 0
 	skill_animation  = "battle_fury"
 
 ## Herói entrou em campo: nenhuma carta jogada ainda, passiva começa ativa

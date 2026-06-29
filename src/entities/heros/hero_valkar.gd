@@ -1,51 +1,31 @@
 class_name HeroValkar
 extends Hero
 
-var _shield_available: bool = true
-
 func _init() -> void:
 	art_key          = "hero_valkar"
 	hero_name        = "Valkar"
 	hero_class       = HeroClass.GUARDIAN
-	max_hp           = 10
-	current_hp       = 10
+	max_hp           = 11
+	current_hp       = 11
 	symbols_required.assign([GameSymbols.TERRA, GameSymbols.TERRA, GameSymbols.AGUA])
 	skill_name       = "Escudo de Espinhos"
 	skill_desc       = "Recebe metade da defesa atual como bônus de ataque"
 	passive_name     = "Muro de Aço"
-	passive_desc     = "Enquanto ativa, previne 1 de dano no primeiro ataque a um aliado por batalha"
+	passive_desc     = "Enquanto está na linha de frente, nenhum aliado pode ser alvo de dano direcionado"
 	base_attack      = 0
 	base_defense     = 3
-	starts_face_up   = true
 
-func on_battle_start(player: Player) -> void:
-	super(player)
-	_shield_available = true
+## Passiva de linha de frente — Muro de Aço: protege os aliados de retaguarda de dano
+## direcionado/direto (Chuva de Flechas, Mísseis Mágicos, alvo escolhido). NÃO é mais
+## automática: a Valkar entra furtiva como qualquer herói e só ativa o Muro se o jogador
+## quebrar a furtividade — na confirmação pós-seleção ou ao se revelar durante o turno.
+## A própria Valkar continua sendo um alvo válido.
+func protects_backline_from_targeting() -> bool:
+	return is_alive() and wall_active
 
-func on_turn_reset() -> void:
-	_shield_available = true
-
-## Para dano de área: reduz 1 de dano por herói atingido, sem consumir o escudo de combate.
-func get_aoe_damage_reduction(ctx: TurnContext) -> int:
-	if not is_alive():
-		return 0
-	if self != ctx.defender_player.active_hero:
-		return 0
-	GameBus.skill_activated.emit(self, passive_desc)
-	return 1
-
-## Passiva: reduz o primeiro dano sofrido por um aliado em 1 por rodada,
-## mas somente enquanto Valkar for o herói ativo do time defensor.
-func get_team_damage_reduction(ctx: TurnContext) -> int:
-	if not is_alive():
-		return 0
-	if self != ctx.defender_player.active_hero:
-		return 0
-	if not _shield_available:
-		return 0
-	_shield_available = false
-	GameBus.skill_activated.emit(self, passive_desc)
-	return 1
+## Oferece a escolha de quebrar furtividade para ativar o Muro de Aço ao virar ativa.
+func wants_frontline_confirm() -> bool:
+	return is_alive()
 
 ## Ativa: Terra, Terra, Água → Valkar recebe metade de sua defesa base como bônus de ataque
 func on_skill_activated(player: Player) -> void:

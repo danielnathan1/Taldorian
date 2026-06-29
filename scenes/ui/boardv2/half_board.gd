@@ -2,8 +2,9 @@ extends Control
 
 @export var player_side: String = "player"  # "player" | "opponent"
 
-const HeroSlotScene := preload("res://scenes/ui/hero_slot/hero_slot.tscn")
+const HeroSlotScene  := preload("res://scenes/ui/hero_slot/hero_slot.tscn")
 const CardViewScene  := preload("res://scenes/ui/card_view/card_view.tscn")
+const TokenViewScene := preload("res://scenes/ui/token_view/token_view.tscn")
 
 const SLOT_COLORS = {
 	"hero":        Color(0.545, 0.471, 0.353, 0.48),
@@ -35,6 +36,8 @@ var _glow_tween: Tween
 @onready var _hp_bar           := $HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/HPContainer/HPBar
 @onready var _arsenal_slot_container     := $HalfInner/MainRow/ColB_Arsenal/ArsenalWrap/ArsenalSlot
 @onready var _active_hero_slot_container := $HalfInner/MainRow/ColD_ActiveHero/ActiveHeroWrap/ActiveHeroSlot
+@onready var _tokens_column    := $HalfInner/MainRow/ColE_Tokens
+@onready var _tokens_list      := $HalfInner/MainRow/ColE_Tokens/TokensWrap/TokensSlot/TokensScroll/TokensList
 @onready var _deck_count_badge := $HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot/CountBadge
 @onready var _deck_sleeve      := $HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot/DeckSleeve
 @onready var _grave_slot       := $HalfInner/MainRow/ColA_DeckGrave/GraveWrap/GraveSlot
@@ -122,7 +125,10 @@ func _apply_opponent_mirror() -> void:
 	_update_mirror_pivot.call_deferred()
 
 func _update_mirror_pivot() -> void:
-	_half_inner.pivot_offset       = size / 2.0
+	# Espelha em torno do centro do PRÓPRIO _half_inner — não do HalfBoard.
+	# O _half_inner (VBox) tem altura mínima maior que a metade da tela, então o
+	# Godot o estica além do pai; usar size/2 (do HalfBoard) deslocava o flip no eixo Y.
+	_half_inner.pivot_offset       = _half_inner.size / 2.0
 	_deck_count_badge.pivot_offset = _deck_count_badge.size / 2.0
 
 func _notification(what: int) -> void:
@@ -193,7 +199,7 @@ func set_arsenal_texture(texture: Texture2D) -> void:
 
 func add_combat_card_view(card, sleeve: Texture2D, is_opp_card: bool) -> Node:
 	var view = CardViewScene.instantiate()
-	view.custom_minimum_size = Vector2(68, 96)
+	view.custom_minimum_size = Vector2(64, 96)  # 2:3 — bate com a arte/moldura (KEEP_ASPECT_COVERED)
 	_combat_cards.add_child(view)
 	view.bind(card)
 	view.apply_scale(0.55)
@@ -203,9 +209,62 @@ func add_combat_card_view(card, sleeve: Texture2D, is_opp_card: bool) -> Node:
 		view.is_opponent = true
 	return view
 
+const _ELEMENT_ICONS := {
+	"fogo":  "res://assets/icons/elements/fire.png",
+	"terra": "res://assets/icons/elements/earth.png",
+	"agua":  "res://assets/icons/elements/water.png",
+	"wind":  "res://assets/icons/elements/wind.png",
+	"lightning": "res://assets/icons/elements/lightning.png",
+}
+
+## Adiciona apenas um ícone de símbolo à combat zone (ex.: símbolo escolhido via
+## Fragmento Arcano) — sem carta, só pra deixar claro a ambos qual símbolo entrou na
+## chain. Usa um slot do mesmo tamanho das cartas (68x96) e centraliza o ícone, pra
+## alinhar com as CardViews na mesma fila (HBox).
+func add_combat_symbol_view(symbol_id: String, _is_opp: bool) -> Node:
+	var holder := CenterContainer.new()
+	holder.custom_minimum_size = Vector2(68, 96)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(44, 44)
+	icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var path: String = _ELEMENT_ICONS.get(symbol_id, "")
+	if path != "" and ResourceLoader.exists(path):
+		icon.texture = load(path)
+	holder.add_child(icon)
+	_combat_cards.add_child(holder)
+	return holder
+
 func clear_combat_cards() -> void:
 	for child in _combat_cards.get_children():
 		child.queue_free()
+
+# ── Tokens ────────────────────────────────────────────────────────────────────
+# Área puramente visual. A lógica de quem cria o token (heróis/cartas) e suas
+# regras vivem no core — esta cena apenas exibe o que receber.
+
+func get_tokens_container() -> Control:
+	return _tokens_list
+
+## Adiciona uma TokenView ao painel de tokens e a retorna (o board conecta o clique).
+func add_token_view(p_token: Token, count: int = 1, activable: bool = false) -> TokenView:
+	var view: TokenView = TokenViewScene.instantiate()
+	view.custom_minimum_size = Vector2(70, 105)
+	_tokens_list.add_child(view)
+	view.bind(p_token, count)
+	view.apply_scale(0.5)
+	view.set_activable(activable)
+	return view
+
+func clear_tokens() -> void:
+	for child in _tokens_list.get_children():
+		child.queue_free()
+
+func set_tokens_visible(is_visible: bool) -> void:
+	_tokens_column.visible = is_visible
+
+func get_tokens_global_center() -> Vector2:
+	return _tokens_list.get_global_rect().get_center() as Vector2
 
 func set_deck_count(count: int) -> void:
 	_deck_count_badge.text = str(count)

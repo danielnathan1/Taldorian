@@ -76,6 +76,8 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_token"]
+
 [node name="HalfBoard" type="Control" unique_id=1770288429]
 layout_mode = 3
 anchors_preset = 15
@@ -207,6 +209,42 @@ horizontal_alignment = 1
 [node name="MockHSpce" type="VBoxContainer" parent="HalfInner/MainRow/ColD_ActiveHero" unique_id=1976298831]
 custom_minimum_size = Vector2(0, 270)
 layout_mode = 2
+
+[node name="ColE_Tokens" type="VBoxContainer" parent="HalfInner/MainRow"]
+custom_minimum_size = Vector2(84, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+alignment = 1
+
+[node name="TokensWrap" type="Control" parent="HalfInner/MainRow/ColE_Tokens"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TokensSlot" type="PanelContainer" parent="HalfInner/MainRow/ColE_Tokens/TokensWrap"]
+custom_minimum_size = Vector2(80, 260)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -40.0
+offset_top = 5.0
+offset_right = 40.0
+offset_bottom = 265.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_token")
+
+[node name="TokensScroll" type="ScrollContainer" parent="HalfInner/MainRow/ColE_Tokens/TokensWrap/TokensSlot"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="TokensList" type="VBoxContainer" parent="HalfInner/MainRow/ColE_Tokens/TokensWrap/TokensSlot/TokensScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+alignment = 1
 
 [node name="ColC_Heroes" type="VBoxContainer" parent="HalfInner/MainRow" unique_id=449152049]
 layout_mode = 2

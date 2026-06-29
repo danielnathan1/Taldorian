@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bpsum3smwt32c"]
+
+[ext_resource type="Script" uid="uid://cajaxjxpofh2j" path="res://scenes/vfx/arcane_fragments/arcane_fragments.gd" id="1"]
+
+[node name="ArcaneFragments" type="CanvasLayer" unique_id=870897556]
+layer = 55
+script = ExtResource("1")

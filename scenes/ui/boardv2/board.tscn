@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cekkw3xukhifl" path="res://scenes/ui/boardv2/board.gd" id="board_gd"]
 [ext_resource type="Script" uid="uid://b6ik5ahhaav2m" path="res://scenes/ui/boardv2/card_preview.gd" id="card_preview_gd"]
 [ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="card_view_scene"]
+[ext_resource type="PackedScene" path="res://scenes/ui/token_view/token_view.tscn" id="token_view_scene"]
 [ext_resource type="PackedScene" uid="uid://dpdqfftqd1j61" path="res://scenes/ui/boardv2/center_bar.tscn" id="center_bar_scene"]
 [ext_resource type="FontFile" uid="uid://cj6s63j80ek8e" path="res://assets/fonts/CinzelDecorative-Black.ttf" id="font_black"]
 [ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="font_regular"]
@@ -12,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="hero_slot_scene"]
 [ext_resource type="Script" uid="uid://ducph4m1khg6l" path="res://scenes/ui/boardv2/mulligan_screen.gd" id="mulligan_gd"]
 [ext_resource type="PackedScene" path="res://scenes/ui/boardv2/player_hand.tscn" id="player_hand_scene"]
+[ext_resource type="PackedScene" path="res://scenes/ui/boardv2/game_log/game_log.tscn" id="game_log_scene"]
 
 [node name="Board" type="Control" unique_id=197083175]
 layout_mode = 3
@@ -86,12 +88,24 @@ script = ExtResource("mulligan_gd")
 
 [node name="TitleLabel" type="Label" parent="PhaseOverlay/MulliganScreen" unique_id=910401981]
 layout_mode = 0
-offset_left = 919.0
+offset_left = 698.0
 offset_top = 8.0
-offset_right = 1077.0
-offset_bottom = 36.0
+offset_right = 1298.0
+offset_bottom = 56.0
 theme_override_fonts/font = ExtResource("font_black")
-text = "Mulligan Phase"
+theme_override_font_sizes/font_size = 34
+text = "Fase de Preparação"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="PhaseOverlay/MulliganScreen" unique_id=910401982]
+layout_mode = 0
+offset_left = 598.0
+offset_top = 64.0
+offset_right = 1398.0
+offset_bottom = 96.0
+theme_override_fonts/font = ExtResource("font_regular")
+theme_override_font_sizes/font_size = 20
+text = "Escolha 2 cartas para enviar ao fundo do baralho."
 horizontal_alignment = 1
 
 [node name="CardsRow" type="HBoxContainer" parent="PhaseOverlay/MulliganScreen" unique_id=1822881535]
@@ -225,6 +239,8 @@ text = "Não Guardar"
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=62124483]
 
+[node name="GameLog" parent="UI" instance=ExtResource("game_log_scene")]
+
 [node name="PreviewLayer" type="CanvasLayer" parent="." unique_id=1872294530]
 layer = 3
 
@@ -246,6 +262,13 @@ offset_bottom = 480.0
 mouse_filter = 2
 
 [node name="CardView" parent="PreviewLayer/CardPreview" unique_id=768631564 instance=ExtResource("card_view_scene")]
+visible = false
+layout_mode = 0
+offset_right = 320.0
+offset_bottom = 480.0
+mouse_filter = 2
+
+[node name="TokenView" parent="PreviewLayer/CardPreview" instance=ExtResource("token_view_scene")]
 visible = false
 layout_mode = 0
 offset_right = 320.0

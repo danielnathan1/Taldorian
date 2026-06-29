@@ -44,8 +44,10 @@ const T_WIND_FROM  : float = 2.45
 const T_WIND_DUR   : float = 1.05
 const T_END        : float = 3.55
 
-const STAGE   := Vector2(1280.0, 720.0)
-const MID_Y   : float = 360.0
+# Palco = tamanho REAL do viewport (definido em _build a partir de get_viewport).
+# Defaults só de fallback; o projeto roda em 1920x1080 (stretch canvas_items).
+var _stage : Vector2 = Vector2(1920.0, 1080.0)
+var _mid_y : float = 540.0
 const MAX_SEP : float = 13.0   # overshoot logo apos o corte
 const REST_SEP: float = 7.0    # separacao em repouso
 const NUM_FOG : int   = 7
@@ -97,17 +99,26 @@ func play() -> void:
 
 # ── Construção dos nós ──────────────────────────────────────────────────────────
 func _build() -> void:
+	# Palco = resolução BASE do projeto (espaço de coordenadas do canvas sob stretch
+	# canvas_items; o CanvasLayer é autorado nessa base e a transform mapeia p/ a janela).
+	# Antes era 1280x720 fixo → cobria só ~2/3 da tela e o corte caía a 1/3 da altura.
+	var bw := float(ProjectSettings.get_setting("display/window/size/viewport_width", 1920))
+	var bh := float(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+	if bw > 0.0 and bh > 0.0:
+		_stage = Vector2(bw, bh)
+		_mid_y = bh / 2.0
+
 	# Metades reais do board (Opção A) — só quando há textura
 	if use_split_halves and board_texture != null:
-		_top_half = _make_board_half(Rect2(0.0, 0.0, STAGE.x, MID_Y))
-		_bottom_half = _make_board_half(Rect2(0.0, MID_Y, STAGE.x, MID_Y))
+		_top_half = _make_board_half(Rect2(0.0, 0.0, _stage.x, _mid_y))
+		_bottom_half = _make_board_half(Rect2(0.0, _mid_y, _stage.x, _mid_y))
 		add_child(_top_half)
 		add_child(_bottom_half)
 
 	# 1. Escurecimento + vinheta (shader)
 	_darken = ColorRect.new()
 	_darken.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_darken.size = STAGE
+	_darken.size = _stage
 	_darken.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var dmat := ShaderMaterial.new()
 	dmat.shader = _SHADER
@@ -158,7 +169,7 @@ func _build() -> void:
 
 	_charge = Sprite2D.new()
 	_charge.texture = _TEX_CHARGE
-	_charge.position = STAGE / 2.0
+	_charge.position = _stage / 2.0
 	_charge.modulate = COL_CORE
 	_charge.modulate.a = 0.0
 	_charge.material = add_mat
@@ -166,17 +177,17 @@ func _build() -> void:
 
 	# 5. Partículas da costura
 	_glints = _make_glints()
-	_glints.position = Vector2(STAGE.x / 2.0, MID_Y)
+	_glints.position = Vector2(_stage.x / 2.0, _mid_y)
 	add_child(_glints)
 
 	_sparks = _make_sparks()
-	_sparks.position = Vector2(STAGE.x / 2.0, MID_Y)
+	_sparks.position = Vector2(_stage.x / 2.0, _mid_y)
 	add_child(_sparks)
 
 	# 6. Flash de tela
 	_flash = ColorRect.new()
 	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_flash.size = STAGE
+	_flash.size = _stage
 	_flash.color = slice_color
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_flash.modulate.a = 0.0
@@ -216,7 +227,7 @@ func _make_glints() -> CPUParticles2D:
 	p.emitting = false
 	p.local_coords = false
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	p.emission_rect_extents = Vector2(640.0, 3.0)
+	p.emission_rect_extents = Vector2(_stage.x / 2.0, 3.0)
 	p.direction = Vector2(1.0, 0.0)
 	p.spread = 180.0  # metade corre para cada lado da costura
 	p.gravity = Vector2.ZERO
@@ -241,7 +252,7 @@ func _make_sparks() -> CPUParticles2D:
 	p.explosiveness = 0.9
 	p.local_coords = false
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	p.emission_rect_extents = Vector2(410.0, 2.0)
+	p.emission_rect_extents = Vector2(_stage.x * 0.32, 2.0)
 	p.direction = Vector2(0.0, -1.0)
 	p.spread = 80.0  # espalha p/ cima e p/ baixo da costura
 	p.gravity = Vector2.ZERO
@@ -337,31 +348,31 @@ func _trigger_cut() -> void:
 
 # largura da lâmina: frac 0→1 mapeia half-width 0→640
 func _set_slice_width(frac: float) -> void:
-	var half := frac * (STAGE.x / 2.0)
+	var half := frac * (_stage.x / 2.0)
 	var w := half * 2.0
-	var left := STAGE.x / 2.0 - half
-	_core.position = Vector2(left, MID_Y - 4.0)
+	var left := _stage.x / 2.0 - half
+	_core.position = Vector2(left, _mid_y - 4.0)
 	_core.size = Vector2(w, 8.0)
-	_bloom.position = Vector2(left, MID_Y - 32.0)
+	_bloom.position = Vector2(left, _mid_y - 32.0)
 	_bloom.size = Vector2(w, 64.0)
-	_cap_left.position = Vector2(left, MID_Y)
-	_cap_right.position = Vector2(left + w, MID_Y)
+	_cap_left.position = Vector2(left, _mid_y)
+	_cap_right.position = Vector2(left + w, _mid_y)
 
 # separa as metades verticalmente + abre o vão preto
 func _set_separation(sep: float) -> void:
 	if is_instance_valid(_top_half):
 		_top_half.position.y = -sep
 	if is_instance_valid(_bottom_half):
-		_bottom_half.position.y = MID_Y + sep
+		_bottom_half.position.y = _mid_y + sep
 	_set_gap_only(sep)
 
 func _set_gap_only(sep: float) -> void:
 	_gap_void.modulate.a = 1.0 if sep > 0.2 else 0.0
-	_gap_void.position = Vector2(0.0, MID_Y - sep)
-	_gap_void.size = Vector2(STAGE.x, sep * 2.0)
+	_gap_void.position = Vector2(0.0, _mid_y - sep)
+	_gap_void.size = Vector2(_stage.x, sep * 2.0)
 	# a costura acompanha o centro do vão
-	_core.position.y = MID_Y - 4.0
-	_bloom.position.y = MID_Y - 32.0
+	_core.position.y = _mid_y - 4.0
+	_bloom.position.y = _mid_y - 32.0
 
 # ── Dissipação (2.45 → 3.55): tudo faz fade-out em paralelo ───────────────────
 func _trigger_dissipate() -> void:
@@ -381,7 +392,7 @@ func _trigger_dissipate() -> void:
 	if use_split_halves and board_texture != null:
 		d.tween_property(_top_half, "position:y", 0.0, T_WIND_DUR) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		d.tween_property(_bottom_half, "position:y", MID_Y, T_WIND_DUR) \
+		d.tween_property(_bottom_half, "position:y", _mid_y, T_WIND_DUR) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 
 # ── Névoa: spawn de 7 blobs + drift contínuo ─────────────────────────────────
@@ -392,8 +403,8 @@ func _spawn_fog() -> void:
 		var s := Sprite2D.new()
 		s.texture = _TEX_FOG
 		s.material = add_mat
-		var bx := _rng.randf() * STAGE.x
-		var by := 120.0 + _rng.randf() * (STAGE.y - 240.0)
+		var bx := _rng.randf() * _stage.x
+		var by := 120.0 + _rng.randf() * (_stage.y - 240.0)
 		var sc := 0.7 + _rng.randf() * 0.8
 		s.position = Vector2(bx, by)
 		s.scale = Vector2(sc, sc * 0.55)

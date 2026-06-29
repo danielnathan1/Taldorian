@@ -2,6 +2,7 @@ class_name CardView
 extends Control
 
 const SLEEVE_DEFAULT := preload("res://assets/sleve/default.png")
+const FOIL_SHADER    := preload("res://scenes/ui/card_view/foil.gdshader")
 
 @onready var card_content    := $CardContent
 @onready var back_rect       := $Back
@@ -30,24 +31,45 @@ var _base_position: Vector2
 var _base_rotation_deg: float
 var _base_z: int
 var _hover_tween: Tween
+var _foil_overlay: ColorRect = null
 
 const _ELEMENT_ICONS := {
 	"fogo":  "res://assets/icons/elements/fire.png",
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
+	"lightning": "res://assets/icons/elements/lightning.png",
 }
 
 func _ready() -> void:
 	back_rect.texture = SLEEVE_DEFAULT
+	_build_foil_overlay()
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+
+# Overlay cromático no topo do CardContent. Aditivo (ver foil.gdshader): só as
+# bandas acendem, o resto da carta aparece normal. Inicia oculto.
+func _build_foil_overlay() -> void:
+	_foil_overlay = ColorRect.new()
+	_foil_overlay.name         = "FoilOverlay"
+	_foil_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_foil_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = FOIL_SHADER
+	_foil_overlay.material = mat
+	_foil_overlay.visible  = false
+	card_content.add_child(_foil_overlay)
+
+func _update_foil() -> void:
+	# Foil anima sozinho pelo TIME do shader; não precisa de _process nem do mouse.
+	var on := card != null and card.is_foil and not _face_down
+	_foil_overlay.visible = on
 
 func bind(p_card: Card) -> void:
 	card = p_card
 	_art.texture         = card.get_texture()
 	_title_lbl.text      = card.card_name
-	_desc_lbl.text       = card.description
+	_desc_lbl.text       = _format_description(card)
 	_atk_lbl.text        = _fmt_signed(card.attack_value)
 	_def_lbl.text        = str(card.defense_value)
 	_rarity_lbl.text     = _rarity_letter(card.rarity)
@@ -55,6 +77,13 @@ func bind(p_card: Card) -> void:
 	_apply_rarity_style(card.rarity)
 	_element_sym.texture = _load_element_icon(card.symbols)
 	_element_sym.visible = _element_sym.texture != null
+	_update_foil()
+
+# Cartas sem efeito têm a descrição (flavor text) exibida entre aspas.
+func _format_description(p_card: Card) -> String:
+	if p_card.effects.is_empty() and p_card.description != "":
+		return '"%s"' % p_card.description
+	return p_card.description
 
 func bind_dict(d: Dictionary) -> void:
 	var c := Card.new()
@@ -64,11 +93,18 @@ func bind_dict(d: Dictionary) -> void:
 	c.defense_value = int(d.get("defense_value", 0))
 	c.description   = d.get("description", "")
 	c.rarity        = Card.Rarity.get(d.get("rarity", "COMMON"), Card.Rarity.COMMON)
+	c.is_foil       = d.get("is_foil", false)
 	c.art_key       = d.get("art_key", "")
 	var syms: Array[String] = []
 	for s in d.get("symbols", []):
 		syms.append(str(s))
 	c.symbols = syms
+	# Efeitos: o dict canônico do catálogo (Collection.resolve_card) traz "effects";
+	# popular aqui faz a regra de flavor text (aspas quando sem efeito) valer nestes previews.
+	for entry in d.get("effects", []):
+		var eff := CardEffectRegistry.create(entry.get("id", ""), entry)
+		if eff != null:
+			c.effects.append(eff)
 	bind(c)
 
 func set_sleeve(tex: Texture2D) -> void:
@@ -84,6 +120,13 @@ func set_face_down(value: bool) -> void:
 	_face_down = value
 	back_rect.visible     = value
 	card_content.visible  = not value
+	_update_foil()
+
+## Liga/desliga o efeito holográfico (foil) desta carta após o bind.
+func set_foil(value: bool) -> void:
+	if card != null:
+		card.is_foil = value
+	_update_foil()
 
 func set_interactable(value: bool, dim_when_blocked: bool = true) -> void:
 	_interactable = value

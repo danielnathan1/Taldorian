@@ -1,0 +1,93 @@
+[gd_scene load_steps=2 format=3 uid="uid://b8dlg0wq1tdx7"]
+
+[ext_resource type="Script" path="res://scenes/world/ui/dialogue/dialogue_box.gd" id="1_dlgbx"]
+
+[node name="DialogueBox" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_dlgbx")
+
+[node name="Dock" type="Control" parent="."]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -310.0
+offset_top = -170.0
+offset_right = 310.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Portrait" type="TextureRect" parent="Dock"]
+layout_mode = 1
+anchor_bottom = 1.0
+offset_right = 130.0
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TextPanel" type="PanelContainer" parent="Dock"]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 144.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="Dock/TextPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Text" type="RichTextLabel" parent="Dock/TextPanel/Margin"]
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 18
+
+[node name="NameTab" type="PanelContainer" parent="Dock"]
+layout_mode = 1
+offset_left = 152.0
+offset_top = -14.0
+offset_right = 252.0
+offset_bottom = 16.0
+mouse_filter = 2
+
+[node name="SpeakerName" type="Label" parent="Dock/NameTab"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+text = "Nome"
+
+[node name="AdvanceIndicator" type="Label" parent="Dock"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -34.0
+offset_top = -32.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+horizontal_alignment = 2
+vertical_alignment = 2
+text = "▼"

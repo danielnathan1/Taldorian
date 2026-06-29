@@ -15,7 +15,8 @@ config_version=5
 config/name="Taldorian"
 run/main_scene="uid://c11w1tu8dmhux"
 config/features=PackedStringArray("4.6", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="res://assets/icons/taldorian_icon.png"
+config/windows_native_icon="res://assets/icons/taldorian_icon.ico"
 
 [autoload]
 
@@ -24,6 +25,7 @@ NetworkState="*uid://tn8f3we8cliq"
 GameState="*uid://dtqbfrlqlcsia"
 WorldState="*res://src/world/world_state.gd"
 WorldServer="*res://src/world/world_server.gd"
+WorldTrade="*res://src/world/world_trade.gd"
 Collection="*res://src/autoload/collection.gd"
 DeckStore="*res://src/autoload/deck_store.gd"
 CosmeticsStore="*res://src/autoload/cosmetics_store.gd"
@@ -31,6 +33,7 @@ CharacterStore="*res://src/autoload/character_store.gd"
 RoomService="*res://src/world/room_service.gd"
 MatchService="*res://src/world/match_service.gd"
 ApiClient="*res://src/autoload/api_client.gd"
+QuestStore="*res://src/world/quest_store.gd"
 
 [display]
 

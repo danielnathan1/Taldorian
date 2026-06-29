@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cvd6t46y6gu5c" path="res://scenes/ui/hero_slot/hero_slot.gd" id="1_w7hh2"]
 [ext_resource type="Texture2D" uid="uid://bn4427nd8bvul" path="res://assets/heros/base_card.png" id="2_a1emu"]
 [ext_resource type="Texture2D" uid="uid://d085uh6ce1pgy" path="res://assets/icons/attack_icon.png" id="3_atk"]
-[ext_resource type="Texture2D" uid="uid://y2bbbsi6qrha" path="res://assets/icons/class/Rogue.png" id="4_2yy6c"]
+[ext_resource type="Texture2D" uid="uid://d2cwt1lr8atg8" path="res://assets/icons/class/wizard.png" id="4_a1emu"]
 [ext_resource type="Texture2D" uid="uid://b2dl1kvf103x" path="res://assets/icons/defense_icon.png" id="4_def"]
 [ext_resource type="FontFile" uid="uid://oe74r7bbi6u8" path="res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf" id="6_font_bold"]
 [ext_resource type="FontFile" uid="uid://dxi5fbo2jhp36" path="res://assets/fonts/KNYuanmo-Regular.ttf" id="7_font_num"]
@@ -92,7 +92,7 @@ offset_bottom = 6.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("4_2yy6c")
+texture = ExtResource("4_a1emu")
 expand_mode = 1
 stretch_mode = 5
 

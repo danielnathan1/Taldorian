@@ -1,0 +1,9 @@
+{
+  "id": "encapuzado_aponta_slime",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "text": "Está vendo aquela geleia ali adiante? Uma slime — dócil, lenta... e perfeitamente rastreável. Um ótimo primeiro alvo." }
+  ]
+}

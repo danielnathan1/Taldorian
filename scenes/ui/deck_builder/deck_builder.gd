@@ -14,7 +14,7 @@ func _ready() -> void:
 	_style_bg()
 	_connect_signals()
 	await _load_inventory()
-	_load_or_create_deck()
+	await _load_or_create_deck()
 
 
 # Carrega a coleção do jogador do backend (/players/me/inventory) antes de montar
@@ -80,6 +80,7 @@ func _connect_signals() -> void:
 
 	rail.hero_remove_requested.connect(_on_hero_remove)
 	rail.card_remove_requested.connect(_on_card_remove)
+	rail.foil_change_requested.connect(_on_foil_change)
 	rail.clear_cards_requested.connect(_on_clear_cards_requested)
 
 	modal.confirmed.connect(_on_delete_confirmed)
@@ -90,10 +91,15 @@ func _load_or_create_deck() -> void:
 	var id := DeckStore.active_deck_id
 	DeckStore.active_deck_id = ""   # consome
 	if id != "":
-		var existing := DeckStore.get_deck(id)
-		if existing != null:
-			load_deck(existing)
+		var overlay := _make_loading_overlay("Abrindo deck…")
+		add_child(overlay)
+		var res := await ApiClient.get_deck(id)   # GET /decks/{id} — deck completo
+		if is_instance_valid(overlay):
+			overlay.queue_free()
+		if res.ok and res.data is Dictionary:
+			load_deck(DeckStore.deck_from_detail(res.data))
 			return
+		_toast("Falha ao abrir deck: %s" % (res.error if not res.ok else "resposta inválida"))
 	load_deck(DeckStore.new_deck())
 
 
@@ -127,7 +133,7 @@ func _on_card_add(card_name: String) -> void:
 			_toast("Limite de %d cópias atingido" % max_cop)
 		return
 	_mark_dirty()
-	_refresh_all()
+	_refresh_deck_only()
 
 
 func _on_sleeve_changed(sleeve_id: String) -> void:
@@ -143,7 +149,22 @@ func _on_playmat_changed(playmat_id: String) -> void:
 func _on_card_remove(card_name: String) -> void:
 	_current_deck.remove_card(card_name)
 	_mark_dirty()
-	_refresh_all()
+	_refresh_deck_only()
+
+
+# Clique na pílula foil do rail: cicla 0 → 1 → … → máx → 0, onde
+# máx = min(cópias no deck, cópias foil possuídas).
+func _on_foil_change(card_name: String) -> void:
+	var count := _current_deck.count_of(card_name)
+	var card_id := int(Collection.get_card_dict(card_name).get("id", -1))
+	var owned := Collection.get_foil_quantity(card_id) if card_id >= 0 else 0
+	var max_foil := mini(count, owned)
+	if max_foil <= 0:
+		return
+	var cur := clampi(_current_deck.foil_of(card_name), 0, max_foil)
+	_current_deck.set_foil(card_name, (cur + 1) % (max_foil + 1))
+	_mark_dirty()
+	_refresh_deck_only()
 
 
 func _on_clear_cards_requested() -> void:
@@ -161,7 +182,7 @@ func _on_clear_cards_confirmed() -> void:
 	_get_modal().confirmed.connect(_on_delete_confirmed)
 	_current_deck.card_entries.clear()
 	_mark_dirty()
-	_refresh_all()
+	_refresh_deck_only()
 
 
 func _on_save_requested() -> void:
@@ -197,9 +218,9 @@ func _on_save_requested() -> void:
 	# Em criação, guarda o id devolvido pelo servidor → próximos saves viram PUT.
 	if _current_deck.remote_id == "":
 		_current_deck.remote_id = _extract_deck_id(res.data)
+		_current_deck.deck_id   = _current_deck.remote_id
 
-	# Espelho local (o builder ainda lista daqui — sem endpoint GET /decks ainda).
-	DeckStore.save_deck(_current_deck)
+	# Fonte da verdade é o backend; a DeckList re-busca da API ao abrir. Sem espelho local.
 	_saved_snapshot = _current_deck.duplicate_data()
 	_is_dirty = false
 	_get_header().set_dirty(false)
@@ -218,9 +239,18 @@ func _build_deck_payload(deck: DeckData) -> Dictionary:
 		if card_uuid == "":
 			push_warning("DeckBuilder: carta sem UUID no inventário, ignorada no payload: %s" % entry["name"])
 			continue
-		cards.append({ "cardId": card_uuid, "quantity": int(entry["count"]) })
+		# foilQuantity = escolha do jogador (set via rail), clampada à posse por segurança
+		# (não dá pra marcar mais foil do que se possui, caso a posse tenha mudado).
+		var count := int(entry["count"])
+		var card_id := int(Collection.get_card_dict(entry["name"]).get("id", -1))
+		var owned := Collection.get_foil_quantity(card_id) if card_id >= 0 else 0
+		var foil_qty := clampi(int(entry.get("foil", 0)), 0, mini(count, owned))
+		cards.append({ "cardId": card_uuid, "quantity": count, "foilQuantity": foil_qty })
 
-	var playmat_uuid := Collection.get_playmat_uuid(deck.playmat)
+	# Cosméticos: id local → UUID do backend (master data no cosmetics.json). "default"
+	# não tem backend_id → "" → null no payload (= sem cosmético).
+	var playmat_uuid := CosmeticsStore.get_playmat_backend_id(deck.playmat)
+	var sleeve_uuid  := CosmeticsStore.get_sleeve_backend_id(deck.sleeve)
 	return {
 		"name":  deck.deck_name,
 		"hero1": hero_uuids[0] if hero_uuids.size() > 0 and hero_uuids[0] != "" else null,
@@ -228,7 +258,7 @@ func _build_deck_payload(deck: DeckData) -> Dictionary:
 		"hero3": hero_uuids[2] if hero_uuids.size() > 2 and hero_uuids[2] != "" else null,
 		"cards": cards,
 		"playmatId": playmat_uuid if playmat_uuid != "" else null,
-		"sleeveId":  null,  # sleeves não vêm em /players/me/inventory ainda — sem UUID p/ mapear
+		"sleeveId":  sleeve_uuid if sleeve_uuid != "" else null,
 	}
 
 
@@ -254,11 +284,19 @@ func _on_discard_requested() -> void:
 
 
 func _on_delete_confirmed() -> void:
-	if DeckStore.decks.size() <= 1:
-		_toast("Mantenha ao menos um deck")
+	# Deck novo, nunca salvo no backend → não há o que apagar; só volta à lista.
+	if _current_deck.remote_id == "":
+		_go_back()
 		return
-	DeckStore.delete_deck(_current_deck.deck_id)
-	_load_or_create_deck()
+	var overlay := _make_loading_overlay("Apagando deck…")
+	add_child(overlay)
+	var res := await DeckStore.delete_deck(_current_deck.remote_id)   # DELETE /decks/{id}
+	if is_instance_valid(overlay):
+		overlay.queue_free()
+	if not res.ok:
+		_toast("Falha ao apagar: %s" % res.error)
+		return
+	_go_back()
 
 
 func _on_name_changed(new_name: String) -> void:
@@ -296,6 +334,14 @@ func _refresh_all() -> void:
 	_get_header().set_dirty(_is_dirty)
 	_get_rail().bind(_current_deck)
 	_get_picker().set_deck_snapshot(_current_deck)
+
+
+# Refresh leve para mudanças só de cartas (add/remove/foil/limpar): atualiza o rail e
+# re-sincroniza as contagens da grade do picker SEM reconstruí-la (sem piscada).
+func _refresh_deck_only() -> void:
+	_get_header().set_dirty(_is_dirty)
+	_get_rail().bind(_current_deck)
+	_get_picker().sync_deck_counts(_current_deck)
 
 
 func _toast(msg: String) -> void:

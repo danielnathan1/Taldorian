@@ -69,12 +69,47 @@ const _MAP := {
 	# ── Coleção 0: stealth / furtivo ───────────────────────────────────────
 	"stealth_if_from_arsenal":       preload("res://src/entities/effects/effect_stealth_if_from_arsenal.gd"),
 	"stealth_hidden_at_combat":      preload("res://src/entities/effects/effect_stealth_hidden_at_combat.gd"),
+	"stealth_next_turn_on_damage":   preload("res://src/entities/effects/effect_stealth_next_turn_on_damage.gd"),
 	# ── Coleção 0: efeito direto ───────────────────────────────────────────
 	"direct_damage_if_first":        preload("res://src/entities/effects/effect_direct_damage_if_first.gd"),
 	# ── Coleção 0: habilidade / skill ──────────────────────────────────────
 	"skill_trigger_draw":            preload("res://src/entities/effects/effect_skill_trigger_draw.gd"),
-	# ── Timing AFTER_COMBAT (resolvem após o combate, com resultado de dano) ─
+	# ── Timing AFTER_TURN (resolvem após o combate, com resultado de dano) ─
 	"on_hit_draw":                   preload("res://src/entities/effects/effect_on_hit_draw.gd"),
+	# ── Coleção 0 (revisão): condicionais "sem dano" ───────────────────────
+	"draw_if_no_damage":             preload("res://src/entities/effects/effect_draw_if_no_damage.gd"),
+	"draw_discard_if_no_damage":     preload("res://src/entities/effects/effect_draw_discard_if_no_damage.gd"),
+	# ── Coleção 0 (revisão): ataque / próximo turno ────────────────────────
+	"next_turn_attack_bonus":        preload("res://src/entities/effects/effect_next_turn_attack_bonus.gd"),
+	"double_attack":                 preload("res://src/entities/effects/effect_double_attack.gd"),
+	"defense_to_attack":             preload("res://src/entities/effects/effect_defense_to_attack.gd"),
+	"attack_if_hp_below_max":        preload("res://src/entities/effects/effect_attack_if_hp_below_max.gd"),
+	"lock_attack_this_turn":         preload("res://src/entities/effects/effect_lock_attack_next_turn_bonus.gd"),
+	# ── Coleção 0 (revisão): cura / escudo em área ─────────────────────────
+	"heal_backline":                 preload("res://src/entities/effects/effect_heal_backline.gd"),
+	"team_damage_shield":            preload("res://src/entities/effects/effect_team_damage_shield.gd"),
+	"heal_all_allies_reflect":       preload("res://src/entities/effects/effect_heal_all_allies_reflect.gd"),
+	# ── Coleção 0 (revisão): furtivo / descarte / marca ────────────────────
+	"opponent_discards_on_hit":      preload("res://src/entities/effects/effect_opponent_discards_on_hit.gd"),
+	"both_discard_random":           preload("res://src/entities/effects/effect_both_discard_random.gd"),
+	"mark_hero_extra_damage":        preload("res://src/entities/effects/effect_mark_hero_extra_damage.gd"),
+	"defense_if_discarded":          preload("res://src/entities/effects/effect_defense_if_discarded.gd"),
+	"mark_discard_on_damage_next_combat": preload("res://src/entities/effects/effect_mark_discard_on_damage_next_combat.gd"),
+	"no_reactions_this_turn":        preload("res://src/entities/effects/effect_no_reactions_this_turn.gd"),
+	"discard_fire_for_attack":       preload("res://src/entities/effects/effect_discard_fire_for_attack.gd"),
+	"peek_draw_if_symbol":           preload("res://src/entities/effects/effect_peek_draw_if_symbol.gd"),
+	# ── Raio / Lightning (tokens, carga de raio, ações extras) ─────────────
+	"attack_per_token":              preload("res://src/entities/effects/effect_attack_per_token.gd"),
+	"defense_per_token":             preload("res://src/entities/effects/effect_defense_per_token.gd"),
+	"defense_if_token":              preload("res://src/entities/effects/effect_defense_if_token.gd"),
+	"attack_if_below_enemy":         preload("res://src/entities/effects/effect_attack_if_below_enemy.gd"),
+	"attack_per_lightning_charge":   preload("res://src/entities/effects/effect_attack_per_lightning_charge.gd"),
+	"add_lightning_charge":          preload("res://src/entities/effects/effect_add_lightning_charge.gd"),
+	"add_lightning_charge_if_no_damage": preload("res://src/entities/effects/effect_add_lightning_charge_if_no_damage.gd"),
+	"create_missiles":               preload("res://src/entities/effects/effect_create_missiles.gd"),
+	"consume_tokens_for_bonus":      preload("res://src/entities/effects/effect_consume_tokens_for_bonus.gd"),
+	"extra_action":                  preload("res://src/entities/effects/effect_extra_action.gd"),
+	"extra_action_if_from_arsenal":  preload("res://src/entities/effects/effect_extra_action_if_from_arsenal.gd"),
 }
 
 static func create(id: String, params: Dictionary) -> CardEffect:
@@ -82,6 +117,11 @@ static func create(id: String, params: Dictionary) -> CardEffect:
 		push_error("CardEffectRegistry: efeito desconhecido — '%s'" % id)
 		return null
 	var effect: CardEffect = _MAP[id].new()
+	# Guarda o spec de origem (id + params) para permitir reserializar a carta com seus
+	# efeitos no snapshot de rede — ver GameState._serialize_cards.
+	var spec := params.duplicate(true)
+	spec["id"] = id
+	effect.spec = spec
 	# Timing: começa do padrão do efeito; carta pode sobrescrever via "timing" no JSON.
 	effect.timing = effect.default_timing()
 	if params.has("timing"):
@@ -96,6 +136,6 @@ static func _parse_timing(value) -> int:
 		"after_reaction", "afterreaction":
 			return CardEffect.Timing.AFTER_REACTION
 		"after_combat", "aftercombat", "after_turn", "afterturn":
-			return CardEffect.Timing.AFTER_COMBAT
+			return CardEffect.Timing.AFTER_TURN
 	push_error("CardEffectRegistry: timing desconhecido — '%s' (usando AFTER_REACTION)" % value)
 	return CardEffect.Timing.AFTER_REACTION

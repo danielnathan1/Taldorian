@@ -1,0 +1,118 @@
+[gd_scene load_steps=4 format=3 uid="uid://welcomemodal_whud"]
+
+[ext_resource type="Script" path="res://scenes/world/ui/welcome_modal/welcome_modal.gd" id="1_wm"]
+
+[sub_resource type="StyleBoxFlat" id="Style_panel"]
+bg_color = Color(0.0706, 0.0784, 0.1098, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7843, 0.6157, 0.2902, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 16
+
+[sub_resource type="StyleBoxFlat" id="Style_gold"]
+bg_color = Color(0.1294, 0.1098, 0.0549, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7843, 0.6157, 0.2902, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+
+[node name="WelcomeModal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+z_index = 50
+script = ExtResource("1_wm")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Style_panel")
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="VBox" type="VBoxContainer" parent="Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9019, 0.7137, 0.3373, 1)
+theme_override_font_sizes/font_size = 24
+text = "Bem-vindo ao mundo de Taldorian"
+horizontal_alignment = 1
+
+[node name="Message" type="RichTextLabel" parent="Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+text = "[center][color=#e8e0cf]Os portões da cidade se abrem diante de você. Aqui começaria sua jornada — uma missão de iniciação, uma cutscene, e a entrega do seu [b]Item de Scan[/b] para desvendar os segredos deste mundo.
+
+Mas, entre nós... esse conteúdo ainda está sendo forjado. Então faça de conta que você atravessou uma primeira missão [i]incrível[/i] — e que eu sou o pobre coitado que você acabou de salvar.
+
+Em gratidão, aceite esta recompensa:[/color]
+
+[center][color=#f0c75a][b]✦  1.200 de Ouro  ✦[/b][/color][/center]
+[color=#b9b2a0]Suficiente para 10 boosters e montar seu primeiro deck.
+
+Obrigado por nos ajudar no teste.[/color][/center]"
+
+[node name="GoldBox" type="PanelContainer" parent="Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("Style_gold")
+
+[node name="GoldLabel" type="Label" parent="Center/Panel/Margin/VBox/GoldBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9412, 0.7804, 0.3529, 1)
+theme_override_font_sizes/font_size = 16
+text = "Recompensa creditada: +1.200 g"
+horizontal_alignment = 1
+
+[node name="BtnClose" type="Button" parent="Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9019, 0.7137, 0.3373, 1)
+theme_override_font_sizes/font_size = 16
+text = "Começar minha jornada"

@@ -12,6 +12,7 @@ var _active_rarity: String = ""
 var _search_text: String = ""
 var _only_in_deck: bool = false
 var _deck_snapshot: DeckData = null
+var _rows: Dictionary = {}   # card_name (String) -> PickerCardRow (linha instanciada)
 
 const CARD_ROW_SCENE := preload("res://scenes/ui/deck_builder/components/picker_card_row.tscn")
 
@@ -27,6 +28,22 @@ func _ready() -> void:
 func refresh(deck: DeckData) -> void:
 	_deck_snapshot = deck
 	_rebuild_list()
+
+
+# Atualiza só as contagens/botões das linhas já existentes — sem reconstruir a grade
+# (evita a piscada ao adicionar/remover carta). Quando o filtro "só no deck" está ativo,
+# o conjunto de cartas muda → cai pro rebuild.
+func sync_counts(deck: DeckData) -> void:
+	_deck_snapshot = deck
+	if _only_in_deck:
+		_rebuild_list()
+		return
+	for card_name in _rows:
+		var row: Node = _rows[card_name]
+		if not is_instance_valid(row):
+			continue
+		var count_in_deck := deck.count_of(card_name) if deck else 0
+		row.call("set_deck_state", count_in_deck, Collection.get_max_copies(card_name))
 
 
 func _setup_timing_select() -> void:
@@ -56,8 +73,8 @@ func _build_symbol_chips() -> void:
 	var row := _get_sym_row()
 	for c in row.get_children(): c.queue_free()
 	row.add_child(_make_chip("Todos", ""))
-	var syms   := ["fogo", "terra", "agua", "wind"]
-	var labels := ["🔥 Fogo", "🌿 Terra", "💧 Água", "💨 Ar"]
+	var syms   := ["fogo", "terra", "agua", "wind", "lightning"]
+	var labels := ["🔥 Fogo", "🌿 Terra", "💧 Água", "💨 Ar", "⚡ Raio"]
 	for i in syms.size():
 		row.add_child(_make_chip(labels[i], syms[i]))
 
@@ -121,7 +138,7 @@ func _refresh_chip_row(row: HBoxContainer) -> void:
 	var all_btn := row.get_child(0) as Button
 	if all_btn:
 		S.apply_chip(all_btn, _active_symbols.is_empty())
-	var keys_sym := ["fogo", "terra", "agua", "wind"]
+	var keys_sym := ["fogo", "terra", "agua", "wind", "lightning"]
 	for i in range(1, row.get_child_count()):
 		var btn := row.get_child(i) as Button
 		if not btn: continue
@@ -143,6 +160,7 @@ func _rebuild_list() -> void:
 	var list := _get_list()
 	for child in list.get_children():
 		child.queue_free()
+	_rows.clear()
 
 	var in_deck_names: Array[String] = []
 	if _only_in_deck and _deck_snapshot:
@@ -162,6 +180,7 @@ func _rebuild_list() -> void:
 		row.connect("add_pressed", _on_row_add)
 		row.connect("remove_pressed", _on_row_remove)
 		row.connect("preview_requested", _on_row_preview)
+		_rows[card_name] = row
 
 
 func _on_row_add(card_name: String) -> void:

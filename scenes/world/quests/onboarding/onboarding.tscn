@@ -1,0 +1,53 @@
+[gd_scene load_steps=3 format=3 uid="uid://donb0ard1scn2"]
+
+[ext_resource type="Script" path="res://scenes/world/quests/onboarding/onboarding.gd" id="1_onb"]
+[ext_resource type="PackedScene" uid="uid://cmob0w0rld1x2" path="res://scenes/world/mob/mob.tscn" id="2_slime"]
+
+[node name="Onboarding" type="Node2D"]
+script = ExtResource("1_onb")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Ground" type="ColorRect" parent="Background"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11, 0.12, 0.15, 1)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(0, 20)
+zoom = Vector2(2.5, 2.5)
+
+[node name="Slime" parent="." instance=ExtResource("2_slime")]
+position = Vector2(190, 44)
+creature_id = "Slime1"
+wander_enabled = false
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="ItemReveal" type="Label" parent="UILayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 30
+text = ""
+
+[node name="Toast" type="Label" parent="UILayer"]
+visible = false
+anchor_left = 0.0
+anchor_top = 0.82
+anchor_right = 1.0
+anchor_bottom = 0.82
+offset_bottom = 36.0
+grow_horizontal = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 20
+text = ""

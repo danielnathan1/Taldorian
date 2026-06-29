@@ -1,0 +1,98 @@
+[gd_scene load_steps=5 format=3 uid="uid://playerctxmenu_whud"]
+
+[ext_resource type="Script" path="res://scenes/world/ui/player_context_menu/player_context_menu.gd" id="1_pcm"]
+
+[sub_resource type="StyleBoxFlat" id="Style_panel"]
+bg_color = Color(0.0824, 0.0941, 0.1216, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2275, 0.2549, 0.3137, 1)
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxEmpty" id="Style_btn_normal"]
+
+[sub_resource type="StyleBoxFlat" id="Style_btn_hover"]
+bg_color = Color(0.5294, 0.8078, 0.8941, 0.12)
+
+[node name="PlayerContextMenu" type="PanelContainer"]
+custom_minimum_size = Vector2(184, 0)
+offset_right = 184.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("Style_panel")
+script = ExtResource("1_pcm")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NameLabel" type="Label" parent="Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.9294, 0.9098, 0.8549, 1)
+theme_override_font_sizes/font_size = 14
+text = "Jogador"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Margin/VBox/Header"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7176, 0.7137, 0.6784, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("Style_btn_normal")
+theme_override_styles/hover = SubResource("Style_btn_hover")
+text = "✕"
+
+[node name="Sep" type="HSeparator" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="BtnDetails" type="Button" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392, 0.8275, 0.7882, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("Style_btn_normal")
+theme_override_styles/hover = SubResource("Style_btn_hover")
+alignment = 0
+text = "  Ver detalhes do jogador"
+
+[node name="BtnFriend" type="Button" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392, 0.8275, 0.7882, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("Style_btn_normal")
+theme_override_styles/hover = SubResource("Style_btn_hover")
+alignment = 0
+text = "  Solicitar amizade"
+
+[node name="BtnTrade" type="Button" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392, 0.8275, 0.7882, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("Style_btn_normal")
+theme_override_styles/hover = SubResource("Style_btn_hover")
+alignment = 0
+text = "  Solicitar troca"
+
+[node name="BtnReport" type="Button" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8784, 0.4196, 0.4196, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("Style_btn_normal")
+theme_override_styles/hover = SubResource("Style_btn_hover")
+alignment = 0
+text = "  Denunciar"

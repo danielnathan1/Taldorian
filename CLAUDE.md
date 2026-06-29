@@ -1,17 +1,78 @@
 # Taldorian TCG — Contexto do Projeto
 
+> **Manutenção deste arquivo:** descreva **arquitetura, regras e convenções** — coisas que mudam devagar.
+> NÃO duplique aqui dados que vivem em arquivos-fonte (lista completa de cartas, ids de efeitos,
+> stats exatos de cada herói linha a linha). Para esses, aponte para a fonte de verdade
+> (`data/cards/taldorian_origins.json`, `card_effect_registry.gd`, os `_init()` dos heróis).
+> Listas duplicadas envelhecem e foi exatamente isso que tornou versões antigas deste doc enganosas.
+
 ## Visão Geral
 
-Card game tático (TCG-like) desenvolvido em Godot 4 com GDScript.
-Inspirado em Flesh and Blood. Multiplayer via LAN usando ENetMultiplayerPeer.
+Card game tático (TCG-like) em **Godot 4.6** (GDScript), inspirado em Flesh and Blood.
+O projeto tem **dois sistemas que rodam juntos** e compartilham a mesma conexão de rede:
+
+1. **TCG** — a partida de cartas (tabuleiro `boardv2`).
+2. **Mundo aberto** — cidade tile-based onde os jogadores andam, conversam, trocam cartas e
+   entram em partidas (salas / fila rápida).
+
+Há ainda um **backend HTTP** (`taldorian-service`, mockado em `localhost:8080`) para autenticação,
+catálogo/loja, boosters, inventário, decks e trocas — acessado via `ApiClient`.
 
 **Diferenciais do jogo:**
-- 3 heróis por jogador (em vez de 1)
-- Sistema de sequência de símbolos que ativa habilidades ativas dos heróis
+- 3 heróis ativos por jogador (de um time maior montado no deck)
+- Sequência de símbolos elementais que ativa habilidades dos heróis
 - Combate por turnos com herói ativo oculto (blefe — revelado ao jogar carta não-furtiva)
-- Exaustão rotativa de heróis (força variedade de uso)
+- Exaustão rotativa de heróis
 - Timing estruturado: ACTION → janela de REACTION → BONUS_ACTION
-- Habilidades de retaguarda interativas (ex: Ieldor escolhe alvo por rodada)
+- Habilidades de retaguarda interativas, habilidades ativadas e tokens
+
+---
+
+## ⚠️ Modelo de Rede — LEIA ANTES DE QUALQUER COISA SOBRE MULTIPLAYER
+
+**NÃO existe mais host/join (peer que também é jogador).** O modelo atual ("Modelo A") é:
+
+```
+┌─────────────────────────┐
+│  SERVIDOR DEDICADO      │  godot --headless -- --world-server   (porta ENet 7001)
+│  (NÃO é jogador)        │  → autoridade ÚNICA de tudo: mundo, salas, trocas e PARTIDAS
+└───────────┬─────────────┘
+            │ ENetMultiplayerPeer
+   ┌────────┴────────┐
+┌──▼──┐           ┌──▼──┐
+│ Cli │ Jogador 0 │ Cli │ Jogador 1    create_client("127.0.0.1", 7001)
+└─────┘           └─────┘
+```
+
+- O servidor é lançado com o argumento `--world-server`. Ele é detectado pelo autoload
+  `WorldServer` ([world_server.gd](src/world/world_server.gd)), que cria o `ENetMultiplayerPeer`
+  servidor e ativa `WorldState` como autoridade. **O servidor não se registra como jogador.**
+- Os **dois jogadores são clientes** comuns: `main.tscn` → tela de login → `create_client(...)`
+  ([login.gd](scenes/ui/login/login.gd)). Não há mais "criar partida / entrar na partida" por IP.
+- `multiplayer.is_server()` é `true` **somente no processo dedicado**. `NetworkState.is_server()`
+  é um wrapper disso. `NetworkState.local_player_index` (0 ou 1) é definido pelo servidor ao
+  iniciar a partida (`MatchService._rpc_begin_match`).
+
+### Como rodar (uma máquina)
+
+```
+1. Servidor dedicado:
+   - Terminal:  godot --headless -- --world-server
+   - Editor:    Debug > Run Multiple Instances → add launch arg:  -- --world-server
+2. Um ou mais clientes (instâncias normais do jogo) que se conectam a 127.0.0.1:7001.
+```
+
+### 🐛 Armadilha de depuração (a que já causou confusão)
+
+**Toda a lógica autoritativa de partida roda SÓ no processo `--world-server`.** Ao iniciar a
+partida, **cada cliente constrói o próprio `Player`/`Hero` localmente** para exibição
+(`GameState._rpc_init_players` → `HeroFactory`/`_hero_from_name`, que instanciam as subclasses reais).
+
+Consequência: **um cliente mostrando valores novos NÃO prova que o servidor tem o código novo.**
+Se você mudar regra de jogo e testar, e o comportamento não mudar:
+→ **reinicie o processo do servidor dedicado.** Reiniciar só as janelas dos jogadores não adianta.
+Os prints de regras (`_fire_missiles`, `CombatResolver`, etc.) aparecem **no console do servidor**,
+não no do cliente.
 
 ---
 
@@ -20,131 +81,113 @@ Inspirado em Flesh and Blood. Multiplayer via LAN usando ENetMultiplayerPeer.
 ```
 taldorian/
 ├── CLAUDE.md
-├── project.godot
+├── project.godot                 # main scene = scenes/ui/main.tscn (embute o login)
 │
 ├── src/
 │   ├── autoload/
-│   │   ├── game_bus.gd           # Signal bus central — único canal de comunicação entre sistemas
-│   │   ├── network_state.gd      # Guarda local_player_index (0=host, 1=cliente), is_server()
-│   │   ├── collection.gd         # Catálogo de cartas disponíveis + coleção do jogador
-│   │   ├── deck_store.gd         # Persiste decks do jogador em user://
-│   │   └── cosmetics_store.gd    # Catálogo de sleeves/playmats + posse do jogador
+│   │   ├── game_bus.gd            # Signal bus central (sinais entre sistemas)
+│   │   ├── network_state.gd       # local_player_index, player_id, is_server()
+│   │   ├── collection.gd          # Catálogo de cartas + coleção do jogador
+│   │   ├── deck_store.gd          # Decks do jogador (via backend / cache)
+│   │   ├── cosmetics_store.gd     # Sleeves/playmats
+│   │   ├── character_store.gd     # Personagem do mundo (aparência) do jogador
+│   │   └── api_client.gd          # Camada HTTP REST p/ o taldorian-service
 │   │
 │   ├── core/
-│   │   ├── game_state.gd         # Autoridade do estado da partida — roda só no servidor
-│   │   ├── combat_resolver.gd    # Resolve dano bidirecional, aplica hooks dos heróis
-│   │   ├── battle_manager.gd     # Rastreia fase atual e jogador ativo (enum Phase)
-│   │   ├── turn_context.gd       # Contexto bidirecional passado ao resolver combate
-│   │   ├── game_symbols.gd       # Constantes de símbolo + display_chain()
-│   │   └── symbol_chain.gd       # Detecta e valida subsequências contíguas (máx 3)
+│   │   ├── game_state.gd          # Autoridade da partida + rede (multi-sala). Roda no servidor.
+│   │   ├── match_state.gd         # MatchState: estado puro de UMA partida (container de dados)
+│   │   ├── combat_resolver.gd     # Resolve dano bidirecional do turno
+│   │   ├── battle_manager.gd      # Fase atual + jogador ativo (enum Phase)
+│   │   ├── turn_context.gd        # Contexto passado ao resolver combate
+│   │   ├── game_symbols.gd        # Constantes de símbolo (5) + de-para com a API
+│   │   └── symbol_chain.gd        # Detecta subsequências contíguas (máx 3)
 │   │
-│   └── entities/
-│       ├── heros/
-│       │   ├── hero_base.gd      # Classe base abstrata dos heróis (hooks virtuais)
-│       │   ├── hero_poppy.gd     # Poppy — Barbarian
-│       │   ├── hero_irena.gd     # Irena — Cleric
-│       │   ├── hero_hakai.gd     # Hakai — Rogue
-│       │   ├── hero_ieldor.gd    # Ieldor — Ranger (habilidade de retaguarda interativa)
-│       │   ├── hero_nissin.gd    # Nissin — Monk
-│       │   └── hero_valkar.gd    # Valkar — Guardian
-│       ├── effects/              # 60+ implementações concretas de CardEffect
-│       ├── hero_factory.gd       # Instancia o time padrão de 6 heróis
-│       ├── hero.gd               # Modelo de herói (stats, estado, hooks, símbolos)
-│       ├── card.gd               # Modelo de carta (tipo, valor, símbolos, raridade, efeitos)
-│       ├── card_effect.gd        # Classe base CardEffect — hook apply()
-│       ├── card_effect_context.gd   # Contexto passado para CardEffect.apply()
-│       ├── card_effect_registry.gd  # Mapeia effect_id → CardEffect para todas as 84 cartas
-│       ├── deck_loader.gd        # Carrega deck de JSON e instancia Cards (máx 3 cópias, 300 cartas)
-│       ├── deck_data.gd          # Struct para serializar deck (heróis + lista de cartas)
-│       └── player.gd             # Gerencia heróis, deck, mão, arsenal, modificadores pendentes
+│   ├── entities/
+│   │   ├── heros/                 # hero.gd é a BASE real (extends RefCounted). 7 heróis jogáveis.
+│   │   ├── effects/               # ~90 implementações concretas de CardEffect
+│   │   ├── tokens/                # Tokens de partida (magic_missile, arcane_fragment)
+│   │   ├── hero.gd                # Modelo/base de herói (stats, estado, hooks virtuais)
+│   │   ├── hero_factory.gd        # make_team() — instancia o pool de heróis
+│   │   ├── card.gd                # Modelo de carta
+│   │   ├── card_effect.gd         # Base CardEffect + enum Timing
+│   │   ├── card_effect_context.gd # Contexto de CardEffect
+│   │   ├── card_effect_registry.gd# effect_id → CardEffect (fonte de verdade dos efeitos)
+│   │   ├── deck_loader.gd         # Carrega deck de JSON → Cards
+│   │   ├── deck_data.gd           # Serialização de deck (heróis + cartas)
+│   │   ├── token.gd / token_factory.gd  # Base de Token + factory por token_id
+│   │   └── player.gd              # Heróis, deck, mão, arsenal, tokens, modificadores pendentes
+│   │
+│   └── world/                     # Servidor de mundo + serviços (autoridade no dedicado)
+│       ├── world_server.gd        # Sobe o servidor dedicado quando há --world-server
+│       ├── world_state.gd         # Estado do mundo (posições, chat) — autoridade
+│       ├── world_trade.gd         # Sessões de troca entre jogadores
+│       ├── room_service.gd        # Salas de batalha (criar/entrar/ranqueada)
+│       ├── room_info.gd           # Struct de sala
+│       ├── match_service.gd       # Fila rápida + begin_match_between → board
+│       ├── map_loader.gd / encounter_manager.gd
 │
 ├── scenes/
 │   ├── ui/
-│   │   ├── boardv2/              # Tabuleiro principal (substitui board/)
-│   │   │   ├── board.gd / board.tscn         # Controlador principal do tabuleiro
-│   │   │   ├── half_board.gd / .tscn         # Metade do tabuleiro (cada jogador)
-│   │   │   ├── center_bar.gd / .tscn         # Barra central com heróis ativos e preview de dano
-│   │   │   ├── player_hand.gd                # Mão do jogador (drag/drop)
-│   │   │   ├── hero_pick_screen.gd           # Seleção de herói (HERO_SELECTION)
-│   │   │   ├── mulligan_screen.gd            # Opening mulligan (OPENING_MULLIGAN)
-│   │   │   ├── card_preview.gd               # Preview ao passar mouse sobre carta
-│   │   │   ├── card_animator.gd              # Animações de carta (jogar, comprar)
-│   │   │   ├── arsenal_screen.gd             # Visual do arsenal
-│   │   │   ├── game_result/                  # Tela de vitória/derrota
-│   │   │   ├── turn_transaction/             # Animação de transição de turno
-│   │   │   ├── combat_resolve/               # Animação de resolução de dano
-│   │   │   ├── pick_card/                    # Overlay de escolha de carta (tutor/scry)
-│   │   │   ├── pick_symbol/                  # Overlay de escolha de símbolo
-│   │   │   ├── discart_card/                 # Overlay de descarte
-│   │   │   └── backline_ability/             # Overlay de habilidade de retaguarda interativa
-│   │   ├── lobby/
-│   │   │   ├── lobby.tscn
-│   │   │   └── lobby.gd
-│   │   ├── card_view/
-│   │   │   ├── card_view.tscn
-│   │   │   └── card_view.gd
-│   │   ├── hero_slot/
-│   │   │   ├── hero_slot.tscn
-│   │   │   └── hero_slot.gd
-│   │   ├── card_popup/
-│   │   │   ├── card_popup.tscn
-│   │   │   └── card_popup.gd
-│   │   ├── hero_popup/
-│   │   │   ├── hero_popup.tscn
-│   │   │   └── hero_popup.gd
-│   │   ├── card_preview/         # Cena reutilizável de preview de carta
-│   │   ├── pick_hero/            # Seleção de herói para deck
-│   │   ├── deck_shuffle/         # Animação de embaralhamento
-│   │   └── skill_animations/     # Animações de habilidades ativas
+│   │   ├── main.tscn              # Cena principal (embute login)
+│   │   ├── login/                 # Login/cadastro → conecta ao servidor
+│   │   ├── character_creator/     # Criação do personagem do mundo
+│   │   ├── lobby/                 # (legado do fluxo antigo)
+│   │   ├── room_lobby/            # Lista/seleção de salas
+│   │   ├── match_room/            # Sala de espera (assentos + ready) antes da partida
+│   │   ├── deck_builder/          # Construtor de deck (+ componentes)
+│   │   ├── deck_list/             # Lista de decks do jogador
+│   │   ├── booster_shop/          # Loja de boosters
+│   │   ├── worldhud/ , pausemenu/ , token_view/ , card_view/ , hero_slot/ , card_popup/ , hero_popup/
+│   │   └── boardv2/              # TABULEIRO da partida (ver abaixo)
+│   │       ├── board.gd/.tscn , half_board.gd/.tscn , center_bar.gd/.tscn
+│   │       ├── player_hand.gd , card_animator.gd , card_preview.gd
+│   │       ├── hero_pick_screen , mulligan_screen , arsenal_screen
+│   │       ├── pick_card/ , pick_symbol/ , pick_ally/ , discart_card/
+│   │       ├── fragment_shop/    # Loja do Fragmento Arcano (Relicar)
+│   │       ├── stealth_confirm/  # Confirma quebrar furtividade (passiva do Relicar)
+│   │       ├── deck_reveal/ , graveyard_viewer/
+│   │       ├── turn_transaction/ , combat_resolve/ , game_result/
 │   │
-│   └── world/                    # Sistema de mundo aberto multiplayer (separado do TCG)
-│       ├── player/
-│       │   ├── player_character.gd / .tscn
-│       │   └── remote_player.gd
-│       ├── maps/
-│       │   ├── map_base.gd
-│       │   └── floresta_inicial.gd
-│       ├── ui/
-│       │   └── hud_world.gd
-│       ├── world_root.gd / .tscn
-│       └── world_connect.gd
+│   ├── world/                     # Mundo aberto (separado do TCG)
+│   │   ├── world_root.gd/.tscn , world_connect.gd
+│   │   ├── player/ (player_character, remote_player)
+│   │   ├── maps/ (map_base, taldorian_city, floresta_inicial)
+│   │   └── ui/ (hud_world, player_context_menu, trade/, trade_request/)
+│   │
+│   └── vfx/                        # magic_missiles, arcane_fragments, arrow_rain, holy_heal,
+│                                   # battle_fury, assassin_attack, combat_resolution, single_target_heal
 │
-├── assets/
-│   ├── card/                     # Arte das cartas
-│   ├── fonts/                    # Cinzel_Decorative
-│   ├── heros/                    # hero_poppy.png, hero_hakai.png, etc.
-│   ├── icons/
-│   ├── images/
-│   ├── playmats/                 # Tapetes customizáveis
-│   └── sleve/                    # Arte do verso das cartas (sleeves)
-│
-├── audio/
-│   └── theme/                    # Música temática de batalha
-│
+├── assets/ , audio/
 └── data/
-    ├── cards/
-    │   └── taldorian_origins.json # 84 cartas do set base, definidas em JSON
-    ├── cosmetics.json            # Catálogo de sleeves e playmats disponíveis
-    ├── player_cards.json         # Coleção de cartas do jogador (persistida)
-    └── player_cosmetics.json     # Cosméticos desbloqueados (persistido)
+    ├── cards/taldorian_origins.json   # SET BASE — fonte de verdade das cartas
+    ├── cosmetics.json                 # Catálogo de sleeves/playmats
+    └── player_cosmetics.json          # Cosméticos desbloqueados (persistido)
 ```
+
+> Nota: `src/entities/heros/hero_base.gd` é **legado** e não é usado pelos heróis atuais —
+> todos estendem `Hero` ([hero.gd](src/entities/hero.gd)).
 
 ---
 
-## Autoloads Registrados
-
-Ordem de carregamento (respeitar — GameState depende dos anteriores):
+## Autoloads Registrados (ordem de carregamento — respeitar)
 
 ```
-GameBus          →  res://src/autoload/game_bus.gd
-NetworkState     →  res://src/autoload/network_state.gd
-GameState        →  res://src/core/game_state.gd
-WorldState       →  res://src/world/world_state.gd
-WorldServer      →  res://src/world/world_server.gd
-Collection       →  res://src/autoload/collection.gd
-DeckStore        →  res://src/autoload/deck_store.gd
-CosmeticsStore   →  res://src/autoload/cosmetics_store.gd
+GameBus          src/autoload/game_bus.gd          # signal bus
+NetworkState     src/autoload/network_state.gd      # índice local, player_id, is_server()
+GameState        src/core/game_state.gd             # autoridade da partida + rede
+WorldState       src/world/world_state.gd           # estado do mundo (autoridade)
+WorldServer      src/world/world_server.gd          # sobe o servidor dedicado (--world-server)
+WorldTrade       src/world/world_trade.gd           # trocas entre jogadores
+Collection       src/autoload/collection.gd
+DeckStore        src/autoload/deck_store.gd
+CosmeticsStore   src/autoload/cosmetics_store.gd
+CharacterStore   src/autoload/character_store.gd    # personagem do mundo (backend /players/me/character; user:// é só cache)
+RoomService      src/world/room_service.gd          # salas de batalha
+MatchService     src/world/match_service.gd         # fila rápida → board
+ApiClient        src/autoload/api_client.gd         # HTTP REST (taldorian-service)
 ```
+
+Autoloads herdam de `Node` e **não** usam `class_name`.
 
 ---
 
@@ -153,627 +196,495 @@ CosmeticsStore   →  res://src/autoload/cosmetics_store.gd
 ### Separação de responsabilidades
 
 ```
-src/core/       Lógica pura de jogo. Sem nodes, sem UI.
-                Herda de RefCounted ou é classe estática.
-                Não conhece nada de scenes/.
-
-src/entities/   Modelos de dados. Sem nodes, sem UI.
-                Herda de RefCounted.
-                Pode usar GameBus para emitir sinais.
-
-scenes/         Só reage — nunca decide.
-                Escuta GameBus e atualiza visual.
-                Nunca contém regras de jogo.
-                Nunca chama GameState diretamente (só via RPC).
+src/core/      Lógica pura de jogo (RefCounted / estático). Sem nodes, sem UI.
+src/entities/  Modelos de dados (RefCounted). Sem nodes, sem UI. Podem emitir via GameBus.
+src/world/     Serviços de rede do mundo/salas/trocas (autoloads Node, autoridade no servidor).
+scenes/        Só reagem — nunca decidem. Escutam GameBus e atualizam visual.
+               Nunca contêm regra de jogo. Falam com o servidor via GameState.rpc_*(...).
 ```
 
-### A cena não pensa, ela exibe
+**A cena não pensa, ela exibe.** Validação de jogada, cálculo de dano e verificação de fase
+ficam em `src/core/` / `src/entities/`, nunca num `.gd` de cena.
 
-Se encontrar lógica de jogo dentro de um `.gd` de cena (validação de jogada, cálculo de dano, verificação de fase), mover para `src/core/`.
-
-### Comunicação entre sistemas
+### Comunicação
 
 ```
-Ação do jogador  →  emit via GameBus  →  GameState processa
-GameState        →  emit via GameBus  →  Board reage e atualiza UI
+Ação do jogador  →  cena chama  GameState.<rpc>.rpc_id(1, ...)   (1 = servidor dedicado)
+Servidor valida no MatchState autoritativo  →  _emit_sync()  →  snapshot p/ os 2 peers
+Cliente recebe _sync_state  →  GameBus.state_synced  →  Board redesenha
 ```
 
-Nunca referência direta entre cenas. Sempre via GameBus.
+Nunca referencie uma cena diretamente de outra. Estado de jogo viaja por snapshot; eventos
+transientes (VFX, fim de jogo, preview) viajam por sinais direcionados do GameBus.
 
 ---
 
-## Sistema de Rede (Multiplayer LAN)
+## GameState — Partida e Rede
 
-### Papéis
+`GameState` é autoload e concentra **lógica + rede**. O estado mutável de cada partida vive num
+`MatchState` ([match_state.gd](src/core/match_state.gd)); o GameState expõe proxies
+(`players`, `battle`, etc.) para que os corpos de método não mudem.
+
+### Multi-sala (Modelo A)
+
+- O servidor mantém **N partidas isoladas**: `_matches: match_id → MatchState`, com
+  `_peer_to_match` e `MatchState._match_peer_to_idx` (peer → 0/1).
+- Cada RPC roteia `_m` para a partida do remetente via `_peer_to_player_index(sender)`.
+- `register_match(peerA, peerB)` cria a sala; `_emit_sync()` envia o snapshot **só** aos 2 peers
+  da partida (e aplica no próprio servidor). Eventos visuais usam `_match_targets()`.
+- Desconexão de um peer em partida → o oponente vence (`_on_peer_disconnected`).
+
+### RPCs que o cliente chama (sempre `rpc_id(1, "<nome>", ...)`)
+
+Métodos públicos com prefixo `rpc_` em [game_state.gd](src/core/game_state.gd) (`@rpc("any_peer","call_local","reliable")`,
+guardados por `if not multiplayer.is_server(): return`):
 
 ```
-Servidor (host, peer_id = 1)  →  autoridade única do GameState
-Cliente  (peer_id != 1)       →  envia intenções, recebe estado
+rpc_submit_deck(deck_dict)                       # submete o deck escolhido
+rpc_submit_mulligan(idx_a, idx_b)                # devolve 2 cartas ao fundo
+rpc_submit_hero(hero_slot)                        # escolhe herói ativo (HERO_SELECTION)
+rpc_respond_backline_ability(use)                # usa/passa habilidade de retaguarda
+rpc_submit_backline_target(target_player, target_hero)
+rpc_respond_stealth_passive(use)                 # confirma quebrar furtividade (Relicar)
+rpc_submit_ally_pick(hero_idx)                    # escolhe herói aliado (ex.: cura)
+rpc_ack_reveal()                                  # confirma "olhar topo do deck" (Fragmento)
+rpc_play_card(hand_idx)                           # joga carta da mão
+rpc_play_from_arsenal()                           # joga carta do arsenal
+rpc_activate_ability(ability_id, targets)         # habilidade ativada (ex.: disparar mísseis)
+rpc_buy_fragment_effect(effect_id)                # compra efeito na loja do Fragmento Arcano
+rpc_pass()                                         # passa reação/segmento
+rpc_submit_card_pick(pick_indices)                # resolve overlay de pick de carta
+rpc_submit_symbol_pick(chosen_symbols)            # resolve overlay de pick de símbolo
+rpc_finish_battle(arsenal_idx)                    # guarda carta no arsenal (-1 = não guardar)
+rpc_forfeit()                                      # desiste da partida
 ```
-
-### Fluxo de uma ação
-
-```
-Cliente clica em jogar carta
-  → board.gd chama GameState.rpc_id(1, "rpc_play_card", hand_idx)
-    → servidor valida via action_play_card()
-      → servidor chama _sync_state.rpc()
-        → GameBus.state_synced emitido em todos
-          → Board._on_state_synced() redesenha
-```
-
-### Métodos RPC no GameState
-
-Todos os métodos públicos que clientes chamam têm prefixo `rpc_`:
-
-```gdscript
-rpc_submit_opening_mulligan(idx_a: int, idx_b: int)  # devolve 2 cartas ao fundo do deck
-rpc_submit_hero(hero_slot: int)                       # escolha de herói na HERO_SELECTION
-rpc_submit_backline_ability(use: bool, target: int)   # usa ou passa habilidade de retaguarda
-rpc_play_card(hand_idx: int)                          # jogar carta da mão
-rpc_play_from_arsenal()                               # jogar carta do arsenal
-rpc_pass()                                            # passar janela de reação ou segmento
-rpc_finish_battle(arsenal_idx: int)                   # encerrar batalha guardando carta no arsenal (-1 = não guardar)
-rpc_submit_card_pick(index: int)                      # resolve overlay de pick_card
-rpc_submit_symbol_pick(symbols: Array)                # resolve overlay de pick_symbol
-```
-
-### Identificação do jogador local
-
-```gdscript
-NetworkState.local_player_index  # 0 = host, 1 = cliente
-NetworkState.is_server()         # true se este peer é o servidor
-```
-
-Sempre usar isso pra decidir qual lado da tela é "você".
 
 ---
 
-## Fases do Jogo
+## Backend HTTP (ApiClient)
+
+[api_client.gd](src/autoload/api_client.gd) — `BASE_URL = http://localhost:8080` (mock). Toda chamada é
+corrotina (`await`) e devolve `{ ok, status, data, error }`. Anexa `Authorization: Bearer` automaticamente.
 
 ```
-OPENING_MULLIGAN  →  cada jogador devolve 2 cartas ao fundo e compra novas até 6
-DRAW              →  jogador ativo compra cartas até o limite (4); se > 6, devolve excedente
-HERO_SELECTION    →  jogadores escolhem herói ativo simultaneamente (face-down)
+/auth/register , /auth/login           # tokens em memória
+/players/me                            # perfil (cacheia player_id em NetworkState)
+/players/me/character                  # GET/PUT aparência do personagem (CharacterStore; 404 = sem personagem)
+/players/me/inventory                  # heróis/cartas/playmats possuídos
+/catalog/collections                   # loja
+/boosters/open                         # abrir pacote
+/decks , /decks/{id}                   # CRUD de decks
+/trades                                # efetiva troca (chamado pelo servidor de mundo)
+```
+
+> Símbolos no backend usam nomes em inglês — ver `GameSymbols.TO_API/FROM_API`
+> (fogo→FIRE, agua→WATER, terra→EARTH, ar→WIND, raio→LIGHTNING).
+
+---
+
+## Fases do Jogo (BattleManager.Phase)
+
+```
+OPENING_ROLL      →  cada jogador rola 2d6 (drag-arremesso); maior total escolhe quem começa
+OPENING_MULLIGAN  →  cada jogador devolve 2 cartas ao fundo e compra até 6
+DRAW              →  jogador ativo compra até o limite; excedente (>6) volta ao fundo
+HERO_SELECTION    →  escolha simultânea de herói ativo (face-down)
 BACKLINE_ABILITY  →  habilidades de retaguarda interativas resolvem (ex: Ieldor)
 ACTION            →  rodadas de combate: ACTION → REACTION → BONUS_ACTION
 COMBAT            →  resolução de dano ao fim de cada rodada
-END               →  guardar carta no arsenal; comprar 4; exaustar herói ativo
+END               →  guardar carta no arsenal; comprar; exaustar herói ativo
 ```
 
-Transição de fase emitida via:
-```gdscript
-GameBus.phase_changed.emit(phase_name: String)
-```
+Transição emitida via `GameBus.phase_changed.emit(phase_name: String)`.
+Telas de fase começam com `visible = false` no editor.
 
-Todas as telas de fase começam com `visible = false` no editor.
+### OPENING_ROLL — rolagem de dados de abertura
+
+Primeira fase da partida. Cada jogador arremessa 2d6 (clicar-arrastar-soltar). O **valor é
+autoritativo do servidor** (`rpc_submit_dice_throw` sorteia `randi_range(1,6)` ×2); a física é
+uma **animação guiada** ([dice_roll.gd](scenes/ui/boardv2/dice_roll/dice_roll.gd), dados 3D num
+`SubViewport`) que termina na face do valor — o vetor do arrasto é só cosmético (sincronizado para
+o oponente animar). Maior total vence; **empate → re-roll**. O vencedor escolhe quem começa
+(`rpc_choose_first_player`), o que define `current_player_index` ao iniciar a batalha (antes era
+fixo em 0). Estado em `MatchState._dice_*` / `_first_player` (serializado no snapshot).
+
+### Limites de mão (Player)
+
+| Constante               | Valor | Descrição                                |
+|-------------------------|-------|------------------------------------------|
+| `HAND_CAP_START`        | 6     | Máximo de cartas na mão                  |
+| `HAND_SIZE_REFILL_DRAW` | 4     | Cartas compradas ao final do turno (END) |
+
+Deck embaralhado por Fisher-Yates em `_shuffle_deck()`. Limites de cópias/deck em `DeckLoader`.
 
 ---
 
-## Regras de Deck e Mão
+## Timing — Rodada (fase ACTION)
 
-### Limites de mão
+Uma **rodada** tem dois **segmentos** (um por jogador). Após ambos, o combate resolve.
 
-| Constante               | Valor | Descrição                               |
-|-------------------------|-------|-----------------------------------------|
-| `HAND_CAP_START`        | 6     | Limite máximo de cartas na mão          |
-| `HAND_SIZE_REFILL_DRAW` | 4     | Cartas compradas ao final do turno (END)|
+```
+1. Jogador ativo joga uma carta ACTION (ou do arsenal)
+   └─ Revela o herói se não-furtiva
+   └─ Executa efeitos INSTANT (pré-janela)
+   └─ Abre JANELA DE REAÇÃO ao oponente (a menos que reações estejam bloqueadas)
+2. Oponente reage (REACTION fecha a janela) ou passa
+3. Efeitos AFTER_REACTION da carta ACTION resolvem
+4. Jogador ativo pode jogar uma BONUS_ACTION (sem abrir reação)
+5. Segmento encerra — vez passa ao oponente
+```
 
-Na fase DRAW, o jogador compra cartas. Se já tiver ≥ 6, não compra nada. Cartas excedentes vão ao fundo do deck.
-
-### Limite de cópias por deck
-
-- Máximo de cópias definido no campo `"copies"` de cada carta em `data/cards/taldorian_origins.json`
-- Limite global: `MAX_COPIES = 3`, `MAX_DECK_SIZE = 300` (validado em `DeckLoader`)
-
-O deck é embaralhado no início da partida via Fisher-Yates em `_shuffle_deck()`.
+A fase ACTION encerra quando: 2 rodadas consecutivas sem ACTION (ambos passaram), **ou** ambos
+sem cartas na mão. Habilidades ativadas (ver abaixo) também consomem ACTION/BONUS conforme o custo.
 
 ---
 
-## Timing — Fases da Rodada (ACTION)
+## Herói Face-Down e Furtividade
 
-Uma **rodada** tem dois **segmentos** (um por jogador). Após ambos completarem seus segmentos, o combate resolve.
+O herói ativo do oponente começa **oculto**. É **revelado** quando: joga uma carta ACTION
+não-furtiva (mão ou arsenal); a fase COMBAT começa; ou a fase END começa. Estado rastreado em
+`_hero_revealed[player_idx]` no GameState.
 
-### Sequência de um segmento
+Cartas furtivas (`is_stealth = true`) não revelam o herói. Alguns heróis/efeitos ganham
+furtividade cross-turn (`next_turn_stealth`, `pending_next_turn_stealth`).
+Heróis com `starts_face_up = true` aparecem de cara para cima **mesmo na retaguarda** — ver isso
+na tela não prova que o herói é o ativo. (Hoje nenhum herói usa `starts_face_up`.)
 
-```
-1. Jogador ativo pode jogar uma carta ACTION (ou do arsenal)
-   └─ Revela o herói se a carta não for furtiva
-   └─ Executa efeitos pre_window (antes de abrir reação)
-   └─ Abre JANELA DE REAÇÃO para o oponente
+### Confirmação de passiva de frontline (Muro de Aço da Valkar)
 
-2. Janela de reação (oponente)
-   └─ Oponente pode jogar carta REACTION (fecha a janela imediatamente)
-   └─ Oponente pode passar (fecha a janela)
-   └─ Se pending_cancel_reaction == true: janela não abre
+Heróis com `wants_frontline_confirm() -> true` (Valkar) entram **furtivos como qualquer um**.
+Depois que **ambos** escolhem o ativo (`submit_hero_pick`), o servidor abre — só para o dono,
+reusando o `StealthConfirm` — a opção de **quebrar a furtividade e ativar a passiva**:
+- **Sim** → revela o herói + liga `wall_active` + `skill_activated` (VFX/popup).
+- **Não** → segue furtivo (sem proteção neste turno).
 
-3. Efeitos pós-reação da carta ACTION são executados
-
-4. Jogador ativo pode jogar uma carta BONUS_ACTION
-   └─ Não abre janela de reação
-
-5. Segmento encerra — vez passa para o oponente
-```
-
-### Condição de fim de rodada
-
-Após ambos os segmentos, o combate da rodada resolve. Uma nova rodada começa se nenhum herói for derrotado. A fase ACTION encerra quando:
-- 2 rodadas consecutivas sem ACTION jogada (ambos passaram), **ou**
-- Ambos os jogadores sem cartas na mão
-
----
-
-## Lógica de Herói Face-Down
-
-### Visibilidade do herói ativo do oponente
-
-O herói ativo do oponente começa **oculto**. Ele é **revelado** quando:
-
-1. O oponente joga uma carta ACTION **não-furtiva** (`is_stealth == false`)
-2. O oponente joga uma carta ACTION do arsenal **não-furtiva**
-3. A fase COMBAT começa (todos os heróis não revelados são forçadamente revelados)
-4. A fase END começa
-
-Estado rastreado em `_hero_revealed[player_idx]: bool` no GameState.
-
-### Cartas furtivas (`is_stealth = true`)
-
-- Não revelam o herói ao serem jogadas
-- Permitem manter o blefe por mais um segmento
-- Alguns heróis podem ganhar `pending_next_turn_stealth` para ficar furtivos no próximo turno
+`wall_active` também liga sozinho se o herói se revelar durante a fase **ACTION** (jogar carta
+não-furtiva) — ver `_activate_wall_on_reveal` (não dispara na revelação forçada de COMBAT/END).
+Estado server-side em `_frontline_confirm_player/_hero_idx`, RPC `rpc_respond_frontline_passive`,
+flag `wall_active` por herói (resetado a cada turno, serializado no snapshot).
 
 ---
 
 ## Arsenal
 
-- **Máximo 1 carta.** Se o jogador guardar uma segunda carta, a anterior vai ao fundo do deck.
-- A carta do arsenal é visível para ambos os jogadores (face-up).
-- Pode ser jogada como ACTION, BONUS_ACTION ou REACTION seguindo as mesmas regras de timing.
-- Alguns efeitos se ativam apenas quando a carta foi jogada do arsenal (`played_from_arsenal == true`).
+- Máximo **1 carta**. Guardar uma segunda manda a anterior ao fundo do deck.
+- Visível para ambos (face-up).
+- Jogável como ACTION, BONUS_ACTION ou REACTION (mesmas regras de timing).
+- Efeitos podem checar `played_from_arsenal`.
 
 ---
 
-## Combate — Resolução de Dano
+## Combate — Resolução (CombatResolver.resolve_turn)
 
-### Fórmula (CombatResolver.resolve_turn)
+Resolve as duas direções do turno usando `turn_cards` (dano) e `cards_this_battle` (cadeia).
 
 ```
-Ataque bruto   = hero.base_attack
-               + soma de attack_value das turn_cards
-               + pending_bonus_attack
-               + next_turn_bonus_attack (cross-turn, ex: Guarda Inabalável)
-               - next_attack_penalty (Finta do oponente)
+Ataque  = base_attack + Σ turn_cards.attack_value
+          + (se NÃO pending_attack_locked: pending_bonus_attack + battle_bonus_attack
+             + pending_stealth_hidden_bonus)
+          − battle_attack_penalty   (debuff do turno — ex.: Finta; keyed no próprio atacante)
+Defesa  = base_defense + Σ turn_cards.defense_value − next_defense_penalty + pending_bonus_defense
+          (Fortaleza Inabalável: enquanto pending_defense_scales_attack está ativo, cada carta
+           com defense_value>0 jogada dá +1 de ataque — aplicado em _on_card_added_to_play)
 
-Defesa bruta   = hero.base_defense
-               + soma de defense_value das turn_cards
-               + pending_bonus_defense
-               (se pending_defense_scales_attack: defesa = ataque total)
-
-Dano bruto     = max(0, Ataque bruto - Defesa bruta)
-               - pending_damage_shield (Fluxo Reativo)
-
-Dano final     = max(0, on_before_damage_taken(Dano bruto))   ← hook do herói defensor
+Dano    = max(0, (Ataque + ctx.bonus_damage) − (Defesa + ctx.bonus_block))
+          − Σ get_team_damage_reduction (heróis de suporte, ex.: passivas de redução)
+final   = max(0, defender.on_before_damage_taken(...))   ← hook do defensor
+final   = absorb_shield(final)                            ← escudo (damage_shield)
+se final>0 e marcado (marked_target): final += marked_bonus   ← Marca do Caçador
+defender.take_damage(final)
 ```
 
-### Efeitos condicionais pós-dano
+### Efeitos condicionais ao RESULTADO migraram para AFTER_TURN
 
-| Condição | Efeito |
-|----------|--------|
-| Dano final == 0 e `pending_on_zero_damage_self_damage` > 0 | Atacante sofre esse dano e compra cartas |
-| Dano final == 0 e `pending_counter_damage` > 0 | Atacante sofre dano de contra-ataque |
-| Dano final > 0 e `pending_destroy_opponent_arsenal` | Arsenal do oponente é destruído |
-| `pending_ricochet` == true | Dano é refletido de volta ao atacante |
-| `pending_heal_after_combat` > 0 | Defensor cura após receber dano |
-| `pending_on_full_block_draw` > 0 (dano == 0) | Defensor compra cartas |
-| `pending_on_full_block_heal` > 0 (dano == 0) | Defensor cura |
-
-Todos os `pending_*` são zerados em `reset_turn_modifiers()` após cada resolução.
+Contra-ataque, ricochete, destruir arsenal, cura pós-combate, compra por bloqueio total, etc.
+**não** são tratados no CombatResolver. São efeitos com `Timing.AFTER_TURN`, enfileirados ao
+jogar a carta e drenados (FIFO) pelo GameState após o combate, quando o dano já é conhecido
+(`CardEffectContext.damage_dealt / damage_taken`). Ver `CardEffect.resolve_after_combat`.
 
 ---
 
-## Sistema de Símbolos e Habilidades
+## Símbolos e Cadeia
 
-### Constantes (GameSymbols)
+### Constantes (GameSymbols) — **5 elementos**
 
 ```gdscript
 GameSymbols.FOGO   # "fogo"
 GameSymbols.TERRA  # "terra"
 GameSymbols.AGUA   # "agua"
-GameSymbols.AR     # "ar"
+GameSymbols.AR     # "wind"        (id local alinhado ao backend)
+GameSymbols.RAIO   # "lightning"
 
-GameSymbols.ALL    # [FOGO, TERRA, AGUA, AR]
+GameSymbols.ALL    # [FOGO, TERRA, AGUA, AR, RAIO]
 GameSymbols.display_chain(symbols)  # → "Fogo · Terra · Água"
 ```
 
 Sempre usar as constantes — nunca strings literais.
 
-### Cadeia de símbolos
+### Cadeia
 
-- Acumulada de `cards_this_battle` (todas as cartas jogadas na batalha atual).
-- Cada carta contribui com todos os seus símbolos.
-- Verificada como **subsequência contígua** dentro da cadeia acumulada.
-- **Tamanho máximo da cadeia:** 3 símbolos (`SymbolChain.MAX_CHAIN`).
-- Quando os `symbols_required` do herói são encontrados: habilidade ativa dispara, GameBus emite `skill_activated`.
+- Acumulada de `cards_this_battle` (+ `bonus_chain_symbols`, ex.: Fragmento Arcano injeta símbolos fora de carta).
+- Verificada como **subsequência contígua** (`SymbolChain`, máx **3** símbolos).
+- Quando o gatilho do herói ativo dispara: `on_skill_activated` roda e `GameBus.skill_activated` é emitido.
+- O gatilho padrão é `symbols_required` contíguo; heróis podem sobrescrever `is_skill_triggered`
+  (ex.: Relicar = "2 elementos distintos").
 
 ---
 
 ## Entidades
 
-### Hero (src/entities/heros/hero_base.gd)
+### Hero ([hero.gd](src/entities/hero.gd) — base real, `extends RefCounted`)
+
+Campos: `hero_name, hero_class, max_hp/current_hp, base_attack/base_defense, state, symbols_required,
+skill_name/skill_desc, passive_name/passive_desc, skill_animation, damage_shield, starts_face_up, ...`
+
+Hooks virtuais (override só do necessário) — lista atual, abreviada:
 
 ```gdscript
-class_name HeroBase extends RefCounted
+# Habilidades
+on_skill_activated(player)                 # cadeia completada
+is_skill_triggered(chain) -> bool          # gatilho custom da skill
+get_active_abilities(player, opp) -> Array[Dictionary]   # habilidades ativadas (ver abaixo)
+activate_ability(id, player, opp, targets) -> String
+has_backline_ability() / apply_backline_ability(...)     # retaguarda interativa (Ieldor)
+on_support_battle_start(player, opp) -> String           # passiva de retaguarda
+on_card_discarded(card, player) -> String                # gatilho de descarte (Relicar)
+discard_passive_reveals() -> bool
 
-# Definidos no _init() de cada subclasse
-var hero_name: String
-var hero_class: HeroClass
-var max_hp, current_hp: int
-var base_attack, base_defense: int
-var state: State  # ACTIVE, EXHAUSTED, DEFEATED
-var symbols_required: Array[String]
-var skill_name, skill_desc: String
-var passive_name, passive_desc: String
-var art_key: String
-var is_backline_revealed: bool
+# Combate / dano
+on_before_attack(ctx) ; on_after_damage_dealt(dmg, ctx)
+on_before_damage_taken(amount, ctx) -> int ; on_after_damage_taken(ctx)
+get_team_damage_reduction(ctx) -> int      # reduz dano a aliado (suporte)
+get_aoe_damage_reduction(ctx) -> int       # reduz dano de área por herói
+protects_backline_from_targeting() -> bool # impede aliados de serem ALVO (Valkar frontline)
+get_passive_attack_bonus() -> int
 
-# Hooks virtuais — override só do necessário
-func on_skill_activated(player: Player) -> void: pass
-func on_support_battle_start(player: Player, opponent: Player) -> void: pass  # passiva de retaguarda
-func on_battle_start(player: Player) -> void: pass
-func on_card_played(card: Card, player: Player) -> void: pass
-func on_before_attack(ctx: TurnContext) -> void: pass
-func on_after_damage_dealt(damage: int, ctx: TurnContext) -> void: pass
-func on_before_damage_taken(amount: int, ctx: TurnContext) -> int: return amount
-func on_after_damage_taken(ctx: TurnContext) -> void: pass
-func on_battle_end(player: Player) -> void: pass
-func on_turn_reset() -> void: pass
-func has_backline_ability() -> bool: return false
-func apply_backline_ability(player: Player, opponent: Player, target: int) -> void: pass
-func get_team_damage_reduction(ctx: TurnContext) -> int: return 0
-func get_passive_attack_bonus() -> int: return 0
+# Ciclo
+on_battle_start(player) ; on_battle_end(player) -> String ; on_turn_reset() ; on_defeated(ctx)
 ```
 
-### Estados do herói
+Estados: `ACTIVE` / `EXHAUSTED` / `DEFEATED`. Quando todos os vivos ficam EXHAUSTED, todos
+voltam a ACTIVE. Heróis são instanciados **apenas** via `HeroFactory` / `_hero_from_name`.
 
-```
-ACTIVE     →  disponível para seleção
-EXHAUSTED  →  já atuou neste turno (não selecionável até todos exaustos)
-DEFEATED   →  eliminado (hp == 0)
-```
+### Card ([card.gd](src/entities/card.gd))
 
-Quando todos os heróis vivos estão EXHAUSTED, todos são restaurados para ACTIVE.
+`id, card_name, timing (ACTION/BONUS_ACTION/REACTION), attack_value, defense_value,
+symbols: Array[String], is_stealth, art_key, rarity, is_foil, effects: Array[CardEffect]`.
+Serialização via `Card.from_dict()`.
 
-### Card (src/entities/card.gd)
+### CardEffect ([card_effect.gd](src/entities/card_effect.gd))
 
-```gdscript
-var id: int
-var card_name: String
-var timing: TimingType      # ACTION, BONUS_ACTION, REACTION
-var attack_value: int
-var defense_value: int
-var symbols: Array[String]  # IDs de GameSymbols
-var is_stealth: bool
-var art_key: String
-var rarity: Rarity          # COMMON, RARE, LEGENDARY, MYSTIC
-var effects: Array[CardEffect]
+`enum Timing { INSTANT, AFTER_REACTION, AFTER_TURN }`. Hooks: `pre_window_execute`,
+`execute`, `resolve_after_combat`, `on_discarded`. Efeitos vivem em `src/entities/effects/`
+e são registrados em [card_effect_registry.gd](src/entities/card_effect_registry.gd)
+(**fonte de verdade** — não duplicar a lista aqui).
 
-func execute_pre_window_effects(ctx: CardEffectContext) -> void  # antes de abrir reação
-func execute_effects(ctx: CardEffectContext) -> void             # após reação
-func get_texture() -> Texture2D                                  # usa placeholder se não achar
-```
+#### VFX de carta é DATA-DRIVEN e tem DOIS momentos
 
-### CardEffect (src/entities/card_effect.gd)
+A animação acompanha o **timing real** da carta, em dois pontos:
 
-```gdscript
-class_name CardEffect extends RefCounted
-func apply(ctx: CardEffectContext) -> void: pass
-```
+1. **Ao JOGAR** (`_on_card_played` → `_play_card_vfx`): a "default" — o feixe **empower** que representa
+   o buff de ATK/DEF que quase toda carta dá. Dispara para qualquer carta com `attack_value > 0` ou
+   `defense_value > 0`, independente de ter efeitos. Efeitos de **buff de atk/def** também disparam a
+   empower **quando aplicam o buff**: o GameState detecta o aumento dos campos de bônus do Player
+   (`_atk_buff_total`/`_def_buff_total`) antes/depois de cada efeito resolver e, se cresceu, notifica
+   `GameBus.empower_anim` (cobre os ~34 efeitos de buff sem wiring por efeito; só anima se o buff de
+   fato ocorreu — bom p/ condicionais).
+2. **Quando o EFEITO RESOLVE**: o efeito **pede** seu visual via `ctx.request_vfx(key, target_hero_idx=-1)`
+   **dentro do ramo que aplica o efeito** (efeito é `RefCounted`, não toca cena — só pede). Como o
+   pedido é imperativo, **condicionais não animam à toa** (ex.: `heal_if_no_damage` só pede se não
+   tomou dano). No momento da resolução (servidor: `_resolve_card_effects` para INSTANT/AFTER_REACTION;
+   drain para AFTER_TURN) o GameState drena `ctx.requested_vfx` e notifica os clientes
+   (`_notify_effect_vfx` → `GameBus.effect_vfx(player, key, target_hero_idx)`). O board (`_on_effect_vfx`)
+   resolve a chave por um **registry data-driven** (`_vfx_registry()`: `chave → handler`, 1 linha por
+   visual — sem `match`/if crescente). `target_hero_idx >= 0` mira um herói específico
+   (ex.: `heal_ally_pick` cura o aliado escolhido, notificado de `rpc_submit_ally_pick`). Assim a
+   animação do heal de uma ACTION só aparece **depois** da janela de reação, não no play.
 
-`CardEffectContext` contém: `source_player`, `opponent_player`, `source_card`, `played_from_arsenal`, `hero_was_hidden`.
+Chaves atuais: `"draw"` (fly deck→mão, reusa o `CardAnimator.fly_draw`), `"heal"` (single-target;
+alvo padrão = ativo), `"heal_all"` (área — reusa o HolyHeal da Irena), `"shield"` (Égide single no
+ativo), `"team_shield"` (Égide em todos), `"stealth"` (fumaça). **Nova carta que reusa um visual = 0
+código** (efeito chama `request_vfx` com a chave); **visual novo = 1 chave no registry + 1 handler**.
 
-Efeitos ficam em `src/entities/effects/` e são registrados via `CardEffectRegistry`.
+#### Movimento de carta específica (`card_move_anim`)
 
-### Player — Modificadores Pendentes (src/entities/player.gd)
+VFX que precisa da CARTA em si (não só do herói) usa outro canal: `ctx.request_card_move(art_key, kind)`
+→ drenado pelo GameState → `GameBus.card_move_anim(player, art_key, kind)` → board anima via `CardAnimator`.
+`kind`: `"discard"` (mão→centro→**corte**→cemitério) · `"to_deck"` (carta → baralho). Descartes por
+overlay disparam de `rpc_submit_card_pick` (HAND_DISCARD); descartes automáticos/aleatórios e o
+"colocar no fundo" usam `request_card_move` / o ponto de resolução do pick. Ex.: `team_damage_shield` → `"team_shield"`
+([guardian_aegis.gd](scenes/vfx/guardian_aegis/guardian_aegis.gd),
+`activate(source_slot, target_slots, mirror, auto_dismiss_after)`).
+Nota: `hero.heal()`/`hero_healed` rodam só no servidor — o VFX de cura nos clientes vem do
+`effect_vfx`, não do `hero_healed` (evita disparo duplicado).
 
-```gdscript
-var cards_this_battle: Array[Card]        # cadeia de símbolos da batalha
-var turn_cards: Array[Card]               # cartas deste turno (combate)
-var pending_bonus_attack: int
-var pending_bonus_defense: int
-var pending_heal: int
-var pending_heal_after_combat: int
-var pending_counter_damage: int
-var next_turn_bonus_attack: int           # cross-turn (Guarda Inabalável)
-var pending_damage_shield: int            # Fluxo Reativo
-var pending_on_full_block_draw: int
-var pending_on_full_block_heal: int
-var pending_on_zero_damage_self_damage: int
-var pending_on_zero_damage_draw: int      # All In
-var pending_destroy_opponent_arsenal: bool
-var pending_ricochet: bool                # Ricochetear
-var pending_discard_if_attacked: bool     # Fúria Instável
-var pending_next_turn_stealth: bool       # Execução Silenciosa
-var pending_defense_scales_attack: bool   # Fortaleza Inabalável
-var pending_skill_draw: bool              # Sintonia Primordial
-var next_attack_penalty: int              # Finta
-var pending_next_card_attack: int
-var pending_next_card_defense: int
-var pending_cancel_reaction: bool
-```
+### Token ([token.gd](src/entities/token.gd))
+
+Entidade criada **durante** a partida, fora do deck (estado próprio: contadores, alvo, tempo de
+vida). `destroy_at_combat_end` decide se some no fim do combate. Subclasses em
+`src/entities/tokens/` (`TokenMagicMissile`, `TokenArcaneFragment`), reconstruídas no cliente via
+`TokenFactory` a partir do snapshot. Player guarda `tokens: Array[Token]`.
+
+### Player — Modificadores Pendentes ([player.gd](src/entities/player.gd))
+
+Estado de combate por turno (acumulado por efeitos, consumido pelo CombatResolver, zerado em
+`reset_turn_modifiers()` / `clear_combat_cards()`). **Confira a lista atual no arquivo** — inclui,
+entre outros: `pending_bonus_attack/defense`, `pending_self_damage`, `next_defense_penalty`,
+`pending_cancel_reaction`, `pending_heal`, `pending_next_card_attack/defense`,
+`next_turn_bonus_attack` (cross-turn), `battle_bonus_attack` (turno inteiro — Frenesi),
+`battle_attack_penalty` (debuff do turno — Finta), `pending_stealth_hidden_bonus`, `next_turn_stealth`/`pending_next_turn_stealth`,
+`pending_defense_scales_attack`, `pending_skill_draw`, `pending_return_card`/`pending_heal_return_card`,
+`extra_actions`, `marked_target`/`marked_bonus` (Marca do Caçador), `pending_attack_locked`.
+
+> **Raio (Lightning):** não há contador de "carga". Cartas como Descarga Preparada / Acúmulo
+> Estático injetam um símbolo LIGHTNING na chain via `Player.add_chain_symbol()` (em
+> `bonus_chain_symbols`, como o Fragmento Arcano). A Ressonância Elétrica conta os símbolos de
+> Raio na chain. O GameState anuncia o símbolo (VFX) e re-checa a skill em `_announce_chain_symbols_added`.
 
 ---
 
-## Heróis Implementados
+## Habilidades Ativadas e Tokens
 
-### Poppy — Barbarian
-- **HP:** 10 | **Atk base:** 2 | **Def base:** 1
-- **Habilidade ativa** — *Impacto Sísmico*: cadeia [TERRA, FOGO, FOGO] → +3 ATK
-- **Passiva** — *Ataque Descuidado*: se nenhuma carta de defesa jogada na rodada → +1 ATK
+Além da skill por cadeia, heróis podem expor **habilidades ativadas** via
+`get_active_abilities()` → lista de descritores `{ id, label, cost, needs_target, ... }`.
+O GameState faz o gating de fase/segmento e o timing; o herói só executa o efeito em
+`activate_ability()`. Custos:
 
-### Irena — Cleric
-- **HP:** 9 | **Atk base:** 0 | **Def base:** 2
-- **Habilidade ativa** — *Toque Revigorante*: cadeia [AGUA, AGUA, TERRA] → curas ganham +1 até fim do turno
-- **Passiva** — *Crescimento Natural*: fim de turno cura todos os aliados em 1
+```
+"ACTION" / "BONUS"  →  consomem o segmento (e abrem reação no caso de ACTION)
+"FREE"              →  não consomem o segmento (ex.: disparar mísseis já criados)
+```
 
-### Hakai — Rogue
-- **HP:** 10 | **Atk base:** 1 | **Def base:** 0
-- **Habilidade ativa** — *Instinto de Caça*: cadeia [AR, AR, AR] → torna-se furtivo
-- **Passiva** — *Golpe das Sombras*: +1 ATK permanente ao causar dano enquanto furtivo
-
-### Ieldor — Ranger
-- **HP:** 9 | **Atk base:** 1 | **Def base:** -1
-- **Habilidade ativa** — *Chuva de Flechas*: cadeia [FOGO, AR, AR] → 1 dano a todos heróis inimigos
-- **Habilidade de retaguarda interativa** — *Retaguarda Precisa*: escolhe 1 herói inimigo por rodada e causa 1 dano direto (fase BACKLINE_ABILITY)
-
-### Nissin — Monk
-- **HP:** 10 | **Atk base:** 1 | **Def base:** 2
-- **Habilidade ativa** — *Passos Ágeis*: cadeia [AR, AR, AGUA] → compra 1 carta (1x por turno)
-- **Passiva** — *Fluxo Suave*: jogou ACTION + BONUS_ACTION na mesma rodada → +1 ATK
-
-### Valkar — Guardian
-- **HP:** 10 | **Atk base:** 0 | **Def base:** 3
-- **Habilidade ativa** — *Escudo de Espinhos*: cadeia [TERRA, TERRA, AGUA] → ganha metade da defesa base como bônus ATK
-- **Passiva de retaguarda** — *Muro de Aço*: primeiro dano a aliado por turno reduzido em 1
+Exemplos: **Nox** cria/dobra/dispara **Mísseis Mágicos** (dano direto, 1 por alvo);
+**Relicar** gera **Fragmentos Arcanos** (loja de efeitos in-game — `fragment_shop`).
 
 ---
 
-## Cartas do Set Base (84 cartas)
+## Heróis (8 jogáveis)
 
-### ACTION — Comuns
+Stats e descrições exatas vivem nos `_init()` de cada `src/entities/heros/hero_*.gd` (fonte de
+verdade). Resumo de identidade:
 
-| Carta | Atk | Def | Efeito resumido |
-|-------|-----|-----|----------------|
-| Golpe Bruto | 3 | 0 | Se dano == 0: recebe 1 dano e compra 1 |
-| Perfeito Equilíbrio | 1 | 2 | — |
-| Corte Preciso | 2 | 0 | — |
-| Postura Firme | 0 | 3 | — |
-| Avanço Imprudente | 4 | 0 | — |
-| Investida Selvagem | 3 | 0 | — |
-| Exposição Tática | 2 | 1 | — |
-| Defesa Implacável | 0 | 4 | — |
-| Impacto Controlado | 1 | 1 | — |
-| Chama Crescente | 2 | 0 | +1 ATK por símbolo FOGO já jogado |
-| Pressão Inicial | 2 | 0 | +1 ATK se for a 1ª carta do turno |
-| Encadeamento | 1 | 0 | +1 ATK por carta já jogada no turno |
-| Impulso Ofensivo | 1 | 0 | — |
-| Pequenos Riscos | 1 | 0 | — |
-| Brisa Cortante | 2 | 0 | — |
-| Fluxo Sereno | 1 | 1 | — |
-| Corrente Restauradora | 1 | 0 | — |
-| Onda Reversa | 0 | 2 | — |
-| Reflexo Líquido | 1 | 1 | — |
-| Renovação | 0 | 0 | Compra 1 carta |
-| Passo Fantasma | 1 | 0 | Furtivo |
-| Resistência Natural | 0 | 2 | — |
-| Fúria Instável | 3 | 0 | Se atacado: descarta 1 carta aleatória |
-| Linha de Ferro | 0 | 3 | — |
+| Herói   | Classe    | Identidade |
+|---------|-----------|------------|
+| Poppy   | Barbarian | Agressão; skill por cadeia que soma ATK |
+| Irena   | Cleric    | Cura; passiva de cura de fim de turno |
+| Hakai   | Rogue     | Furtividade; ganha ATK ao atacar oculto |
+| Ieldor  | Ranger    | Dano de área (Chuva de Flechas) + **retaguarda interativa** (1 dano a alvo escolhido) |
+| Nissin  | Monk      | Tempo/compra; bônus por ACTION+BONUS na rodada |
+| Valkar  | Guardian  | **HP 11.** Passiva de **linha de frente** *Muro de Aço*: protege os **aliados de retaguarda** de dano direcionado/direto (Chuva de Flechas, Mísseis, alvo escolhido). **Não é automática** — Valkar entra furtiva como qualquer herói e só ativa o Muro (`wall_active`) se quebrar a furtividade: na confirmação pós-seleção ou ao se revelar durante a fase ACTION. A própria Valkar continua alvo válido. Skill por cadeia: *Escudo de Espinhos* (metade da defesa base vira ATK). |
+| Nox     | Wizard    | Tokens **Mísseis Mágicos** (dano direto); cadeia dobra os mísseis controlados |
+| Relicar | Sorcerer  | Tokens **Fragmentos Arcanos** (descarte/2 elementos distintos) → loja de efeitos |
 
-### ACTION — Raras e Lendárias
-
-| Carta | Tipo | Efeito resumido |
-|-------|------|----------------|
-| Golpe Furtivo | ACTION Rara | Furtivo — não revela herói |
-| Coração da Fornalha | ACTION Rara | +1 ATK por símbolo FOGO jogado; recebe 2 de dano |
-| Quebrando a Banca | ACTION Rara | Se dano > 0: destrói arsenal do oponente |
-| Golpe Surpresa | ACTION Rara | Se 1ª carta do turno e veio do arsenal: cancela reação |
-| Tiro de Oportunidade | ACTION Rara | +1 ATK se herói estava oculto |
-| Sombra Oculta | ACTION Rara | Furtivo + compra 1 se causar dano |
-| Broto Vital | ACTION Rara | Cura 2 se bloqueio total |
-| Sacrifício | ACTION Rara | Descarta para ganhar +3 ATK |
-| Sintonia Primordial | ACTION Lendária | Após habilidade ativa: compra 1 carta |
-| Frenesi | ACTION Lendária | — |
-| Execução Silenciosa | ACTION Lendária | Torna-se furtivo na próxima rodada |
-| Florescer Eterno | ACTION Lendária | — |
-
-### BONUS_ACTION — Comuns e Raras
-
-| Carta | Def | Efeito resumido |
-|-------|-----|----------------|
-| Passo Leve | 1 | — |
-| Ajuste Fino | 0 | Compra 1, coloca carta ao fundo do deck |
-| Ajuste de Guarda | 2 | — |
-| Impulso Rápido | 0 | Compra 1 |
-| Respiração Serena | 0 | Cura 1 |
-| Brasa | 0 | — |
-| Defesa Oculta | 3 | Se veio do arsenal: +2 defesa extra |
-| Descarte Estratégico | 0 | Descarta 2 aleatórias, compra 1 |
-| Contra Ataque (Bônus) | 0 | Recicla primeiro descarte, compra 1 |
-| Preparando o Arsenal | 0 | Guarda carta no arsenal |
-| Planos Futuros | 0 | Busca a primeira ACTION do deck para a mão |
-| Ricochetear | 0 | Reflete dano de volta ao atacante |
-| Fortaleza Inabalável | 0 | Defesa espelha valor de ataque total |
-
-### REACTION — Comuns e Raras
-
-| Carta | Def | Efeito resumido |
-|-------|-----|----------------|
-| Bloqueio Instintivo | 3 | — |
-| Desvio Rápido | 2 | — |
-| Guarda Emergencial | 4 | — |
-| Reflexivo Ofensivo | 1 | — |
-| Passo Nebuloso | 0 | Furtivo até fim da rodada |
-| Recuperação Breve | 0 | Cura 1 |
-| Maré Suave | 2 | — |
-| Instinto Violento | 0 | Se dano == 0: compra 1 |
-| Contra Ataque | 0 | Se dano == 0: atacante sofre 1 de dano |
-| Finta | 0 | Próxima rodada: -1 defesa no oponente |
-| Sangue Quente | 0 | Compra 1 se sofreu dano |
-| Guarda Inabalável | 2 | Guarda bônus de defesa para a próxima rodada |
-| Fluxo Reativo | 0 | Absorve 1 de dano como escudo |
-| Manipulando Elementos | 0 | Adiciona símbolos FOGO + TERRA à cadeia |
-| Ecos do Passado | 0 | Recicla arsenal; compra 1 |
-| Ciclo Vital | 0 | Cura 2; compra 1 |
+> **Dano direcionado e a proteção da Valkar:** as fontes que miram heróis de retaguarda específicos
+> são Ieldor (retaguarda + AoE) e Nox (mísseis). A checagem central é
+> `Player.is_targeting_protected(hero)` — chamada antes de aplicar esses danos.
+> `_deal_direct_damage` e contra-ataque atingem só o herói ATIVO, então não são afetados.
 
 ---
 
-## Cenas de UI
+## Cartas do Set Base
 
-### Board (boardv2)
+Definidas em **`data/cards/taldorian_origins.json`** (fonte de verdade). Cada carta tem tipo
+(timing), ataque/defesa, símbolos, raridade, `copies` e `effect_id`(s) resolvidos pelo
+`CardEffectRegistry`. Raridades: Common, Rare, Legendary, Mystic.
 
-O tabuleiro é gerenciado por `board.gd` e usa dois componentes principais:
-- **HalfBoard**: representa o campo de um jogador (herói ativo, arsenal, deck, discard)
-- **CenterBar**: barra central com heróis ativos de ambos, ataque/defesa calculado e preview de dano
+> Não reproduza a lista completa de cartas aqui — ela muda com frequência (hoje há > 100 cartas,
+> incluindo o elemento Raio para Nox/Relicar). Para inspecionar, leia o JSON e o registry.
 
-Overlays dinâmicos carregados sob demanda:
-- `MulliganScreen` — visível apenas na fase OPENING_MULLIGAN
-- `HeroPickScreen` — visível apenas na fase HERO_SELECTION
-- `BacklineAbility` — visível apenas na fase BACKLINE_ABILITY
-- `PickCard` — overlay para efeitos tutor/scry
-- `PickSymbol` — overlay para escolha de símbolo (Manipulando Elementos)
-- `DiscartCard` — overlay para descarte seletivo
+---
 
-Todas as telas de fase começam com `visible = false` no editor.
+## Sistema de Mundo Aberto
 
-### HeroSlot
+Separado do TCG (nunca misturar as duas lógicas). Autoridade no servidor dedicado.
 
-Componente reutilizável. API pública:
-```gdscript
-slot.bind(hero: Hero)
-slot.set_face_down(value: bool)
-slot.refresh()
-signal slot_clicked(hero: Hero)
-```
+- **WorldState** — posições em grid e chat; clientes enviam intenção via `rpc_id(1, ...)`,
+  recebem `_sync_world`. Mapa principal: `taldorian_city`.
+- **RoomService** — salas de batalha (criar/entrar/aleatória/ranqueada); senha fica só no servidor.
+  Quando uma sala enche, o servidor inicia a partida via MatchService (reusa o GameState).
+- **MatchService** — fila rápida; `begin_match_between(a, b)` → `register_match` → envia os 2 ao board.
+- **WorldTrade** — sessões de troca entre jogadores (slots/ouro/aceite); efetivação no backend
+  via `ApiClient.finalize_trade` (chamada server-to-server com credencial de serviço).
 
-### CardView
+### Sala debug (ferramenta de teste do ADMIN)
 
-Componente reutilizável. API pública:
-```gdscript
-view.bind(card: Card)
-view.set_selected(value: bool)
-view.set_face_down(value: bool)
-signal card_clicked(card: Card)
-signal card_double_clicked(card: Card)
-```
+`/players/me` retorna `role` (`PLAYER`/`ADMIN`; coluna já existe no backend — promover conta =
+`UPDATE players SET role='ADMIN'`). O cliente cacheia em `NetworkState.role` / `is_admin()`.
+Contas ADMIN veem um checkbox **"Sala debug"** ao criar sala (room_lobby). A flag viaja
+`RoomInfo.debug` → `RoomService` → `MatchService.begin_match_between(...,p_debug)` →
+`GameState.register_match(...,p_debug)` → `MatchState._debug` (serializado no snapshot, espelha o
+padrão de `_ranked`). `GameState.is_debug_match()` lê isso no cliente. **Impacto zero no modo normal:** o board só
+cria o botão **DEBUG** (e, sob o primeiro clique, o overlay `debug_card_picker` com a grade de
+cartas) **quando `is_debug_match()` é true** — em partida normal nenhum desses nós é instanciado;
+o único custo é uma checagem booleana por `state_synced`. O picker → `rpc_debug_give_card(card_id)`
+dá a carta na mão (validado server-side por `_m._debug`, sem checar limite de mão — é teste).
+**Limitação conhecida:** a flag `debug` é confiada do cliente (o servidor dedicado não conhece o
+role dos peers); o gate real é o checkbox só aparecer para ADMIN.
 
 ---
 
 ## Convenções de Código
 
 ```gdscript
-# Métodos privados — underscore no início
-func _metodo_privado() -> void: pass
-
-# RPCs — prefixo rpc_
-func rpc_play_card(hand_idx: int) -> void: pass
-
-# Sinais no GameBus — snake_case
-signal phase_changed(phase: String)
-signal hero_damaged(hero: Hero, amount: int)
-signal card_played(player_index: int, card: Card)
-
-# Variáveis de nó — sempre @onready com tipo inferido
-@onready var name_label := $VBoxContainer/HeroName
-
-# Parâmetros de métodos bind — prefixo p_
-func bind(p_hero: Hero) -> void: pass
-
-# Constantes de cena — SCREAMING_SNAKE_CASE
-const BOARD_SCENE := "res://scenes/ui/boardv2/board.tscn"
+func _metodo_privado() -> void: pass          # privado: underscore
+func rpc_play_card(hand_idx: int) -> void:     # RPC: prefixo rpc_
+signal phase_changed(new_phase: String)        # sinais no GameBus: snake_case
+@onready var name_label := $Path/HeroName      # nó: @onready com tipo inferido
+func bind(p_hero: Hero) -> void: pass          # parâmetros de bind: prefixo p_
+const BOARD_SCENE := "res://..."               # constantes de cena: SCREAMING_SNAKE_CASE
 ```
 
 ---
 
-## GameBus — Sinais Existentes
+## GameBus — Sinais (ver [game_bus.gd](src/autoload/game_bus.gd) para a lista completa/atual)
 
-```gdscript
-# Batalha / Fase
-signal battle_started(player_index: int)
-signal battle_ended(player_index: int)
-signal phase_changed(phase: String)
-
-# Herói
-signal hero_chosen(player_index: int, hero: Hero)
-signal hero_revealed(player_index: int, hero: Hero)
-signal hero_damaged(hero: Hero, amount: int)
-signal hero_healed(hero: Hero, amount: int)
-signal hero_defeated(hero: Hero)
-
-# Carta
-signal card_played(player_index: int, card: Card)
-signal card_drawn(player_index: int)
-
-# Símbolo / Habilidade
-signal symbol_added(symbol: String, chain: Array)
-signal skill_activated(hero: Hero, skill_name: String)
-
-# Combate
-signal combat_resolved(ctx: TurnContext)
-signal combat_preview_ready(atk: int, def: int, damage: int)
-
-# Reação
-signal reaction_window_opened(player_index: int)
-
-# Rede (TCG)
-signal state_synced
-
-# Mundo aberto
-signal world_player_joined(peer_id: int)
-signal world_player_left(peer_id: int)
-signal world_state_synced
-signal world_chat_received(sender: String, message: String)
-
-# Fim de jogo
-signal game_over(winner_index: int)
-```
+Categorias: **turno/fase** (`battle_started/ended`, `phase_changed`), **herói** (`hero_chosen/
+revealed/damaged/healed/defeated`), **carta** (`card_played/drawn/discarded`), **símbolo/skill**
+(`symbol_added`, `skill_activated`), **combate** (`combat_resolved`, `combat_preview_ready`),
+**reação** (`reaction_window_opened`), **VFX direcionados** (`backline_arrow_fired`,
+`missiles_fired`, `fragment_used`, `fragment_symbol_added`), **rede** (`state_synced`,
+`deck_shuffled`), **preview** (`card_hovered`, `card_hover_ended`), **mundo**
+(`world_player_joined/left`, `world_state_synced`, `world_chat_received`), **salas**
+(`match_room_synced`), **troca** (`trade_requested/started/state_synced/completed/cancelled/...`),
+**fim** (`game_over`).
 
 ---
 
 ## O que NÃO fazer
 
-- Nunca colocar lógica de jogo dentro de scripts de cena
-- Nunca referenciar uma cena diretamente de outra cena
-- Nunca chamar `GameState` diretamente do cliente — sempre via `rpc_id(1, ...)`
-- Nunca usar strings literais de símbolo — sempre `GameSymbols.FOGO`
-- Nunca criar heróis fora da `HeroFactory`
-- Nunca deixar telas de fase com `visible = true` no editor
-- Nunca usar `class_name` em autoloads
-- Nunca fazer autoload herdar de `RefCounted` — sempre `Node`
-- Nunca aplicar efeito de carta diretamente em `game_state.gd` — usar `CardEffect` + registry
-- Nunca revelar o herói do oponente sem passar por `_hero_revealed[player_idx]` no GameState
-- Nunca misturar lógica do mundo aberto com lógica do TCG — são sistemas separados
+- Nunca colocar lógica de jogo em script de cena.
+- Nunca referenciar uma cena diretamente de outra.
+- Nunca chamar `GameState` autoritativo do cliente sem RPC — sempre `rpc_id(1, ...)`.
+- Nunca assumir host/join: a autoridade é o **servidor dedicado** (`--world-server`).
+  Ao testar mudança de regra, **reinicie o servidor**, não só o cliente.
+- Nunca usar strings literais de símbolo — sempre `GameSymbols.*`.
+- Nunca criar heróis fora da `HeroFactory` / `_hero_from_name`, nem tokens fora da `TokenFactory`.
+- Nunca deixar telas de fase com `visible = true` no editor.
+- Nunca usar `class_name` em autoloads; autoloads herdam de `Node`.
+- Nunca aplicar efeito de carta direto no `game_state.gd` — usar `CardEffect` + registry.
+- Nunca revelar o herói do oponente sem passar por `_hero_revealed[player_idx]`.
+- Nunca misturar lógica do mundo aberto com a do TCG.
+- Nunca duplicar neste CLAUDE.md listas que vivem em arquivos-fonte (cartas, efeitos, stats).
 
 ---
 
 ## Estado Atual do Desenvolvimento
 
 **Implementado:**
-- Lobby com conexão LAN (host/join)
-- Tabuleiro boardv2 com HalfBoard + CenterBar + overlays dinâmicos
-- GameState com lógica completa de todas as fases e timing
-- Sistema de símbolos e cadeia (SymbolChain, máx 3)
-- 6 heróis completos: Poppy, Irena, Hakai, Ieldor, Nissin, Valkar
-- Habilidades de retaguarda interativas (Ieldor — fase BACKLINE_ABILITY)
-- Sistema de efeitos via CardEffect / CardEffectRegistry (60+ efeitos)
-- 84 cartas no set base com raridades (Common, Rare, Legendary, Mystic)
-- Lógica de herói face-down com revelação condicional
-- Arsenal (1 carta, efeitos especiais ao jogar do arsenal)
-- Combate bidirecional com todos os modificadores cross-round
-- Animações: card_animator, turn_transaction, combat_resolve, vfx (arrow_rain, holy_heal)
-- Persistência: DeckStore, Collection, CosmeticsStore
-- Sistema de mundo aberto multiplayer tile-based (separado do TCG)
+- Modelo de rede com **servidor dedicado** (mundo + salas + trocas + partidas) e clientes ENet.
+- Backend HTTP (ApiClient) para auth/catálogo/boosters/inventário/decks/trocas (mock localhost:8080).
+- Mundo aberto tile-based (cidade), chat, troca entre jogadores, menu social.
+- Salas de batalha (RoomService) + fila rápida (MatchService) + sala de espera (match_room).
+- Partida completa (GameState multi-sala): todas as fases, timing, símbolos (5 elementos), cadeia.
+- 8 heróis (Poppy, Irena, Hakai, Ieldor, Nissin, Valkar, Nox, Relicar), incluindo tokens
+  (Mísseis Mágicos, Fragmentos Arcanos) e habilidades ativadas.
+- Sistema de efeitos via CardEffect/registry com timing INSTANT/AFTER_REACTION/AFTER_TURN.
+- Set base com 100+ cartas em JSON; tabuleiro boardv2 com overlays dinâmicos.
+- Deck builder, deck list, booster shop, criação de personagem.
+- VFX: magic_missiles, arcane_fragments, arrow_rain, holy_heal, battle_fury, combat_resolution, etc.
 
 **Pendente / Em andamento:**
-- Arte final das cartas e heróis
-- Tela de deck builder (scenes/ui/deck_builder/)
-- Expansão de heróis e cartas além do set base
-- Polimento de animações e VFX
+- Backend real (hoje mockado); reconhecimento de `LIGHTNING` no serviço.
+- Arte final de cartas/heróis; polimento de animações.
+- Generalização multi-sala (fase 2.2) e balanceamento.
+```

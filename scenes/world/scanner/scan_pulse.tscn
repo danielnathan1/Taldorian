@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://cscanpulse01x"]
+
+[ext_resource type="Script" path="res://scenes/world/scanner/scan_pulse.gd" id="1_pulse"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_pulse"]
+blend_mode = 1
+
+[node name="ScanPulse" type="Node2D"]
+material = SubResource("CanvasItemMaterial_pulse")
+script = ExtResource("1_pulse")

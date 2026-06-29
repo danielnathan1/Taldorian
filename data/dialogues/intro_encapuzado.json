@@ -1,0 +1,13 @@
+{
+  "id": "intro_encapuzado",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "name": "???", "text": "Ei... você aí. Não se assuste. Eu vinha justamente à sua procura." },
+    { "speaker": "encapuzado", "text": "Os magos da capital criaram um jogo que tomou o continente de assalto. Dizem que qualquer um pode aprender — basta ter o instrumento certo." },
+    { "speaker": "encapuzado", "text": "Com ele, você rastreia o que existe pelo mundo — criaturas, lugares, objetos, até mesmo heróis — e cria uma versão em carta de tudo o que tocar." },
+    { "speaker": "encapuzado", "text": "Essas cartas são jogadas nos duelos que tanto fascinam as tavernas. E você... você tem potencial. Eu percebo essas coisas." },
+    { "speaker": "encapuzado", "text": "Tome. Este é um Olho Arcano — um rastreador. Deixe-me lhe mostrar como usá-lo." }
+  ]
+}

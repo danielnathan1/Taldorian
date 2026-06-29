@@ -28,13 +28,17 @@ func apply_backline_ability(player: Player, opponent: Player, target: Hero) -> S
 	ctx.defender_player = opponent if target in opponent.heroes else player
 	ctx.attacker = self
 	ctx.defender = target
+	# Muro de Aço (Valkar na linha de frente) torna os aliados de retaguarda inalvejáveis.
+	if ctx.defender_player.is_targeting_protected(target):
+		return ""
 	var dmg := 1
 	for h in ctx.defender_player.heroes:
 		if h != ctx.defender:
 			dmg = maxi(0, dmg - h.get_team_damage_reduction(ctx))
 	if dmg > 0:
-		target.take_damage(dmg, ctx)
-		GameBus.hero_damaged.emit(target, dmg)
+		var dealt := target.take_direct_damage(dmg, ctx)  # respeita o escudo (Fluxo Reativo)
+		if dealt > 0:
+			GameBus.hero_damaged.emit(target, dealt)
 	return ""
 
 ## Ativa: Ar, Ar, Água → causa 1 de dano a todos os heróis vivos do oponente
@@ -46,13 +50,17 @@ func on_skill_activated(player: Player) -> void:
 	ctx.attacker = self
 	for h in opponent.heroes:
 		if h.is_alive():
+			# Muro de Aço protege os aliados de retaguarda; a linha de frente ainda é atingida.
+			if opponent.is_targeting_protected(h):
+				continue
 			ctx.defender = h
 			var dmg := 1
 			for ally in opponent.heroes:
 				if ally != h:
 					dmg = maxi(0, dmg - ally.get_aoe_damage_reduction(ctx))
 			if dmg > 0:
-				h.take_damage(dmg, ctx)
-				GameBus.hero_damaged.emit(h, dmg)
+				var dealt := h.take_direct_damage(dmg, ctx)  # respeita o escudo (Fluxo Reativo)
+				if dealt > 0:
+					GameBus.hero_damaged.emit(h, dealt)
 	_skill_activated_this_battle = true
 	GameBus.skill_activated.emit(self, skill_desc)

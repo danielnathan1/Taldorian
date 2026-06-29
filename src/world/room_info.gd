@@ -12,6 +12,9 @@ var game_type: String = TYPE_CLASSICO   # TYPE_CLASSICO | TYPE_FLASH
 var players: int = 0
 var capacity: int = 2
 var locked: bool = false
+## Sala de teste (criada por ADMIN). Marca a partida como debug, liberando o
+## botão DEBUG no board (dar qualquer carta à mão). Ver GameState.is_debug_match().
+var debug: bool = false
 
 
 func is_full() -> bool:
@@ -35,6 +38,7 @@ func to_dict() -> Dictionary:
 		"players":   players,
 		"capacity":  capacity,
 		"locked":    locked,
+		"debug":     debug,
 	}
 
 
@@ -46,4 +50,5 @@ static func from_dict(p_d: Dictionary) -> RoomInfo:
 	r.players   = int(p_d.get("players", 0))
 	r.capacity  = int(p_d.get("capacity", 2))
 	r.locked    = bool(p_d.get("locked", false))
+	r.debug     = bool(p_d.get("debug", false))
 	return r

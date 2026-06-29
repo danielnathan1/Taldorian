@@ -11,3 +11,4 @@ func execute(ctx: CardEffectContext) -> void:
 	if hero == null:
 		return
 	hero.damage_shield += _amount
+	ctx.request_vfx("shield")

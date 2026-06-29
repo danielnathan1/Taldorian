@@ -48,8 +48,6 @@ const _NUM_SHOCKWAVE := 2
 ## Emitido quando a animação termina. O nó se auto-destrói logo em seguida.
 signal finished
 
-@export var ability_name: String     = "TOQUE CURATIVO"
-@export var ability_subtitle: String = "HABILIDADE"
 @export var heal_color: Color        = Color("#7adfa1")
 
 var _target_pos:       Vector2
@@ -77,7 +75,6 @@ var _corner_nodes: Array[Sprite2D] = []
 var _board_dimmer: ColorRect
 var _screen_flash: ColorRect
 var _impact_flash: Sprite2D
-var _status_label: Label
 
 func _ready() -> void:
 	layer = 50
@@ -212,16 +209,11 @@ func _run() -> void:
 	var t := create_tween().set_parallel(true)
 	_animate_origin_glow(t)
 	_animate_gather_particles()
-	_create_banner(t)
 	_animate_target_lock(t)
 	_animate_board_dim(t)
 
 	get_tree().create_timer(T_LAUNCH,        false).timeout.connect(_launch_orb)
 	get_tree().create_timer(T_IMPACT,        false).timeout.connect(_trigger_impact)
-	get_tree().create_timer(T_IMPACT - 0.05, false).timeout.connect(func() -> void:
-		if is_instance_valid(_status_label):
-			_status_label.text = "Vida restaurada"
-	)
 
 	if _hp_node != null:
 		_animate_hp_fill()
@@ -274,58 +266,6 @@ func _animate_gather_particles() -> void:
 			0.0, 1.0, dur
 		)
 		tw.tween_callback(p.queue_free)
-
-# ── Banner central ─────────────────────────────────────────────────────────────
-
-func _create_banner(t: Tween) -> void:
-	var root          := Node2D.new()
-	root.position      = Vector2(640.0, 260.0)
-	root.modulate.a    = 0.0
-	root.z_index       = 15
-	add_child(root)
-
-	var sub                     := Label.new()
-	sub.text                     = ability_subtitle
-	sub.horizontal_alignment     = HORIZONTAL_ALIGNMENT_CENTER
-	sub.position                 = Vector2(-200.0, -56.0)
-	sub.custom_minimum_size      = Vector2(400.0, 20.0)
-	sub.add_theme_font_size_override("font_size", 12)
-	sub.add_theme_color_override("font_color", _C_BRIGHT)
-	root.add_child(sub)
-
-	var title                    := Label.new()
-	title.text                    = ability_name
-	title.horizontal_alignment    = HORIZONTAL_ALIGNMENT_CENTER
-	title.position                = Vector2(-200.0, -28.0)
-	title.custom_minimum_size     = Vector2(400.0, 52.0)
-	title.add_theme_font_size_override("font_size", 38)
-	title.add_theme_color_override("font_color", Color(0.91, 0.98, 0.88))
-	title.add_theme_color_override("font_shadow_color",
-		Color(heal_color.r, heal_color.g, heal_color.b, 0.85))
-	title.add_theme_constant_override("shadow_offset_x", 0)
-	title.add_theme_constant_override("shadow_offset_y", 3)
-	title.add_theme_constant_override("shadow_outline_size", 4)
-	root.add_child(title)
-
-	var rule       := ColorRect.new()
-	rule.color      = Color(heal_color.r, heal_color.g, heal_color.b, 0.70)
-	rule.size       = Vector2(280.0, 1.0)
-	rule.position   = Vector2(-140.0, 28.0)
-	root.add_child(rule)
-
-	_status_label                   = Label.new()
-	_status_label.text               = "Canalizando"
-	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status_label.position           = Vector2(-200.0, 34.0)
-	_status_label.custom_minimum_size = Vector2(400.0, 18.0)
-	_status_label.add_theme_font_size_override("font_size", 11)
-	_status_label.add_theme_color_override("font_color",
-		Color(heal_color.r, heal_color.g, heal_color.b, 0.85))
-	root.add_child(_status_label)
-
-	t.tween_property(root, "modulate:a", 1.0, 0.35).set_delay(T_BANNER_IN)
-	t.tween_property(root, "modulate:a", 0.0, 0.45).set_delay(T_BANNER_OUT - 0.45)
-	t.chain().tween_callback(root.queue_free)
 
 # ── Target lock ────────────────────────────────────────────────────────────────
 

@@ -61,6 +61,12 @@ func set_deck_snapshot(deck: DeckData) -> void:
 	_cosmetics_panel.refresh(deck)
 
 
+# Atualização leve para add/remove de carta: só re-sincroniza as contagens da grade
+# de cartas (sem reconstruir → sem piscada). Não mexe em heróis/cosméticos.
+func sync_deck_counts(deck: DeckData) -> void:
+	_get_card_picker().sync_counts(deck)
+
+
 func set_active_tab(index: int) -> void:
 	_switch_tab(index)
 

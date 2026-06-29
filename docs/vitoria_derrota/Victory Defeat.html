@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Vitória / Derrota</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; background: oklch(0.07 0.055 268); }
+
+  #root {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    font-family: 'Cinzel', serif;
+  }
+
+  /* ── Fake board behind overlay ── */
+  .fake-board {
+    position: absolute; inset: 0;
+    background: linear-gradient(175deg, oklch(0.10 0.06 270) 0%, oklch(0.07 0.05 260) 50%, oklch(0.06 0.04 10) 100%);
+  }
+  .board-line {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 5%, oklch(0.73 0.13 78 / 0.06) 30%, oklch(0.73 0.13 78 / 0.06) 70%, transparent 95%);
+  }
+
+  /* ── OVERLAY ── */
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  .overlay-victory {
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 45%, oklch(0.72 0.13 78 / 0.09) 0%, transparent 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.07 0.05 268 / 0.93) 0%, oklch(0.07 0.05 268 / 0.97) 100%);
+    animation: overlayIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .overlay-defeat {
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 45%, oklch(0.42 0.20 15 / 0.11) 0%, transparent 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, oklch(0.06 0.04 268 / 0.95) 0%, oklch(0.06 0.04 268 / 0.98) 100%);
+    animation: overlayIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+
+  /* ── Particles ── */
+  #particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 11; }
+  .particle { position: absolute; border-radius: 50%; animation: particleFloat linear infinite; opacity: 0; }
+  @keyframes particleFloat {
+    0%   { opacity:0; transform: translateY(0) translateX(0); }
+    10%  { opacity: 0.8; }
+    90%  { opacity: 0.3; }
+    100% { opacity:0; transform: translateY(-100vh) translateX(var(--drift)); }
+  }
+
+  /* ── Card ── */
+  .result-card {
+    position: relative;
+    width: min(540px, 90vw);
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 12;
+    animation: cardReveal 0.9s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes cardReveal {
+    from { opacity:0; transform: scale(0.9) translateY(30px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+  }
+
+  /* ── Crest ── */
+  .crest {
+    width: 92px; height: 92px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.3rem; position: relative;
+    animation: crestPulse 3s ease-in-out infinite;
+  }
+  @keyframes crestPulse {
+    0%, 100% { filter: drop-shadow(0 0 18px var(--crest-glow)); }
+    50%      { filter: drop-shadow(0 0 38px var(--crest-glow)); }
+  }
+  .crest-victory { --crest-glow: oklch(0.82 0.16 80 / 0.7); }
+  .crest-defeat  { --crest-glow: oklch(0.55 0.22 15 / 0.5); }
+
+  /* ── Panel ── */
+  .panel {
+    width: 100%;
+    background: oklch(0.10 0.04 268 / 0.9);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(20px) saturate(1.3);
+    padding: 2.4rem 2.8rem 2.2rem;
+    position: relative;
+    box-shadow: 0 0 80px var(--panel-shadow), 0 30px 60px oklch(0.05 0.04 268 / 0.7);
+  }
+  .panel-victory { --panel-border: oklch(0.73 0.13 78 / 0.30); --panel-shadow: oklch(0.73 0.13 78 / 0.09); }
+  .panel-defeat  { --panel-border: oklch(0.42 0.20 15 / 0.30); --panel-shadow: oklch(0.42 0.20 15 / 0.10); }
+
+  .panel::before, .panel::after, .panel .c-br, .panel .c-bl {
+    content: ''; position: absolute; width: 18px; height: 18px;
+    border-style: solid; border-color: var(--panel-border); opacity: 0.7;
+  }
+  .panel::before { top:-1px; left:-1px;   border-width: 2px 0 0 2px; }
+  .panel::after  { top:-1px; right:-1px;  border-width: 2px 2px 0 0; }
+  .panel .c-br   { bottom:-1px; right:-1px; border-width: 0 2px 2px 0; }
+  .panel .c-bl   { bottom:-1px; left:-1px;  border-width: 0 0 2px 2px; }
+
+  /* ── Heading text ── */
+  .result-eyebrow {
+    font-size: 0.7rem; letter-spacing: 0.5em; text-transform: uppercase;
+    color: var(--accent-dim); text-align: center; margin-bottom: 0.5rem; opacity: 0.8;
+  }
+  .result-title {
+    font-family: 'Cinzel Decorative', cursive; font-weight: 900;
+    font-size: clamp(2.1rem, 5vw, 3.2rem); text-align: center; line-height: 1.05;
+    background: var(--title-gradient);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    filter: drop-shadow(0 0 24px var(--accent-color));
+    margin-bottom: 0.4rem; letter-spacing: 0.04em;
+  }
+  .result-divider { display: flex; align-items: center; gap: 0.6rem; margin: 0 auto 1.1rem; width: fit-content; }
+  .divider-line { width: 40px; height: 1px; background: linear-gradient(to right, transparent, var(--accent-dim)); }
+  .divider-line.r { background: linear-gradient(to left, transparent, var(--accent-dim)); }
+  .divider-diamond { width: 6px; height: 6px; background: var(--accent-color); transform: rotate(45deg); box-shadow: 0 0 8px var(--accent-color); }
+  .result-desc {
+    font-family: 'Crimson Pro', serif; font-style: italic; font-size: 1rem;
+    text-align: center; color: oklch(0.72 0.03 78); line-height: 1.55;
+    margin-bottom: 1.6rem; opacity: 0.72;
+  }
+
+  /* ── Rank / Points module ── */
+  .rank-module {
+    border-top: 1px solid oklch(0.5 0.02 268 / 0.18);
+    padding: 1.3rem 0.2rem 1.15rem;
+    display: flex; align-items: center; gap: 1.1rem;
+  }
+
+  /* ── Gold reward row ── */
+  .reward-row {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.85rem 0.2rem 0.9rem;
+    border-top: 1px solid oklch(0.5 0.02 268 / 0.12);
+    border-bottom: 1px solid oklch(0.5 0.02 268 / 0.18);
+    margin-bottom: 1.6rem;
+  }
+  .reward-coin { display: flex; flex-shrink: 0; filter: drop-shadow(0 0 7px oklch(0.78 0.13 85 / 0.55)); }
+  .reward-coin svg {
+    animation: coinSpin 4s ease-in-out infinite;
+    transform-origin: center;
+  }
+  @keyframes coinSpin {
+    0%, 70%, 100% { transform: rotateY(0deg); }
+    80% { transform: rotateY(180deg); }
+    90% { transform: rotateY(360deg); }
+  }
+  .reward-label {
+    flex: 1;
+    font-size: 0.62rem; letter-spacing: 0.32em; text-transform: uppercase;
+    color: oklch(0.7 0.06 85); opacity: 0.9;
+  }
+  .reward-val {
+    display: inline-flex; align-items: baseline; gap: 0.28rem;
+    font-family: 'Spline Sans Mono', monospace; font-weight: 600; font-size: 1.3rem;
+    color: oklch(0.86 0.14 86); line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 16px oklch(0.78 0.14 86 / 0.4);
+    opacity: 0; transform: translateY(6px) scale(0.85);
+  }
+  .reward-val.show { animation: deltaPop 0.5s 0.05s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .reward-val .g-unit {
+    font-family: 'Cinzel', serif; font-weight: 600; font-size: 0.62rem;
+    letter-spacing: 0.18em; color: oklch(0.66 0.08 85);
+  }
+
+  /* shield */
+  .rank-shield { flex-shrink: 0; position: relative; width: 64px; height: 72px; filter: drop-shadow(0 4px 10px oklch(0.05 0.04 268 / 0.6)); }
+  .rank-shield svg { width: 100%; height: 100%; display: block; }
+  .rank-shield-div {
+    position: absolute; inset: 0; top: 6%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.15rem;
+    color: var(--shield-ink); text-shadow: 0 1px 1px oklch(1 0 0 / 0.25);
+  }
+
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.5rem; }
+  .rank-name-wrap { display: flex; flex-direction: column; gap: 0.15rem; }
+  .rank-label { font-size: 0.6rem; letter-spacing: 0.34em; text-transform: uppercase; color: var(--accent-dim); opacity: 0.85; }
+  .rank-tier { font-family: 'Cinzel', serif; font-weight: 600; font-size: 1.15rem; color: oklch(0.9 0.02 268); letter-spacing: 0.02em; }
+
+  /* delta badge */
+  .rank-delta {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-family: 'Spline Sans Mono', monospace; font-weight: 600; font-size: 1.05rem;
+    padding: 0.28rem 0.65rem; line-height: 1;
+    border: 1px solid var(--delta-border); color: var(--delta-color);
+    background: var(--delta-bg);
+    opacity: 0; transform: translateY(8px) scale(0.85);
+  }
+  .rank-delta.show { animation: deltaPop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  @keyframes deltaPop {
+    0%   { opacity: 0; transform: translateY(8px) scale(0.85); }
+    60%  { transform: translateY(0) scale(1.12); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .rank-delta svg { width: 11px; height: 11px; }
+
+  /* PTS counter row */
+  .pts-row { display: flex; align-items: baseline; gap: 0.45rem; margin-bottom: 0.55rem; }
+  .pts-value {
+    font-family: 'Spline Sans Mono', monospace; font-weight: 600;
+    font-size: 1.9rem; line-height: 1; color: oklch(0.95 0.02 78);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+    transition: color 0.2s;
+  }
+  .pts-value.bumping { color: var(--accent-color); }
+  .pts-unit { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.28em; color: var(--accent-dim); text-transform: uppercase; }
+
+  /* progress track */
+  .pts-track {
+    position: relative; height: 9px; width: 100%;
+    background: oklch(0.16 0.03 268); border: 1px solid oklch(0.4 0.02 268 / 0.3);
+    overflow: hidden;
+  }
+  .pts-fill {
+    position: absolute; inset: 0; right: auto; height: 100%;
+    background: var(--fill-gradient);
+    box-shadow: 0 0 14px var(--accent-color);
+    transition: width 1.15s cubic-bezier(0.33,1,0.68,1);
+  }
+  .pts-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.25), transparent);
+    background-size: 200% 100%;
+  }
+  .pts-ticks { position: absolute; inset: 0; display: flex; }
+  .pts-ticks span { flex: 1; border-right: 1px solid oklch(0.07 0.04 268 / 0.55); }
+  .pts-ticks span:last-child { border-right: 0; }
+
+  .pts-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 0.45rem;
+    font-family: 'Spline Sans Mono', monospace; font-size: 0.68rem;
+    color: oklch(0.6 0.02 268); letter-spacing: 0.04em;
+  }
+  .pts-foot .hint { color: var(--accent-dim); opacity: 0.9; }
+
+  /* ── Button ── */
+  .btn-menu {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    width: 100%;
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 0.82rem;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 1.05rem 1rem; cursor: pointer;
+    border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-color);
+    transition: filter 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .btn-menu:hover { filter: brightness(1.12); transform: translateY(-2px); }
+  .btn-menu:active { transform: translateY(0); filter: brightness(0.95); }
+  .btn-shimmer {
+    position: absolute; top:0; left:-100%; width:55%; height:100%;
+    background: linear-gradient(105deg, transparent, oklch(1 0 0 / 0.07), transparent);
+    transform: skewX(-20deg); transition: left 0.5s;
+  }
+  .btn-menu:hover .btn-shimmer { left: 160%; }
+  .btn-arrow { transition: transform 0.2s; }
+  .btn-menu:hover .btn-arrow { transform: translateX(-3px); }
+
+  /* ── Victory theme ── */
+  .theme-victory {
+    --accent-color:    oklch(0.82 0.16 80);
+    --accent-dim:      oklch(0.6 0.10 78);
+    --title-gradient:  linear-gradient(160deg, oklch(0.88 0.16 82) 0%, oklch(0.73 0.13 78) 45%, oklch(0.88 0.08 78) 70%, oklch(0.73 0.13 78) 100%);
+    --fill-gradient:   linear-gradient(90deg, oklch(0.7 0.14 90), oklch(0.85 0.16 82));
+    --delta-color:     oklch(0.86 0.16 145);
+    --delta-border:    oklch(0.7 0.16 145 / 0.5);
+    --delta-bg:        oklch(0.5 0.14 145 / 0.14);
+    --btn-bg:          oklch(0.14 0.05 268 / 0.9);
+    --btn-border:      oklch(0.73 0.13 78 / 0.55);
+    --btn-color:       oklch(0.82 0.16 80);
+  }
+  .theme-victory .btn-menu:hover { box-shadow: 0 6px 30px oklch(0.73 0.13 78 / 0.25); border-color: oklch(0.73 0.13 78 / 0.9); }
+
+  /* ── Defeat theme ── */
+  .theme-defeat {
+    --accent-color:    oklch(0.62 0.22 15);
+    --accent-dim:      oklch(0.5 0.14 15);
+    --title-gradient:  linear-gradient(160deg, oklch(0.72 0.18 15) 0%, oklch(0.55 0.22 15) 45%, oklch(0.72 0.12 15) 70%, oklch(0.55 0.22 15) 100%);
+    --fill-gradient:   linear-gradient(90deg, oklch(0.45 0.18 15), oklch(0.6 0.22 18));
+    --delta-color:     oklch(0.72 0.2 18);
+    --delta-border:    oklch(0.55 0.22 18 / 0.5);
+    --delta-bg:        oklch(0.42 0.2 18 / 0.15);
+    --btn-bg:          oklch(0.12 0.04 268 / 0.9);
+    --btn-border:      oklch(0.42 0.20 15 / 0.5);
+    --btn-color:       oklch(0.75 0.12 15);
+  }
+  .theme-defeat .btn-menu:hover { box-shadow: 0 6px 30px oklch(0.42 0.20 15 / 0.22); border-color: oklch(0.55 0.22 15 / 0.85); }
+
+  /* ── Demo controls ── */
+  .demo-controls { position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%); display: flex; gap: 0.6rem; z-index: 100; }
+  .demo-btn {
+    font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 0.45rem 1rem; cursor: pointer; backdrop-filter: blur(8px); transition: all 0.2s;
+  }
+  .demo-btn-v { background: oklch(0.12 0.04 268 / 0.85); border: 1px solid oklch(0.73 0.13 78 / 0.45); color: oklch(0.82 0.16 80); }
+  .demo-btn-v.active, .demo-btn-v:hover { border-color: oklch(0.73 0.13 78 / 0.9); background: oklch(0.16 0.05 268 / 0.9); }
+  .demo-btn-d { background: oklch(0.12 0.04 268 / 0.85); border: 1px solid oklch(0.42 0.20 15 / 0.45); color: oklch(0.72 0.18 15); }
+  .demo-btn-d.active, .demo-btn-d:hover { border-color: oklch(0.55 0.22 15 / 0.9); background: oklch(0.16 0.05 268 / 0.9); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .result-card, .overlay-victory, .overlay-defeat, .crest, .rank-delta.show { animation: none !important; }
+    .crest { filter: drop-shadow(0 0 22px var(--crest-glow)); }
+  }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div id="particles"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ── Rank ladder (mirrors profile/data.js) ───────────────────────────── */
+const TIERS = {
+  Bronze:   { c1: '#d39a6a', c2: '#a96a3c', deep: '#5e3a1f', ink: '#2a1709' },
+  Prata:    { c1: '#dfe6ef', c2: '#a7b3c4', deep: '#5a6679', ink: '#1d2430' },
+  Ouro:     { c1: '#f5cf6a', c2: '#d39a2c', deep: '#7a5410', ink: '#2a1d04' },
+  Platina:  { c1: '#9fe6dc', c2: '#52b3a6', deep: '#1f5a52', ink: '#062421' },
+  Diamante: { c1: '#a9defc', c2: '#5aa8e0', deep: '#1c5a86', ink: '#04202f' },
+  Mestre:   { c1: '#d3b8ff', c2: '#9a72e0', deep: '#4a2f86', ink: '#1a0e33' },
+};
+
+/* Each match scenario: the player's rank and the LP change this game. */
+const SCENARIOS = {
+  victory: { tier: 'Prata', div: 'II', lpBefore: 64, delta: 24, lpMax: 100, gold: 340 },
+  defeat:  { tier: 'Prata', div: 'II', lpBefore: 64, delta: -18, lpMax: 100, gold: 120 },
+};
+
+const fmtGold = (n) => n.toLocaleString('pt-BR');
+
+const SHIELD_PATH = 'M50 6 L88 22 V52 C88 76 71 88 50 96 C29 88 12 76 12 52 V22 Z';
+
+// ── Particles ────────────────────────────────────────────────────────
+function spawnParticles(isVictory) {
+  const container = document.getElementById('particles');
+  container.innerHTML = '';
+  const colors = isVictory
+    ? ['oklch(0.82 0.16 80)', 'oklch(0.73 0.13 78)', 'oklch(0.88 0.08 78 / 0.7)']
+    : ['oklch(0.55 0.22 15)', 'oklch(0.42 0.20 15)', 'oklch(0.72 0.14 15 / 0.6)'];
+  for (let i = 0; i < (isVictory ? 40 : 18); i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 3.5 + 1;
+    const x = Math.random() * 100;
+    const dur = Math.random() * 10 + 7;
+    const delay = Math.random() * 8;
+    const drift = (Math.random() - 0.5) * 100;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    p.style.cssText = `left:${x}%; bottom:-10px; width:${size}px; height:${size}px;
+      background:${color}; box-shadow:0 0 5px 2px ${color};
+      animation-duration:${dur}s; animation-delay:${delay}s; --drift:${drift}px;`;
+    container.appendChild(p);
+  }
+}
+
+// ── Crests ───────────────────────────────────────────────────────────
+function VictoryCrest() {
+  return (
+    <svg width="92" height="92" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" stroke="oklch(0.73 0.13 78)" strokeWidth="1" strokeDasharray="4 8" opacity="0.5"/>
+      <path d="M50 12 L76 24 L76 52 Q76 72 50 88 Q24 72 24 52 L24 24 Z" fill="oklch(0.73 0.13 78 / 0.12)" stroke="oklch(0.82 0.16 80)" strokeWidth="1.5"/>
+      <path d="M36 56 L36 44 L42 50 L50 38 L58 50 L64 44 L64 56 Z" fill="oklch(0.82 0.16 80)" opacity="0.9"/>
+      <path d="M50 26 L51.8 31.8 L57.8 31.8 L53 35.2 L54.8 41 L50 37.6 L45.2 41 L47 35.2 L42.2 31.8 L48.2 31.8 Z" fill="oklch(0.88 0.08 78)" opacity="0.8"/>
+    </svg>
+  );
+}
+function DefeatCrest() {
+  return (
+    <svg width="92" height="92" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" stroke="oklch(0.42 0.20 15)" strokeWidth="1" strokeDasharray="3 10" opacity="0.5"/>
+      <path d="M50 14 L74 25 L74 50 Q74 70 50 86 Q26 70 26 50 L26 25 Z" fill="oklch(0.42 0.20 15 / 0.12)" stroke="oklch(0.55 0.22 15)" strokeWidth="1.5" strokeDasharray="5 3"/>
+      <path d="M50 22 L54 38 L46 50 L52 66 L48 80" stroke="oklch(0.60 0.22 15)" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+      <circle cx="42" cy="58" r="3" fill="oklch(0.55 0.22 15)" opacity="0.6"/>
+      <circle cx="58" cy="46" r="2" fill="oklch(0.55 0.22 15)" opacity="0.4"/>
+    </svg>
+  );
+}
+
+// ── Rank shield ──────────────────────────────────────────────────────
+function RankShield({ tier, div }) {
+  const t = TIERS[tier] || TIERS.Bronze;
+  const id = `sg-${tier}`;
+  return (
+    <div className="rank-shield" style={{ '--shield-ink': t.ink }}>
+      <svg viewBox="0 0 100 100" fill="none">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0.4" y2="1">
+            <stop offset="0" stopColor={t.c1}/>
+            <stop offset="0.55" stopColor={t.c2}/>
+            <stop offset="1" stopColor={t.deep}/>
+          </linearGradient>
+        </defs>
+        <path d={SHIELD_PATH} fill={`url(#${id})`} stroke={t.c1} strokeWidth="2"/>
+        <path d={SHIELD_PATH} fill="none" stroke={t.deep} strokeWidth="1" opacity="0.5" transform="scale(0.86) translate(8 7)"/>
+        <path d="M50 12 L88 22 V40 Q70 30 50 30 Q30 30 12 40 V22 Z" fill="oklch(1 0 0 / 0.18)"/>
+      </svg>
+      <span className="rank-shield-div">{div}</span>
+    </div>
+  );
+}
+
+// ── Coin icon (mirrors World HUD) ────────────────────────────────────
+function CoinIcon({ s = 19 }) {
+  return (
+    <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6.4" fill="#caa23e" stroke="#7a5c14" strokeWidth="1.2"/>
+      <circle cx="8" cy="8" r="4.1" fill="none" stroke="#f5cf6a" strokeWidth="1"/>
+      <path d="M8 5.4v5.2M6.4 8h3.2" stroke="#7a5c14" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ── Delta arrow ──────────────────────────────────────────────────────
+function DeltaArrow({ up }) {
+  return up
+    ? <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 1 L11 8 H7.5 V11 H4.5 V8 H1 Z"/></svg>
+    : <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 11 L1 4 H4.5 V1 H7.5 V4 H11 Z"/></svg>;
+}
+
+// ── Animated rank / points module ────────────────────────────────────
+function RankProgress({ scn, isVictory }) {
+  const up = scn.delta >= 0;
+  const lpAfter = Math.max(0, Math.min(scn.lpMax, scn.lpBefore + scn.delta));
+  const pctBefore = (scn.lpBefore / scn.lpMax) * 100;
+  const pctAfter  = (lpAfter / scn.lpMax) * 100;
+
+  const [display, setDisplay] = useState(scn.lpBefore);
+  const [barW, setBarW] = useState(pctBefore);
+  const [showDelta, setShowDelta] = useState(false);
+  const [bumping, setBumping] = useState(false);
+  const [gold, setGold] = useState(0);
+  const [showGold, setShowGold] = useState(false);
+
+  useEffect(() => {
+    let raf, raf2, stopBump, goldStart;
+    const start = setTimeout(() => {
+      setShowDelta(true);
+      setBumping(true);
+      setBarW(pctAfter);
+      const dur = 1150, t0 = performance.now();
+      const from = scn.lpBefore, to = lpAfter;
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        setDisplay(Math.round(from + (to - from) * e));
+        if (p < 1) raf = requestAnimationFrame(tick);
+        else stopBump = setTimeout(() => setBumping(false), 250);
+      };
+      raf = requestAnimationFrame(tick);
+    }, 1450);
+
+    // Gold counts up shortly after, so the eye reads PTS → then reward.
+    goldStart = setTimeout(() => {
+      setShowGold(true);
+      const gdur = 950, g0 = performance.now();
+      const gtick = (now) => {
+        const p = Math.min(1, (now - g0) / gdur);
+        const e = 1 - Math.pow(1 - p, 3);
+        setGold(Math.round(scn.gold * e));
+        if (p < 1) raf2 = requestAnimationFrame(gtick);
+      };
+      raf2 = requestAnimationFrame(gtick);
+    }, 2050);
+
+    return () => {
+      clearTimeout(start); clearTimeout(goldStart); clearTimeout(stopBump);
+      cancelAnimationFrame(raf); cancelAnimationFrame(raf2);
+    };
+  }, []);
+
+  return (
+    <React.Fragment>
+      <div className="rank-module">
+      <RankShield tier={scn.tier} div={scn.div} />
+      <div className="rank-info">
+        <div className="rank-top">
+          <div className="rank-name-wrap">
+            <span className="rank-label">Rank Atual</span>
+            <span className="rank-tier">{scn.tier} {scn.div}</span>
+          </div>
+          <span className={`rank-delta ${showDelta ? 'show' : ''}`}>
+            <DeltaArrow up={up} />
+            {up ? '+' : '−'}{Math.abs(scn.delta)}
+          </span>
+        </div>
+
+        <div className="pts-row">
+          <span className={`pts-value ${bumping ? 'bumping' : ''}`}>{display}</span>
+          <span className="pts-unit">/ {scn.lpMax} pts</span>
+        </div>
+
+        <div className="pts-track">
+          <div className="pts-fill" style={{ width: `${barW}%` }}></div>
+          <div className="pts-ticks">
+            {Array.from({ length: 10 }).map((_, i) => <span key={i}></span>)}
+          </div>
+        </div>
+
+        <div className="pts-foot">
+          <span>{scn.tier} {scn.div}</span>
+          <span className="hint">
+            {up ? `Faltam ${scn.lpMax - lpAfter} pts p/ promoção` : `${lpAfter} pts até rebaixar`}
+          </span>
+        </div>
+      </div>
+      </div>
+
+      <div className="reward-row">
+        <span className="reward-coin"><CoinIcon /></span>
+        <span className="reward-label">Ouro Ganho</span>
+        <span className={`reward-val ${showGold ? 'show' : ''}`}>
+          +{fmtGold(gold)}<span className="g-unit">Ouro</span>
+        </span>
+      </div>
+    </React.Fragment>
+  );
+}
+
+// ── Result overlay ───────────────────────────────────────────────────
+function ResultOverlay({ type, onMenu }) {
+  const isVictory = type === 'victory';
+  const scn = SCENARIOS[type];
+
+  useEffect(() => { spawnParticles(isVictory); }, [type]);
+
+  return (
+    <div className={`overlay ${isVictory ? 'overlay-victory' : 'overlay-defeat'}`}>
+      <div className={`result-card ${isVictory ? 'theme-victory' : 'theme-defeat'}`}>
+        <div className={`crest ${isVictory ? 'crest-victory' : 'crest-defeat'}`}>
+          {isVictory ? <VictoryCrest /> : <DefeatCrest />}
+        </div>
+
+        <div className={`panel ${isVictory ? 'panel-victory' : 'panel-defeat'}`}>
+          <div className="c-br"></div>
+          <div className="c-bl"></div>
+
+          <div className="result-eyebrow">Batalha Encerrada</div>
+          <div className="result-title">{isVictory ? 'Vitória!' : 'Derrota'}</div>
+          <div className="result-divider">
+            <div className="divider-line"></div>
+            <div className="divider-diamond"></div>
+            <div className="divider-line r"></div>
+          </div>
+          <p className="result-desc">
+            {isVictory
+              ? 'Seus heróis provaram seu valor nos campos de Taldorian.'
+              : 'Seus heróis caíram em batalha. A lenda continua…'}
+          </p>
+
+          <RankProgress key={type} scn={scn} isVictory={isVictory} />
+
+          <button className="btn-menu" onClick={onMenu}>
+            <span className="btn-shimmer"></span>
+            <span className="btn-arrow">←</span>
+            Voltar para Taldorian
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ──────────────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState('victory');
+  const [animKey, setAnimKey] = useState(0);
+  const switchTo = (s) => { setScreen(s); setAnimKey(k => k + 1); };
+
+  return (
+    <>
+      <div className="fake-board">
+        {[30, 50, 70].map(t => <div key={t} className="board-line" style={{ top: `${t}%` }} />)}
+      </div>
+
+      <ResultOverlay key={animKey} type={screen} onMenu={() => alert('→ Voltando para Taldorian…')} />
+
+      <div className="demo-controls">
+        <button className={`demo-btn demo-btn-v ${screen === 'victory' ? 'active' : ''}`} onClick={() => switchTo('victory')}>⚔ Vitória</button>
+        <button className={`demo-btn demo-btn-d ${screen === 'defeat' ? 'active' : ''}`} onClick={() => switchTo('defeat')}>☠ Derrota</button>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

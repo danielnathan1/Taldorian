@@ -13,3 +13,4 @@ func execute(ctx: CardEffectContext) -> void:
 		return
 	if my_hero.current_hp < opp_hero.current_hp:
 		my_hero.heal(_amount)
+		ctx.request_vfx("heal")

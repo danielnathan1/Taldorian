@@ -7,16 +7,21 @@ const TILE_SIZE     := 16
 const LERP_SPEED    := 10.0
 const MOVE_DURATION := 0.15
 
+# Emitido ao clicar com o botão direito sobre este jogador (interações sociais).
+signal right_clicked(remote_player: Node2D)
+
 var _target_pos : Vector2
 var _last_dir   : Vector2i = Vector2i(0, 1)   # padrão: olhando para baixo
 var _chat_timer : float    = 0.0
 const CHAT_DISPLAY_TIME := 4.0
 
+@onready var _click_area      : Area2D       = $ClickArea
 @onready var name_label       : Label        = $NameLabel
 @onready var chat_bubble      : Control      = $ChatBubble
 @onready var chat_label       : Label        = $ChatBubble/Label
 @onready var _body            : Sprite2D     = $Skeleton/Body
 @onready var _hair            : Sprite2D     = $Skeleton/Hair
+@onready var _beard           : Sprite2D     = $Skeleton/Beard
 @onready var _chest           : Sprite2D     = $Skeleton/Chest
 @onready var _pants           : Sprite2D     = $Skeleton/Pants
 @onready var _shoes           : Sprite2D     = $Skeleton/Shoes
@@ -25,6 +30,16 @@ const CHAT_DISPLAY_TIME := 4.0
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
 const STAND_FRAME := 18   # row 2 (frente) × hframes(9) + col 0
+
+func _ready() -> void:
+	_click_area.input_event.connect(_on_click_area_input_event)
+
+# Detecta clique direito sobre a área do jogador e avisa o mundo (abre o modal).
+func _on_click_area_input_event(_viewport: Node, p_event: InputEvent, _shape_idx: int) -> void:
+	if p_event is InputEventMouseButton \
+			and p_event.button_index == MOUSE_BUTTON_RIGHT \
+			and p_event.pressed:
+		right_clicked.emit(self)
 
 func setup(p_name: String, p_tile: Vector2i, p_appearance: Dictionary = {}) -> void:
 	_target_pos     = _tile_to_world(p_tile)
@@ -36,7 +51,7 @@ func setup(p_name: String, p_tile: Vector2i, p_appearance: Dictionary = {}) -> v
 	_play_idle(_last_dir)
 
 func _init_sprites() -> void:
-	for s: Sprite2D in [_body, _hair, _chest, _pants, _shoes]:
+	for s: Sprite2D in [_body, _hair, _beard, _chest, _pants, _shoes]:
 		if s.texture:
 			s.hframes = 9
 			s.vframes = 4
@@ -49,7 +64,7 @@ func set_appearance(p_appearance: Dictionary) -> void:
 	if not char_name.is_empty():
 		name_label.text = char_name
 	_apply_sprite(_body, p_appearance.get("body", {}), Color.WHITE)
-	for cat_id: String in ["hair", "chest", "legs", "shoes"]:
+	for cat_id: String in ["hair", "beard", "chest", "legs", "shoes"]:
 		var sprite := _get_sprite(cat_id)
 		if not sprite:
 			continue
@@ -59,6 +74,10 @@ func set_appearance(p_appearance: Dictionary) -> void:
 
 func _apply_sprite(p_sprite: Sprite2D, p_cat: Variant, p_color: Color) -> void:
 	var d    := p_cat as Dictionary
+	# "none" = sem essa camada (ex.: sem cabelo / sem barba): limpa a textura.
+	if str(d.get("style", "")) == "none":
+		p_sprite.texture = null
+		return
 	var path := str(d.get("path", ""))
 	if path != "" and ResourceLoader.exists(path):
 		p_sprite.texture = load(path)
@@ -72,6 +91,7 @@ func _apply_sprite(p_sprite: Sprite2D, p_cat: Variant, p_color: Color) -> void:
 func _get_sprite(p_cat_id: String) -> Sprite2D:
 	match p_cat_id:
 		"hair":  return _hair
+		"beard": return _beard
 		"chest": return _chest
 		"legs":  return _pants
 		"shoes": return _shoes
@@ -100,6 +120,9 @@ func set_target_tile(p_tile: Vector2i) -> void:
 # ── Process ────────────────────────────────────────────────────────────────────
 
 func _process(p_delta: float) -> void:
+	if _beard and _beard.texture:
+		_beard.frame = _body.frame  # barba sem track: espelha o frame do corpo
+
 	var prev := position
 	position  = position.lerp(_target_pos, p_delta * LERP_SPEED)
 

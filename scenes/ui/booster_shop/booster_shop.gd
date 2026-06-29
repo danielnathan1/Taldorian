@@ -1,6 +1,6 @@
 extends Control
 
-const LOBBY_SCENE     := "res://scenes/ui/lobby/lobby.tscn"
+const WORLD_SCENE     := "res://scenes/world/world_root.tscn"
 const CARD_VIEW_SCENE := preload("res://scenes/ui/card_view/card_view.tscn")
 const PACK_SIZE       := 8
 const PACK_PRICE      := 100
@@ -12,6 +12,42 @@ const STAGE_CARD_FONT := 1.375   # apply_scale: 1.25 * 1.10
 const THUMB_WRAP_SIZE := Vector2(60, 90)
 const THUMB_SCALE     := 0.374   # 0.325 * 1.15
 const STARTING_GOLD   := 0   # fallback até /players/me responder
+
+# ── Parâmetros de abertura (ESPELHO do backend) ─────────────────────────────────
+# Estes valores são apenas para EXIBIÇÃO das probabilidades ao jogador; o sorteio
+# real é autoridade do taldorian-service. Mantenha em sincronia com
+# `taldorian.booster.*` (application.yml / BoosterProperties.kt). Raridade com peso 0
+# ou sem cartas na coleção não é sorteada.
+const RARITY_WEIGHTS := {
+	"COMMON":    70,
+	"RARE":      20,
+	"LEGENDARY": 10,
+	"MYSTIC":    0,
+}
+const GUARANTEED_RARITY := "RARE"
+const GUARANTEED_COUNT  := 1
+const FOIL_CHANCE_PCT   := 5   # foil_chance 0.05 → 5% por carta
+
+# Ordem e rótulos de exibição das raridades no modal de probabilidades.
+const RARITY_ORDER := ["COMMON", "RARE", "LEGENDARY", "MYSTIC"]
+const RARITY_LABEL := {
+	"COMMON":    "Comuns",
+	"RARE":      "Raras",
+	"LEGENDARY": "Lendárias",
+	"MYSTIC":    "Místicas",
+}
+# Chave da contagem no dict da coleção (/catalog/collections) por raridade.
+const RARITY_COUNT_KEY := {
+	"COMMON":    "commonCards",
+	"RARE":      "rareCards",
+	"LEGENDARY": "legendaryCards",
+	"MYSTIC":    "mysticCards",
+}
+
+# Cartas no grid do modal "Ver Cartas" (CardView base é 160x240).
+const GRID_CARD_BASE  := Vector2(160, 240)
+const GRID_CARD_SCALE := 0.85
+const CARDS_BUILD_BATCH := 8   # cartas instanciadas por frame (arte é pesada — evita travar)
 
 enum Phase { NONE, ENTER, SHAKE, SPLIT, FLY, STACK, REVEAL }
 
@@ -28,6 +64,35 @@ const C_SURFACE2    := Color(0.055, 0.071, 0.145, 1.0)
 const C_RARE_COMMON    := Color(0.70, 0.60, 0.50)
 const C_RARE_RARE      := Color(0.45, 0.60, 0.92)
 const C_RARE_LEGENDARY := Color(0.92, 0.78, 0.34)
+
+# ── Aura de tensão (pista de raridade estilo gacha) ─────────────────────────────
+# O tier é o TETO do pacote (o melhor item manda). A aura começa azul e, no
+# build-up, "evolui" pra cor real (fake-out). Ver tension_aura.gdshader.
+const TENSION_SHADER    := preload("res://scenes/ui/booster_shop/tension_aura.gdshader")
+const CARD_SHINE_SHADER := preload("res://scenes/ui/booster_shop/card_reveal_shine.gdshader")
+const CARD_FIRE_SHADER  := preload("res://scenes/ui/booster_shop/card_fire.gdshader")
+const TENSION_AURA_SIZE := Vector2(900, 900)
+
+# Fogo por carta: o overlay extrapola só um pouco a carta (chamas finas na borda).
+const FIRE_GROW := Vector2(60, 74)   # quanto o overlay extrapola a carta (cada lado)
+
+# Modos do fogo (alinhados ao mode do card_fire.gdshader); -1 = sem fogo (comum).
+enum Fire { NONE = -1, BLUE = 0, MIXED = 1, PRISM = 2 }
+
+# Camadas do reveal dramático (dourado+): a carta fica acima do escurecimento.
+const Z_DARKEN      := 40
+const Z_IMPACT_BURST := 45
+const Z_FRONT_CARD  := 50
+const Z_IMPACT_FLASH := 60
+
+enum Tier { BLUE, PURPLE, GOLD, RAINBOW }
+
+const TIER_COLOR := {
+	Tier.BLUE:    Color(0.30, 0.55, 1.00),   # baseline: só comuns + a rara garantida
+	Tier.PURPLE:  Color(0.66, 0.36, 0.96),   # 2+ raras ou foil comum/rara
+	Tier.GOLD:    Color(1.00, 0.80, 0.28),   # 1+ lendária
+	Tier.RAINBOW: Color(1.00, 1.00, 1.00),   # místico ou foil de lendária/místico
+}
 
 # ── @onready ──────────────────────────────────────────────────────────────────
 @onready var _shop_view:         Control        = %ShopView
@@ -46,13 +111,28 @@ const C_RARE_LEGENDARY := Color(0.92, 0.78, 0.34)
 @onready var _pack_counter_lbl:  Label          = %PackCounterLabel
 @onready var _dots_row:          HBoxContainer  = %DotsRow
 @onready var _exit_btn:          Button         = %ExitButton
+@onready var _skip_btn:          Button         = %SkipButton
 @onready var _pack_root:         Control        = %PackRoot
 @onready var _card_stage:        Control        = %CardStage
 @onready var _hint_lbl:          Label          = %HintLabel
 @onready var _reveal_rail:       HBoxContainer  = %RevealRail
+@onready var _rail_scroll:       ScrollContainer = %RailScroll
 @onready var _finish_row:        Control        = %FinishRow
 @onready var _back_to_shop_btn:  Button         = %BackToShopBtn
 @onready var _next_pack_btn:     Button         = %NextPackBtn
+
+# Modais de informação (probabilidades + catálogo de cartas)
+@onready var _odds_btn:          Button         = %OddsBtn
+@onready var _cards_btn:         Button         = %CardsBtn
+@onready var _odds_modal:        Control        = %OddsModal
+@onready var _odds_veil:         ColorRect      = %OddsVeil
+@onready var _odds_close_btn:    Button         = %OddsCloseBtn
+@onready var _odds_content:      VBoxContainer  = %OddsContent
+@onready var _cards_modal:       Control        = %CardsModal
+@onready var _cards_veil:        ColorRect      = %CardsVeil
+@onready var _cards_close_btn:   Button         = %CardsCloseBtn
+@onready var _cards_count_lbl:   Label          = %CardsCountLabel
+@onready var _cards_grid:        GridContainer  = %CardsGrid
 
 # ── State ─────────────────────────────────────────────────────────────────────
 var _gold:          int   = STARTING_GOLD
@@ -63,10 +143,20 @@ var _cur_cards:     Array = []
 var _revealed:      int   = 0
 var _pack_count:    int   = PACK_SIZE   # nº de cartas do pacote atual (vem do backend)
 var _phase:         Phase = Phase.NONE
+var _skipped:       bool  = false   # true quando o jogador pula a coreografia do pacote atual
 var _stage_cards:   Array[Control] = []
 var _progress_dots: Array[ColorRect] = []
 var _pack_top_node: Control
 var _pack_bot_node: Control
+
+var _aura:      ColorRect
+var _aura_mat:  ShaderMaterial
+var _aura_tws:  Array[Tween] = []
+var _cur_tier:  int = Tier.BLUE
+
+# Reveal de 2 cliques: a carta da frente vira (1º clique) e depois sai (2º clique).
+var _front_flipped: bool = false
+var _dramatic_dark: ColorRect
 
 var _font_black:   FontFile
 var _font_regular: FontFile
@@ -77,6 +167,11 @@ var _selected:    Dictionary = {}                       # coleção em destaque 
 var _art_path:    String     = ""                       # arte da coleção selecionada
 var _sel_name:    String     = "Origens de Taldorian"   # nome da coleção selecionada
 var _pack_price:  int        = PACK_PRICE                # preço por pacote da selecionada
+
+# Modal "Ver Cartas": a grade é construída UMA vez (catálogo é estático na sessão) e
+# preenchida em lotes por frame, para não congelar ao carregar ~100 artes pesadas.
+var _cards_grid_built: bool = false
+var _cards_building:   bool = false
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INIT
@@ -91,8 +186,15 @@ func _ready() -> void:
 	_max_btn.pressed.connect(_set_qty_max)
 	_buy_btn.pressed.connect(_on_buy_pressed)
 	_exit_btn.pressed.connect(_on_opening_exit)
+	_skip_btn.pressed.connect(_on_skip_pressed)
 	_back_to_shop_btn.pressed.connect(_on_opening_exit)
 	_next_pack_btn.pressed.connect(_on_next_pack)
+	_odds_btn.pressed.connect(_open_odds_modal)
+	_cards_btn.pressed.connect(_open_cards_modal)
+	_odds_close_btn.pressed.connect(func() -> void: _odds_modal.visible = false)
+	_cards_close_btn.pressed.connect(func() -> void: _cards_modal.visible = false)
+	_odds_veil.gui_input.connect(_on_veil_input.bind(_odds_modal))
+	_cards_veil.gui_input.connect(_on_veil_input.bind(_cards_modal))
 	_show_shop()
 	await _refresh_gold()
 	await _load_collections()
@@ -147,8 +249,13 @@ func _art_path_for(art_key: String) -> String:
 func _setup_buttons() -> void:
 	_style_btn(_back_btn,         C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER_STR)
 	_style_btn(_exit_btn,         C_GOLD_DIM,    C_GOLD_GLOW, Color(0.04, 0.05, 0.10, 0.8), C_BORDER)
+	_style_btn(_skip_btn,         C_GOLD_DIM,    C_GOLD_GLOW, Color(0.04, 0.05, 0.10, 0.8), C_BORDER)
 	_style_btn(_back_to_shop_btn, C_PARCHMENT_D, C_GOLD_GLOW, Color(0.06, 0.07, 0.14, 0.75),C_BORDER_STR)
 	_style_btn(_max_btn,          C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER)
+	_style_btn(_odds_btn,         C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER)
+	_style_btn(_cards_btn,        C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER)
+	_style_btn(_odds_close_btn,   C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER)
+	_style_btn(_cards_close_btn,  C_GOLD_DIM,    C_GOLD,      C_SURFACE2,                   C_BORDER)
 	_style_small_btn(_minus_btn)
 	_style_small_btn(_plus_btn)
 	_style_cta_btn(_buy_btn)
@@ -236,7 +343,7 @@ func _fill_pack_info_row() -> void:
 	var cells: Array = [
 		["Cartas / Pacote", str(PACK_SIZE)],
 		["Preço Unitário",  str(_pack_price)],
-		["Rara Garantida",  "✦ 0+"],
+		["Rara Garantida",  "✦ %d+" % GUARANTEED_COUNT],
 	]
 	for i in cells.size():
 		if i > 0:
@@ -283,8 +390,14 @@ func _build_dots(n: int) -> void:
 func _map_api_card(c: Dictionary) -> Dictionary:
 	# Liga pela identidade forte (id da API ↔ card_id local). Usa a definição local
 	# canônica (mesma do jogo: efeitos, símbolos, art_key) quando encontrada.
+	# Jackson serializa o boolean `foil` (getter isFoil()) sem o prefixo "is" — vem como "foil".
+	var is_foil := bool(c.get("foil", false))
 	var local := Collection.resolve_card(c)
 	if not local.is_empty():
+		# Duplicar: resolve_card devolve o dict canônico do catálogo; mutar aqui o
+		# deixaria foil permanentemente. is_foil é por-cópia, não por-definição.
+		local = local.duplicate()
+		local["is_foil"] = is_foil
 		return local
 	# Sem correspondência local (ex.: coleção nova ainda não no JSON) — exibe direto da API.
 	push_warning("[BoosterShop] Carta sem correspondência local (id=%s, cardKey=%s, name=%s)" % [
@@ -299,6 +412,7 @@ func _map_api_card(c: Dictionary) -> Dictionary:
 		"art_key":       str(c.get("artKey", "")),
 		"symbols":       _map_symbols(c.get("symbols", [])),
 		"is_stealth":    bool(c.get("isStealth", false)),
+		"is_foil":       is_foil,
 	}
 
 
@@ -322,8 +436,15 @@ func _start_pack(idx: int) -> void:
 	_pack_count  = _cur_cards.size()
 	_revealed    = 0
 	_phase       = Phase.NONE
-	_finish_row.visible = false
-	_hint_lbl.visible   = false
+	_skipped     = false
+	_front_flipped = false
+	_clear_dramatic_darken()
+	if is_instance_valid(_aura):
+		_aura.visible = false
+	_finish_row.visible  = false
+	_hint_lbl.visible    = false
+	_skip_btn.visible    = true
+	_rail_scroll.visible = true
 	_build_dots(_pack_count)
 
 	for c in _stage_cards:
@@ -369,15 +490,19 @@ func _start_pack(idx: int) -> void:
 
 
 func _run_phases() -> void:
+	_cur_tier = _compute_pack_tier(_cur_cards)
 	await _delay(0.05)
+	if _skipped: return
 
 	_phase = Phase.ENTER
 	var tw_enter := create_tween()
 	tw_enter.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tw_enter.tween_property(_pack_root, "scale", Vector2.ONE, 0.55)
 	await _delay(0.65)
+	if _skipped: return
 
 	_phase = Phase.SHAKE
+	_start_tension_aura(_cur_tier)
 	var tw_shake := create_tween()
 	tw_shake.tween_property(_pack_root, "rotation", deg_to_rad(-2.5), 0.10)
 	tw_shake.tween_property(_pack_root, "rotation", deg_to_rad( 2.5), 0.10)
@@ -385,6 +510,7 @@ func _run_phases() -> void:
 	tw_shake.tween_property(_pack_root, "rotation", deg_to_rad( 1.5), 0.10)
 	tw_shake.tween_property(_pack_root, "rotation", deg_to_rad( 0.0), 0.10)
 	await _delay(0.85)
+	if _skipped: return
 
 	_phase = Phase.SPLIT
 	var tw_split := create_tween().set_parallel(true)
@@ -392,11 +518,14 @@ func _run_phases() -> void:
 	tw_split.tween_property(_pack_top_node, "modulate:a",   0.0,  0.55)
 	tw_split.tween_property(_pack_bot_node, "position:y",  300.0, 0.70).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw_split.tween_property(_pack_bot_node, "modulate:a",   0.0,  0.55)
-	_spawn_burst_particles()
+	_screen_flash(Color.WHITE, 0.85)
+	_spawn_burst_particles(_burst_color())
 	await _delay(0.80)
+	if _skipped: return
 	_pack_root.visible = false
 
 	_phase = Phase.FLY
+	_fade_tension_aura()
 	var screen_center := get_viewport_rect().size * 0.5
 	for i in _pack_count:
 		var card := _stage_cards[i]
@@ -410,6 +539,7 @@ func _run_phases() -> void:
 		tw.tween_property(card, "scale",    Vector2.ONE, 0.55).set_delay(i * 0.04).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(card, "modulate:a", 1.0, 0.35).set_delay(i * 0.04)
 	await _delay(1.00)
+	if _skipped: return
 
 	_phase = Phase.STACK
 	for i in _pack_count:
@@ -420,9 +550,9 @@ func _run_phases() -> void:
 		tw.tween_property(card, "position", target, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(card, "rotation", 0.0,    0.40).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await _delay(0.80)
+	if _skipped: return
 
-	_phase = Phase.REVEAL
-	_hint_lbl.visible = true
+	_present_front()
 
 
 func _delay(seconds: float) -> Signal:
@@ -444,25 +574,196 @@ func _stack_position(i: int) -> Vector2:
 	return Vector2(off, -off)
 
 
-func _spawn_burst_particles() -> void:
+func _spawn_burst_particles(col: Color = C_GOLD_GLOW, z: int = 0) -> void:
 	var center := get_viewport_rect().size * 0.5
-	for _i in 18:
+	for _i in 36:
 		var p := ColorRect.new()
-		p.custom_minimum_size = Vector2(6, 6)
-		p.color    = Color(C_GOLD_GLOW, 0.9)
-		p.position = center - Vector2(3, 3)
+		var sz := randf_range(6.0, 12.0)
+		p.custom_minimum_size = Vector2(sz, sz)
+		p.color    = Color(col, 0.95)
+		p.position = center - Vector2(sz, sz) * 0.5
+		p.z_index  = z
 		_card_stage.add_child(p)
-		var bx := randf_range(-400.0, 400.0)
-		var by := randf_range(-400.0, 400.0)
-		var d  := randf_range(0.0, 0.15)
+		var bx := randf_range(-620.0, 620.0)
+		var by := randf_range(-620.0, 620.0)
+		var d  := randf_range(0.0, 0.14)
 		var tw := create_tween().set_parallel(true)
-		tw.tween_property(p, "position",   center + Vector2(bx, by), 0.9).set_delay(d).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(p, "modulate:a", 0.0, 0.7).set_delay(d + 0.15)
-		tw.tween_callback(p.queue_free).set_delay(d + 0.9)
+		tw.tween_property(p, "position",   center + Vector2(bx, by), 1.0).set_delay(d).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(p, "modulate:a", 0.0, 0.8).set_delay(d + 0.18)
+		tw.tween_callback(p.queue_free).set_delay(d + 1.0)
+
+
+# Clarão de tela cheia (no "estalo" do pacote). Some sozinho.
+func _screen_flash(col: Color = Color.WHITE, peak: float = 0.85, z: int = 0) -> void:
+	var f := ColorRect.new()
+	f.name         = "ScreenFlash"
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	f.color        = Color(col.r, col.g, col.b, 0.0)
+	f.z_index      = z
+	f.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_opening_view.add_child(f)
+	var tw := create_tween()
+	tw.tween_property(f, "color:a", peak, 0.06).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(f, "color:a", 0.0,  0.35).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(f.queue_free)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# INPUT — captura clique durante REVEAL
+# AURA DE TENSÃO — pista de raridade (cor = teto do pacote, com fake-out)
+# ─────────────────────────────────────────────────────────────────────────────
+# Avalia de cima pra baixo: o melhor item do pacote define o tier.
+func _compute_pack_tier(cards: Array) -> int:
+	var has_top   := false   # místico, ou foil de lendária/mística → arco-íris
+	var has_leg   := false
+	var rare_n    := 0
+	var has_foil  := false   # foil de comum/rara
+	for c: Dictionary in cards:
+		var rarity := str(c.get("rarity", "COMMON")).to_upper()
+		var foil   := bool(c.get("is_foil", false))
+		match rarity:
+			"MYSTIC":    has_top = true
+			"LEGENDARY": has_leg = true
+			"RARE":      rare_n += 1
+		if foil:
+			if rarity == "LEGENDARY" or rarity == "MYSTIC":
+				has_top = true
+			else:
+				has_foil = true
+	if has_top:
+		return Tier.RAINBOW
+	if has_leg:
+		return Tier.GOLD
+	if rare_n >= 2 or has_foil:
+		return Tier.PURPLE
+	return Tier.BLUE
+
+
+func _ensure_aura() -> void:
+	if is_instance_valid(_aura):
+		return
+	_aura = ColorRect.new()
+	_aura.name           = "TensionAura"
+	_aura.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+	_aura.size           = TENSION_AURA_SIZE
+	_aura.pivot_offset   = TENSION_AURA_SIZE * 0.5
+	_aura_mat            = ShaderMaterial.new()
+	_aura_mat.shader     = TENSION_SHADER
+	_aura.material       = _aura_mat
+	_opening_view.add_child(_aura)
+	_opening_view.move_child(_aura, 0)   # atrás do pacote e das cartas
+
+
+# Build-up: sobe a aura em azul; se o tier for maior, evolui pra cor real (fake-out).
+func _start_tension_aura(tier: int) -> void:
+	_ensure_aura()
+	_aura.visible  = true
+	_aura.scale    = Vector2.ONE
+	_aura.position = get_viewport_rect().size * 0.5 - TENSION_AURA_SIZE * 0.5
+	_aura_mat.set_shader_parameter("aura_color",  TIER_COLOR[Tier.BLUE])
+	_aura_mat.set_shader_parameter("rainbow_mix", 0.0)
+	_aura_mat.set_shader_parameter("intensity",   0.0)
+
+	_kill_aura_tweens()
+	var bt := create_tween()
+	bt.tween_property(_aura_mat, "shader_parameter/intensity", 1.10, 0.40) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if tier > Tier.BLUE:
+		bt.tween_interval(0.30)               # segura o azul (suspense)
+		bt.tween_callback(_flash_to_tier.bind(tier))
+	_aura_tws.append(bt)
+
+
+# Lampejo que "muda a cor" — o momento que faz o coração disparar.
+func _flash_to_tier(tier: int) -> void:
+	if not is_instance_valid(_aura_mat):
+		return
+	# Intensidade: pico forte (overshoot) e depois assenta num brilho alto.
+	var it := create_tween()
+	it.tween_property(_aura_mat, "shader_parameter/intensity", 2.2, 0.12) \
+		.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	it.tween_property(_aura_mat, "shader_parameter/intensity", 1.5, 0.30) \
+		.set_trans(Tween.TRANS_SINE)
+
+	# Cor (e arco-íris) evoluem em paralelo, começando junto com o pico.
+	var ct := create_tween().set_parallel(true)
+	ct.tween_property(_aura_mat, "shader_parameter/aura_color", TIER_COLOR[tier], 0.30)
+	if tier == Tier.RAINBOW:
+		ct.tween_property(_aura_mat, "shader_parameter/rainbow_mix", 1.0, 0.40)
+
+	# Punch de escala e volta.
+	var st := create_tween()
+	st.tween_property(_aura, "scale", Vector2(1.30, 1.30), 0.14) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	st.tween_property(_aura, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_SINE)
+
+	_aura_tws.append_array([it, ct, st])
+
+
+func _kill_aura_tweens() -> void:
+	for tw in _aura_tws:
+		if is_instance_valid(tw):
+			tw.kill()
+	_aura_tws.clear()
+
+
+func _fade_tension_aura() -> void:
+	if not is_instance_valid(_aura):
+		return
+	_kill_aura_tweens()
+	var ot := create_tween()
+	ot.tween_property(_aura_mat, "shader_parameter/intensity", 0.0, 0.55)
+	ot.tween_callback(func() -> void:
+		if is_instance_valid(_aura):
+			_aura.visible = false)
+	_aura_tws.append(ot)
+
+
+# Cor das partículas do burst (arco-íris cai no dourado, que lê bem em partícula).
+func _burst_color() -> Color:
+	if _cur_tier == Tier.RAINBOW:
+		return C_GOLD_GLOW
+	return TIER_COLOR[_cur_tier]
+
+
+# Cor/força do shine de revelação, por carta (não por pacote): quanto mais rara,
+# mais forte; foil soma um extra.
+func _card_shine_params(card: Dictionary) -> Dictionary:
+	var rarity := str(card.get("rarity", "COMMON")).to_upper()
+	var foil   := bool(card.get("is_foil", false))
+	var color  := Color(0.90, 0.95, 1.00)
+	var inten  := 0.45
+	match rarity:
+		"RARE":      color = Color(0.45, 0.62, 1.00); inten = 0.95
+		"LEGENDARY": color = TIER_COLOR[Tier.GOLD];   inten = 1.30
+		"MYSTIC":    color = Color(0.85, 0.55, 1.00); inten = 1.60
+	if foil:
+		inten += 0.50
+		color  = color.lightened(0.20)
+	return {"color": color, "intensity": inten}
+
+
+# Sobrepõe um shine que varre a carta uma vez (banda diagonal) e some.
+func _spawn_reveal_shine(cv: Control, card: Dictionary) -> void:
+	var p := _card_shine_params(card)
+	var shine := ColorRect.new()
+	shine.name         = "RevealShine"
+	shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shine.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = CARD_SHINE_SHADER
+	mat.set_shader_parameter("shine_color", p.color)
+	mat.set_shader_parameter("intensity",   p.intensity)
+	mat.set_shader_parameter("progress",    -0.25)
+	shine.material = mat
+	cv.add_child(shine)
+	var tw := create_tween()
+	tw.tween_property(mat, "shader_parameter/progress", 1.25, 0.45).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(mat, "shader_parameter/intensity", 0.0, 0.18)
+	tw.tween_callback(shine.queue_free)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REVEAL — fluxo de 2 cliques: a carta da frente VIRA, depois SAI
 # ─────────────────────────────────────────────────────────────────────────────
 func _input(event: InputEvent) -> void:
 	if _phase != Phase.REVEAL or _revealed >= _pack_count:
@@ -476,41 +777,209 @@ func _input(event: InputEvent) -> void:
 	if not cv.get_global_rect().has_point(mb.global_position):
 		return
 	get_viewport().set_input_as_handled()
-	_flip_and_reveal(_revealed)
+	if _front_flipped:
+		_dismiss_front()    # 2º clique: a carta sai e a próxima entra virada p/ baixo
+	else:
+		_flip_front()       # 1º clique: vira a carta da frente
 
 
-func _flip_and_reveal(idx: int) -> void:
+# Apresenta a carta da frente virada p/ baixo, já com o fogo da raridade aceso.
+func _present_front() -> void:
+	if _revealed >= _pack_count:
+		_show_finish()
+		return
+	_front_flipped = false
+	var cv := _stage_cards[_revealed] as CardView
+	cv.visible  = true
+	cv.modulate = Color.WHITE
+	cv.scale    = Vector2.ONE
+	cv.rotation = 0.0
+	cv.z_index  = Z_FRONT_CARD
+	cv.set_face_down(true)
+	_apply_card_fire(cv, _cur_cards[_revealed])
+	_phase = Phase.REVEAL
+	_hint_lbl.text    = "Clique para virar"
+	_hint_lbl.visible = true
+
+
+# 1º clique — vira a carta (mantém o fogo) e revela. Dourado+ ganha reveal dramático.
+func _flip_front() -> void:
 	_phase = Phase.NONE
 	_hint_lbl.visible = false
-	# A carta da frente (já revelada) some, liberando a nova carta para ficar à frente
-	if idx > 0:
-		var prev := _stage_cards[idx - 1]
-		var ptw := create_tween().set_parallel(true)
-		ptw.tween_property(prev, "modulate:a", 0.0, 0.22)
-		ptw.tween_property(prev, "scale", prev.scale * 0.9, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		ptw.chain().tween_callback(func() -> void: prev.visible = false)
+	var idx := _revealed
 	var cv := _stage_cards[idx] as CardView
+	if _card_fire_mode(_cur_cards[idx]) >= Fire.MIXED:
+		_flip_front_dramatic(cv, idx)
+	else:
+		_flip_front_simple(cv, idx)
+
+
+func _flip_front_simple(cv: CardView, idx: int) -> void:
 	var tw := create_tween()
 	tw.tween_property(cv, "scale:x", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		cv.set_face_down(false)
-		var rarity: String = _cur_cards[idx].get("rarity", "COMMON")
-		if rarity in ["RARE", "LEGENDARY"]:
-			cv.modulate = Color(C_GOLD_GLOW, 1.0)
+		_spawn_reveal_shine(cv, _cur_cards[idx])
 	)
 	tw.tween_property(cv, "scale:x", 1.0, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(func() -> void:
-		cv.modulate = Color.WHITE
-		_after_reveal(idx, _cur_cards[idx])
-	)
+	tw.tween_callback(_on_front_flipped.bind(idx))
 
 
-func _after_reveal(idx: int, card_dict: Dictionary) -> void:
-	_revealed += 1
+# Reveal dramático (lendária+): escurece o resto, tremida, 3 viradas e impacto.
+func _flip_front_dramatic(cv: CardView, idx: int) -> void:
+	_dramatic_dark = _show_dramatic_darken()
+	var tw := create_tween()
+	# aproxima + tremida (antecipação)
+	tw.tween_property(cv, "scale", Vector2(1.08, 1.08), 0.22).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(cv, "rotation", deg_to_rad( 3.0), 0.05)
+	tw.tween_property(cv, "rotation", deg_to_rad(-3.0), 0.06)
+	tw.tween_property(cv, "rotation", deg_to_rad( 2.0), 0.05)
+	tw.tween_property(cv, "rotation", deg_to_rad(-2.0), 0.05)
+	tw.tween_property(cv, "rotation", 0.0,              0.05)
+	# 3 viradas; revela no meio da última
+	for spin in 3:
+		tw.tween_property(cv, "scale:x", 0.0,  0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tw.tween_callback(_dramatic_mid.bind(cv, idx, spin))
+		tw.tween_property(cv, "scale:x", 1.08, 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# impacto
+	tw.tween_callback(_dramatic_impact.bind(idx))
+	tw.tween_property(cv, "scale", Vector2(1.16, 1.16), 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(cv, "scale", Vector2.ONE,          0.22).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(_on_front_flipped.bind(idx))
 
+
+# Meio de cada virada: só na última (spin 2) a carta efetivamente revela.
+func _dramatic_mid(cv: CardView, idx: int, spin: int) -> void:
+	if spin == 2:
+		cv.set_face_down(false)
+		_spawn_reveal_shine(cv, _cur_cards[idx])
+
+
+func _dramatic_impact(idx: int) -> void:
+	_screen_flash(Color.WHITE, 0.5, Z_IMPACT_FLASH)
+	_spawn_burst_particles(_card_shine_params(_cur_cards[idx]).color, Z_IMPACT_BURST)
+
+
+# Escurece tudo menos a carta (que fica acima, no Z_FRONT_CARD).
+func _show_dramatic_darken() -> ColorRect:
+	var dark := ColorRect.new()
+	dark.name         = "DramaticDarken"
+	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dark.color        = Color(0, 0, 0, 0)
+	dark.z_index      = Z_DARKEN
+	dark.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_opening_view.add_child(dark)
+	create_tween().tween_property(dark, "color:a", 0.82, 0.30)
+	return dark
+
+
+func _clear_dramatic_darken() -> void:
+	if not is_instance_valid(_dramatic_dark):
+		_dramatic_dark = null
+		return
+	var d := _dramatic_dark
+	_dramatic_dark = null
+	var tw := create_tween()
+	tw.tween_property(d, "color:a", 0.0, 0.25)
+	tw.tween_callback(d.queue_free)
+
+
+func _on_front_flipped(idx: int) -> void:
+	if _skipped:
+		return
+	_front_flipped = true
 	if idx < _progress_dots.size():
 		_progress_dots[idx].color = C_GOLD
+	_add_reveal_thumb(_cur_cards[idx])
+	_phase = Phase.REVEAL
+	_hint_lbl.text    = "Clique para avançar"
+	_hint_lbl.visible = true
 
+
+# 2º clique — a carta (e seu fogo) sai; a próxima é apresentada virada p/ baixo.
+func _dismiss_front() -> void:
+	_phase = Phase.NONE
+	_hint_lbl.visible = false
+	_clear_dramatic_darken()
+	var cv := _stage_cards[_revealed] as CardView
+	_remove_card_fire(cv)
+	var dtw := create_tween().set_parallel(true)
+	dtw.tween_property(cv, "position:y", cv.position.y - 300.0, 0.30).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	dtw.tween_property(cv, "modulate:a", 0.0, 0.30)
+	dtw.tween_property(cv, "scale", cv.scale * 0.82, 0.30)
+	dtw.chain().tween_callback(func() -> void: cv.visible = false)
+
+	_revealed += 1
+	if _revealed >= _pack_count:
+		# Último: deixa a saída terminar antes de montar o resumo (evita conflito de tween).
+		await get_tree().create_timer(0.34).timeout
+		if _skipped:
+			return
+		_show_finish()
+		return
+	_restack_remaining()
+	_present_front()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FOGO POR CARTA — pista de raridade (azul / misturado / prismático)
+# ─────────────────────────────────────────────────────────────────────────────
+func _card_fire_mode(card: Dictionary) -> int:
+	var rarity := str(card.get("rarity", "COMMON")).to_upper()
+	var foil   := bool(card.get("is_foil", false))
+	if rarity == "MYSTIC" or (rarity == "LEGENDARY" and foil):
+		return Fire.PRISM
+	if rarity == "LEGENDARY":
+		return Fire.MIXED
+	if rarity == "RARE" or foil:
+		return Fire.BLUE
+	return Fire.NONE
+
+
+# Acende o fogo da carta (substitui se já houver). Sem fogo p/ comum não-foil.
+func _apply_card_fire(cv: Control, card: Dictionary) -> void:
+	_remove_card_fire(cv)
+	var mode := _card_fire_mode(card)
+	if mode == Fire.NONE:
+		return
+	var fire := ColorRect.new()
+	fire.name         = "CardFire"
+	fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fire.size     = STAGE_CARD_SIZE + FIRE_GROW * 2.0
+	fire.position = -FIRE_GROW
+	var mat := ShaderMaterial.new()
+	mat.shader = CARD_FIRE_SHADER
+	mat.set_shader_parameter("mode", mode)
+	mat.set_shader_parameter("overlay_px", fire.size)
+	mat.set_shader_parameter("card_px", STAGE_CARD_SIZE)
+	mat.set_shader_parameter("intensity", _fire_intensity(mode))
+	fire.material = mat
+	cv.add_child(fire)
+	cv.move_child(fire, 0)   # atrás do conteúdo: chamas lambem as bordas, arte fica limpa
+	fire.modulate = Color(1, 1, 1, 0)
+	create_tween().tween_property(fire, "modulate:a", 1.0, 0.35)
+
+
+func _fire_intensity(mode: int) -> float:
+	match mode:
+		Fire.PRISM: return 1.5
+		Fire.MIXED: return 1.25
+	return 1.0
+
+
+func _remove_card_fire(cv: Control) -> void:
+	var fire := cv.get_node_or_null("CardFire")
+	if fire:
+		fire.queue_free()
+
+
+func _clear_all_card_fire() -> void:
+	for cv in _stage_cards:
+		_remove_card_fire(cv)
+
+
+# Adiciona a miniatura da carta revelada à esteira inferior (com animação de entrada).
+func _add_reveal_thumb(card_dict: Dictionary) -> void:
 	var thumb_wrap := Control.new()
 	thumb_wrap.custom_minimum_size = THUMB_WRAP_SIZE
 	thumb_wrap.clip_contents = true
@@ -526,21 +995,78 @@ func _after_reveal(idx: int, card_dict: Dictionary) -> void:
 	ttw.tween_property(thumb_wrap, "modulate:a",  1.0, 0.3)
 	ttw.tween_property(thumb_wrap, "position:y",  0.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-	_restack_remaining()
 
-	if _revealed >= _pack_count:
-		# Cartas e ouro já foram concedidos pelo backend em /boosters/open — nada a persistir aqui.
-		var ftw := create_tween()
-		ftw.tween_interval(0.45)
-		ftw.tween_callback(func() -> void:
-			_hint_lbl.visible   = false
-			_finish_row.visible = true
-			_update_finish_btn()
-		)
-	else:
-		await get_tree().create_timer(0.35).timeout
-		_phase = Phase.REVEAL
-		_hint_lbl.visible = true
+func _show_finish() -> void:
+	_phase               = Phase.NONE
+	_hint_lbl.visible    = false
+	_skip_btn.visible    = false
+	_rail_scroll.visible = false
+	_clear_all_card_fire()
+	_clear_dramatic_darken()
+	_showcase_cards()
+	_finish_row.visible  = true
+	_update_finish_btn()
+
+
+# Disposição final: traz todas as cartas para o centro, ampliadas e com preview no
+# hover (PreviewLayer). Substitui a esteira de miniaturas ao concluir o pacote.
+func _showcase_cards() -> void:
+	var n := _stage_cards.size()
+	if n == 0:
+		return
+	var vp := get_viewport_rect().size
+	var cols := mini(n, 4)
+	var rows := int(ceil(float(n) / float(cols)))
+	var gap := 22.0
+	# Maior escala que ainda cabe entre a barra de contagem e a linha de conclusão.
+	var avail_w := vp.x - 120.0
+	var avail_h := vp.y - 240.0
+	var full_w := cols * STAGE_CARD_SIZE.x + (cols - 1) * gap
+	var full_h := rows * STAGE_CARD_SIZE.y + (rows - 1) * gap
+	var card_scale := minf(1.0, minf(avail_w / full_w, avail_h / full_h))
+	var dw := STAGE_CARD_SIZE.x * card_scale
+	var dh := STAGE_CARD_SIZE.y * card_scale
+	var grid_top := vp.y * 0.5 - (rows * dh + (rows - 1) * gap) * 0.5
+
+	for i in n:
+		var card := _stage_cards[i] as CardView
+		var row := i / cols
+		var col := i % cols
+		var in_row := cols if row < rows - 1 else (n - row * cols)
+		var row_left := vp.x * 0.5 - (in_row * dw + (in_row - 1) * gap) * 0.5
+		var center := Vector2(
+			row_left + col * (dw + gap) + dw * 0.5,
+			grid_top  + row * (dh + gap) + dh * 0.5)
+
+		card.visible = true
+		card.set_face_down(false)
+		card.set_preview_enabled(true)
+		card.modulate = Color.WHITE
+		card.z_index  = i
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(card, "position", center - STAGE_CARD_HALF, 0.45).set_delay(i * 0.04).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(card, "scale", Vector2(card_scale, card_scale), 0.45).set_delay(i * 0.04).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(card, "rotation", 0.0, 0.3).set_delay(i * 0.04)
+
+
+# Pular: revela todas as cartas restantes de uma vez, mandando-as direto à esteira.
+func _on_skip_pressed() -> void:
+	if _skipped:
+		return
+	_skipped = true
+	_phase = Phase.NONE
+	_hint_lbl.visible = false
+	_pack_root.visible = false
+	_fade_tension_aura()
+	_clear_all_card_fire()
+	_clear_dramatic_darken()
+	for c in _stage_cards:
+		c.visible = false
+	for i in _progress_dots.size():
+		_progress_dots[i].color = C_GOLD
+	_revealed = _pack_count
+	# O resumo (showcase) já reexibe todas as cartas de cara para cima na grade.
+	_show_finish()
 
 
 func _restack_remaining() -> void:
@@ -627,7 +1153,7 @@ func _show_opening(packs: Array) -> void:
 
 
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file(LOBBY_SCENE)
+	get_tree().change_scene_to_file(WORLD_SCENE)
 
 
 func _on_buy_pressed() -> void:
@@ -677,6 +1203,170 @@ func _on_next_pack() -> void:
 		_show_shop()
 	else:
 		_start_pack(_cur_pack_idx)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODAIS DE INFORMAÇÃO — probabilidades + catálogo de cartas
+# ─────────────────────────────────────────────────────────────────────────────
+# Fecha o modal ao clicar fora do painel (na área escurecida do véu).
+func _on_veil_input(event: InputEvent, modal: Control) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		modal.visible = false
+
+
+func _open_odds_modal() -> void:
+	_build_odds_content()
+	_odds_modal.visible = true
+
+
+# Monta as linhas de probabilidade por raridade + garantia + foil. Contagens vêm da
+# coleção selecionada (/catalog/collections); pesos são o espelho do backend.
+func _build_odds_content() -> void:
+	for c in _odds_content.get_children():
+		c.queue_free()
+
+	# Peso total das raridades que entram no sorteio (peso > 0 e com cartas na coleção).
+	var total_weight := 0
+	var total_cards  := 0
+	for r: String in RARITY_ORDER:
+		total_cards += _rarity_count(r)
+		if int(RARITY_WEIGHTS.get(r, 0)) > 0 and _rarity_count(r) > 0:
+			total_weight += int(RARITY_WEIGHTS[r])
+
+	var sub := _lbl(_odds_content, "%s — %d cartas no total" % [_sel_name, total_cards],
+		_font_regular, 11, C_PARCHMENT_D)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	# Uma linha por raridade presente na coleção.
+	for r: String in RARITY_ORDER:
+		var count := _rarity_count(r)
+		if count <= 0:
+			continue
+		var weight := int(RARITY_WEIGHTS.get(r, 0))
+		var chance_txt := "Fora do booster"
+		if weight > 0 and total_weight > 0:
+			chance_txt = "%.1f%%" % (100.0 * float(weight) / float(total_weight))
+		_odds_content.add_child(_make_odds_row(r, count, chance_txt))
+
+	var div := ColorRect.new()
+	div.custom_minimum_size = Vector2(0, 1)
+	div.color = C_BORDER
+	_odds_content.add_child(div)
+
+	# Notas: garantia de rara + chance de foil + como o sorteio funciona.
+	var rar_plural := str(RARITY_LABEL.get(GUARANTEED_RARITY, "Raras"))
+	var rar_word := rar_plural if GUARANTEED_COUNT != 1 else rar_plural.trim_suffix("s")
+	var g := _lbl(_odds_content, "✦  Pelo menos %d %s garantida por pacote." % [GUARANTEED_COUNT, rar_word],
+		_font_regular, 11, C_GOLD_GLOW)
+	g.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var f := _lbl(_odds_content, "✧  %d%% de chance de cada carta vir foil (brilhante)." % FOIL_CHANCE_PCT,
+		_font_regular, 11, C_PARCHMENT_D)
+	f.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var p := _lbl(_odds_content, "As %d cartas do pacote são sorteadas por peso de raridade." % PACK_SIZE,
+		_font_regular, 10, C_GOLD_DIM)
+	p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+func _make_odds_row(rarity: String, count: int, chance_txt: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var dot := ColorRect.new()
+	dot.custom_minimum_size = Vector2(10, 10)
+	dot.color = _odds_rarity_color(rarity)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(dot)
+	_lbl(row, str(RARITY_LABEL.get(rarity, rarity)), _font_regular, 12, C_GOLD_GLOW)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+	_lbl(row, "%d cartas" % count, _font_regular, 10, C_GOLD_DIM)
+	var ch := _lbl(row, chance_txt, _font_black, 13, C_GOLD_GLOW)
+	ch.custom_minimum_size = Vector2(96, 0)
+	ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return row
+
+
+func _odds_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"RARE":      return C_RARE_RARE
+		"LEGENDARY": return C_RARE_LEGENDARY
+		"MYSTIC":    return Color(0.6, 0.1, 0.8)
+	return C_RARE_COMMON
+
+
+# Contagem de cartas da raridade na coleção selecionada (dados da API).
+func _rarity_count(rarity: String) -> int:
+	if _selected.is_empty():
+		return 0
+	return int(_selected.get(str(RARITY_COUNT_KEY.get(rarity, "")), 0))
+
+
+func _open_cards_modal() -> void:
+	# Abre na hora; a grade preenche em segundo plano (uma vez por sessão).
+	_cards_modal.visible = true
+	if _cards_grid_built or _cards_building:
+		return
+	_build_cards_grid()
+
+
+# Mostra todas as cartas que podem vir na coleção. Fonte: catálogo local
+# (taldorian_origins.json via Collection) — set base do jogo. Ordena por raridade e nome.
+# Constrói em lotes por frame: a UI fica responsiva e as cartas surgem progressivamente.
+func _build_cards_grid() -> void:
+	_cards_building = true
+	for c in _cards_grid.get_children():
+		c.queue_free()
+
+	var cards: Array = Collection.all_card_dicts.duplicate()
+	cards.sort_custom(_sort_cards)
+
+	# Espera um frame para o layout do painel resolver antes de medir a largura.
+	await get_tree().process_frame
+	var disp := GRID_CARD_BASE * GRID_CARD_SCALE
+	var avail_w: float = _cards_grid.get_parent().size.x
+	if avail_w <= 0.0:
+		avail_w = 1080.0
+	var sep := 14.0
+	_cards_grid.columns = maxi(1, int((avail_w + sep) / (disp.x + sep)))
+
+	for i in cards.size():
+		_add_grid_card(cards[i], disp)
+		_cards_count_lbl.text = "%s · carregando %d / %d…" % [_sel_name, i + 1, cards.size()]
+		if (i + 1) % CARDS_BUILD_BATCH == 0:
+			await get_tree().process_frame
+			# Sai do servidor de cena destruído (troca de cena no meio do load).
+			if not is_instance_valid(_cards_grid):
+				_cards_building = false
+				return
+
+	_cards_count_lbl.text = "%s · %d cartas" % [_sel_name, cards.size()]
+	_cards_grid_built = true
+	_cards_building = false
+
+
+# Wrap entra na árvore ANTES da CardView ser bindada — os @onready da CardView só
+# existem após o _ready, que só roda quando ela está dentro da árvore (ver _add_reveal_thumb).
+func _add_grid_card(card_dict: Dictionary, disp: Vector2) -> void:
+	var wrap := Control.new()
+	wrap.custom_minimum_size = disp
+	wrap.clip_contents = true
+	_cards_grid.add_child(wrap)
+	var cv: CardView = CARD_VIEW_SCENE.instantiate()
+	wrap.add_child(cv)
+	cv.scale = Vector2(GRID_CARD_SCALE, GRID_CARD_SCALE)
+	cv.bind_dict(card_dict)
+	cv.apply_scale(GRID_CARD_SCALE)
+	cv.set_face_down(false)
+	cv.set_interactable(false, false)
+	cv.set_preview_enabled(false)
+
+
+func _sort_cards(a: Dictionary, b: Dictionary) -> bool:
+	var ra := RARITY_ORDER.find(str(a.get("rarity", "COMMON")))
+	var rb := RARITY_ORDER.find(str(b.get("rarity", "COMMON")))
+	if ra != rb:
+		return ra < rb
+	return str(a.get("name", "")) < str(b.get("name", ""))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

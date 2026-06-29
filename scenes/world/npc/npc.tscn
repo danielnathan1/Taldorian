@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3npcw0rld7x2"]
+
+[ext_resource type="Script" path="res://scenes/world/npc/npc.gd" id="1_npc"]
+
+[node name="Npc" type="Node2D"]
+script = ExtResource("1_npc")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+offset = Vector2(0, -10)

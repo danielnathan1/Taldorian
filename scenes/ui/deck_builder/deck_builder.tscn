@@ -169,6 +169,7 @@ theme_override_constants/separation = 6
 [node name="Scroll" type="ScrollContainer" parent="VBox/Body/PickerPanel/MarginContainer/VBox/HeroPicker/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
 [node name="List" type="HFlowContainer" parent="VBox/Body/PickerPanel/MarginContainer/VBox/HeroPicker/VBox/Scroll"]
 layout_mode = 2
@@ -219,6 +220,7 @@ theme_override_constants/separation = 6
 [node name="Scroll" type="ScrollContainer" parent="VBox/Body/PickerPanel/MarginContainer/VBox/CardPicker/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
 [node name="List" type="HFlowContainer" parent="VBox/Body/PickerPanel/MarginContainer/VBox/CardPicker/VBox/Scroll"]
 layout_mode = 2

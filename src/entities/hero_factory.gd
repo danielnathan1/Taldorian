@@ -9,4 +9,6 @@ static func make_team() -> Array[Hero]:
 		HeroIeldor.new(),
 		HeroNissin.new(),
 		HeroValkar.new(),
+		HeroNox.new(),
+		HeroRelicar.new(),
 	]

@@ -7,6 +7,19 @@
 
 ## 1. Fases do Jogo
 
+### 1.0 Rolagem de Dados (OPENING_ROLL)
+
+| # | Pré-condição | Ação | Esperado |
+|---|---|---|---|
+| 1.0.1 | Início de partida | Nenhum jogador faz nada | Overlay de dados aparece (antes do mulligan); mão escondida; status "Arraste para arremessar" |
+| 1.0.2 | Overlay de dados | Clicar-segurar-arrastar e soltar | Os 2 dados rolam em arco até o centro e param mostrando valores |
+| 1.0.3 | Ambos arremessaram (totais diferentes) | — | O de maior total vence; vencedor vê "Quem começa?" com 2 botões; o outro vê "aguardando" |
+| 1.0.4 | Empate de totais | Ambos com mesmo total | Re-roll: dados resetam, status "arremesse de novo" |
+| 1.0.5 | Vencedor escolhe quem começa | Clicar "Eu começo" / "Oponente começa" | Vai pro mulligan; o jogador escolhido é quem age primeiro na fase ACTION |
+| 1.0.6 | Sincronização | Observar a tela do oponente | Vê os dados do outro rolando também (auto-arremesso) e os mesmos valores |
+
+> QA isolado da parte visual: abrir `scenes/ui/boardv2/dice_roll/DiceRollTest.tscn` (F6) — arraste para arremessar; botão simula o oponente.
+
 ### 1.1 Mulligan
 
 | # | Pré-condição | Ação | Esperado |
@@ -79,15 +92,19 @@
 | 2.3.4 | **Ativa** *Passos Ágeis*: cadeia [Ar, Ar, Água] | Completar a cadeia | Nissin compra 1 carta |
 | 2.3.5 | Ativa dispara uma vez por turno | Completar cadeia duas vezes no turno | Carta comprada apenas uma vez (`_skill_activated_this_turn`) |
 
-### 2.4 Valkar — Guardian (HP 10, ATK 0, DEF 3)
+### 2.4 Valkar — Guardian (HP 11, ATK 0, DEF 3)
 
 | # | Cenário | Como testar | Esperado |
 |---|---|---|---|
-| 2.4.1 | **Passiva** *Muro de Aço*: reduz 1° dano a aliado | Oponente ataca herói aliado (não Valkar) | 1° dano reduzido em 1; `skill_activated` emitido |
-| 2.4.2 | Passiva só age uma vez por rodada | Oponente ataca dois aliados na mesma rodada | Apenas o 1° dano é reduzido |
-| 2.4.3 | Passiva reseta por rodada | Nova rodada começa | `_shield_available = true` de volta |
-| 2.4.4 | Passiva inativa se Valkar exausto | Valkar com estado EXHAUSTED | Redução não ocorre |
-| 2.4.5 | Passiva não age quando Valkar é o herói ativo sendo atacado | Valkar é o defensor | Redução não ocorre |
+| 2.4.0 | **Furtividade normal + confirmação** | Escolher Valkar como ativa; ambos confirmam o herói | Valkar entra **furtiva**; após ambos escolherem, abre o modal Sim/Não de *Muro de Aço* só para o dono |
+| 2.4.1 | **Muro ATIVADO** (Sim): aliados inalvejáveis | No modal escolher **Sim**; Ieldor/Nox mira herói de retaguarda aliado | Valkar revela + VFX Égide; dano direcionado não é aplicado (`is_targeting_protected` → true) |
+| 2.4.1b | **Muro RECUSADO** (Não): sem proteção | No modal escolher **Não**; Ieldor/Nox mira retaguarda aliada | Valkar segue furtiva (`wall_active=false`); dano direcionado **é** aplicado |
+| 2.4.1c | **Liga ao se revelar** | Escolher **Não**; depois jogar carta não-furtiva na fase ACTION | Valkar revela → Muro ativa (`wall_active=true`) + VFX; passa a proteger |
+| 2.4.2 | Passiva NÃO protege a própria Valkar | Muro ativo; Chuva de Flechas (AoE) com Valkar ativa | Valkar (linha de frente) toma 1; aliados de retaguarda intocados |
+| 2.4.3 | Passiva só vale na linha de frente | Valkar na retaguarda (não é a ativa) | Aliados podem ser alvo normalmente |
+| 2.4.4 | Passiva inativa se Valkar derrotada | Valkar com estado DEFEATED | Proteção não ocorre |
+| 2.4.5 | Reset por turno | Ativar Muro num turno; no turno seguinte escolher Valkar de novo | Volta furtiva; modal de confirmação aparece de novo (`wall_active` reseta) |
+| 2.4.5 | Combate normal ainda fere a Valkar | Oponente ataca Valkar (ataque vs defesa) | Dano de combate aplicado normalmente |
 | 2.4.6 | **Ativa** *Escudo de Espinhos*: [Terra, Terra, Água] | Completar cadeia com Valkar activo (DEF 3) | `pending_bonus_attack += 1` (floor(3/2)) |
 
 ### 2.5 Hakai — Rogue (HP 10, ATK 1, DEF 0)

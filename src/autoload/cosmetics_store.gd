@@ -44,6 +44,31 @@ func get_available_playmats() -> Array[Dictionary]:
 	return result
 
 
+# UUID do backend (master data) gravado no catálogo local — análogo ao card_id das
+# cartas. id local → UUID (para salvar o deck). "" se o cosmético não tem backend_id
+# (ex: "default", que significa "sem cosmético").
+func get_playmat_backend_id(p_id: String) -> String:
+	return str(get_playmat(p_id).get("backend_id", ""))
+
+func get_sleeve_backend_id(p_id: String) -> String:
+	return str(get_sleeve(p_id).get("backend_id", ""))
+
+# Reverso: UUID do backend → id local (para carregar o deck vindo da API). "" se não achar.
+func find_playmat_id_by_backend_id(p_uuid: String) -> String:
+	return _find_id_by_backend(_catalog.get("playmats", []), p_uuid)
+
+func find_sleeve_id_by_backend_id(p_uuid: String) -> String:
+	return _find_id_by_backend(_catalog.get("sleeves", []), p_uuid)
+
+func _find_id_by_backend(entries: Array, p_uuid: String) -> String:
+	if p_uuid == "":
+		return ""
+	for e: Dictionary in entries:
+		if str(e.get("backend_id", "")) == p_uuid:
+			return str(e.get("id", ""))
+	return ""
+
+
 func _load_catalog() -> void:
 	var file := FileAccess.open(COSMETICS_PATH, FileAccess.READ)
 	if file == null:

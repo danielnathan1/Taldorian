@@ -1,6 +1,9 @@
 # scenes/ui/boardv2/hero_pick_screen.gd
 extends Control
 
+# Emitido ao alternar "espiar tabuleiro" — o board usa para esconder o DimOverlay.
+signal peek_changed(peeking: bool)
+
 const HeroSlotScene  := preload("res://scenes/ui/hero_slot/hero_slot.tscn")
 const CardViewScene  := preload("res://scenes/ui/card_view/card_view.tscn")
 
@@ -25,6 +28,9 @@ var _heroes: Array        = []
 var _slots: Array         = []        # HeroSlot instances
 var _card_views: Array    = []        # CardView instances (hand)
 
+var _main:        VBoxContainer    # conteúdo do overlay (escondido ao "espiar" o tabuleiro)
+var _peek_btn:    Button           # alterna entre ver o tabuleiro e voltar à seleção
+var _collapsed             := false
 var _heroes_row:  HBoxContainer
 var _status_lbl:  RichTextLabel
 var _timer_lbl:   Label
@@ -48,31 +54,85 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and visible and is_node_ready():
+		_collapsed = false   # sempre reabre expandido ao entrar na seleção
 		_refresh_screen()
 
 # ── UI Construction ───────────────────────────────────────────────────────────
 
 func _build_ui() -> void:
 	# Full-rect VBox — background is transparent so the board shows through
-	var main := VBoxContainer.new()
-	main.set_anchors_preset(Control.PRESET_FULL_RECT)
-	main.add_theme_constant_override("separation", 0)
-	add_child(main)
+	_main = VBoxContainer.new()
+	_main.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_main.add_theme_constant_override("separation", 0)
+	add_child(_main)
 
-	main.add_child(_build_header())
+	_main.add_child(_build_header())
 
 	# Heroes area — takes all remaining space
 	var heroes_area := CenterContainer.new()
 	heroes_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_child(heroes_area)
+	_main.add_child(heroes_area)
 
 	_heroes_row = HBoxContainer.new()
 	_heroes_row.add_theme_constant_override("separation", 32)
 	_heroes_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	heroes_area.add_child(_heroes_row)
 
-	main.add_child(_build_hand_section())
-	main.add_child(_build_footer())
+	_main.add_child(_build_hand_section())
+	_main.add_child(_build_footer())
+
+	# Botão flutuante para espiar o tabuleiro (fica fora de _main para sobreviver ao
+	# colapso). Ancorado no canto superior direito; mantém-se ao esconder _main.
+	_build_peek_button()
+
+
+func _build_peek_button() -> void:
+	_peek_btn = Button.new()
+	_peek_btn.text = "👁  Ver tabuleiro"
+	_peek_btn.add_theme_font_override("font", _FONT_BOLD)
+	_peek_btn.add_theme_font_size_override("font_size", 13)
+	_peek_btn.add_theme_color_override("font_color", Color(0.941, 0.910, 0.784))
+	_peek_btn.anchor_left   = 1.0
+	_peek_btn.anchor_right  = 1.0
+	_peek_btn.anchor_top    = 0.0
+	_peek_btn.anchor_bottom = 0.0
+	_peek_btn.offset_left   = -200
+	_peek_btn.offset_right  = -20
+	_peek_btn.offset_top    = 16
+	_peek_btn.offset_bottom = 48
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(0.12, 0.09, 0.07, 0.92)
+	s.border_color = Color(C_GOLD_DIM, 0.7)
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(4)
+	s.content_margin_left = 14; s.content_margin_right  = 14
+	s.content_margin_top  = 6;  s.content_margin_bottom = 6
+	_peek_btn.add_theme_stylebox_override("normal",  s)
+	_peek_btn.add_theme_stylebox_override("hover",   s)
+	_peek_btn.add_theme_stylebox_override("pressed", s)
+	_peek_btn.pressed.connect(_toggle_peek)
+	add_child(_peek_btn)
+
+
+# Alterna entre esconder o overlay (para ver o tabuleiro) e reabri-lo.
+func _toggle_peek() -> void:
+	_collapsed = not _collapsed
+	_apply_peek_state()
+	peek_changed.emit(_collapsed)
+
+
+func is_peeking() -> bool:
+	return _collapsed
+
+
+func _apply_peek_state() -> void:
+	if _main == null or _peek_btn == null:
+		return
+	_main.visible = not _collapsed
+	# Colapsado: deixa o clique/hover passar para o tabuleiro (o botão flutuante,
+	# como filho com filtro próprio, continua clicável).
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if _collapsed else Control.MOUSE_FILTER_STOP
+	_peek_btn.text = "↩  Voltar à seleção" if _collapsed else "👁  Ver tabuleiro"
 
 
 func _build_header() -> Control:
@@ -247,6 +307,7 @@ func _refresh_screen() -> void:
 	_rebuild_heroes(local_idx)
 	_rebuild_hand(local_idx)
 	_restart_timer()
+	_apply_peek_state()   # preserva o estado "espiando" caso um sync rebuilde a tela
 
 
 func _rebuild_heroes(local_idx: int) -> void:
@@ -412,6 +473,7 @@ func _show_waiting() -> void:
 		_dot_tween.kill()
 	_timer_lbl.modulate.a = 1.0
 	_update_status()
+	_apply_peek_state()
 
 
 func _update_status() -> void:

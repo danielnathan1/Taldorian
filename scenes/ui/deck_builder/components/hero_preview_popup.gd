@@ -55,6 +55,8 @@ func _class_display(hero_class: Hero.HeroClass) -> String:
 		Hero.HeroClass.CLERIC:    return "Clérigo"
 		Hero.HeroClass.RANGER:    return "Patrulheiro"
 		Hero.HeroClass.GUARDIAN:  return "Guardião"
+		Hero.HeroClass.WIZARD:    return "Mago"
+		Hero.HeroClass.SORCERER:  return "Feiticeiro"
 	return ""
 
 

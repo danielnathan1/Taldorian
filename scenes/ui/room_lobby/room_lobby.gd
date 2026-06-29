@@ -30,6 +30,9 @@ var _count_label: Label
 var _empty_label: Label
 var _connect_button: Button
 var _ranked_button: Button
+var _ranked_shield: ProfileRankShield
+var _ranked_tier_lbl: Label
+var _ranked_elo_lbl: Label
 var _queue_row: HBoxContainer
 var _queue_label: Label
 var _deck_card_name: Label
@@ -50,6 +53,43 @@ func _ready() -> void:
 	_connect_service()
 	_refresh_rooms()
 	_update_net_status()
+	_refresh_ranked_panel()
+	await _load_decks_from_api()
+
+
+# Preenche o painel "Partida Rankeada" com a posição real do jogador
+# (GET /players/me/ranked). No-op sem autenticação → mantém o placeholder.
+func _refresh_ranked_panel() -> void:
+	if not ApiClient.is_authenticated():
+		return
+	var res := await ApiClient.get_my_ranked()
+	if not res.get("ok", false) or not (res.get("data") is Dictionary):
+		return
+	var d: Dictionary = res.data
+	var tier_name := PlayerProfile._tier_display(str(d.get("tier", "MADEIRA")))
+	if _ranked_shield:
+		_ranked_shield.set_rank(tier_name, "", 64)
+	if _ranked_tier_lbl:
+		_ranked_tier_lbl.text = tier_name
+	if _ranked_elo_lbl:
+		var pts := int(d.get("points", 0))
+		var wins := int(d.get("wins", 0))
+		var losses := int(d.get("losses", 0))
+		var streak := int(d.get("winStreak", 0))
+		var line := "%d pts · %dV / %dD" % [pts, wins, losses]
+		if streak > 0:
+			line += " · 🔥 %d" % streak
+		_ranked_elo_lbl.text = line
+
+
+# Decks vêm sempre do backend (DeckStore.ensure_loaded). Após hidratar o cache,
+# reconstrói as opções e o display do deck ativo.
+func _load_decks_from_api() -> void:
+	var res := await DeckStore.ensure_loaded()
+	if not res.ok:
+		_show_toast("Decks indisponíveis: %s" % res.error)
+	_rebuild_deck_options()
+	_update_active_deck_display()
 
 
 func _connect_service() -> void:
@@ -314,25 +354,29 @@ func _build_right_column() -> Control:
 	ranked_margin.add_theme_constant_override("separation", 12)
 	ranked_margin.add_child(_section_label("PARTIDA RANKEADA"))
 
-	var emblem := _make_ranked_emblem()
-	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	ranked_margin.add_child(emblem)
+	# Escudo de rank real (cores por tier, mesmo do perfil). Preenchido por
+	# _refresh_ranked_panel() com os dados de GET /players/me/ranked.
+	_ranked_shield = ProfileRankShield.new()
+	_ranked_shield.set_rank("Madeira", "", 64)
+	_ranked_shield.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ranked_margin.add_child(_ranked_shield)
 
-	var tier := Label.new()
-	tier.text = "Prata IV"
-	tier.add_theme_font_override("font", S.FONT_BOLD)
-	tier.add_theme_font_size_override("font_size", 18)
-	tier.add_theme_color_override("font_color", S.C_PARCHMENT)
-	tier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ranked_margin.add_child(tier)
+	_ranked_tier_lbl = Label.new()
+	_ranked_tier_lbl.text = "—"
+	_ranked_tier_lbl.add_theme_font_override("font", S.FONT_BOLD)
+	_ranked_tier_lbl.add_theme_font_size_override("font_size", 18)
+	_ranked_tier_lbl.add_theme_color_override("font_color", S.C_PARCHMENT)
+	_ranked_tier_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ranked_margin.add_child(_ranked_tier_lbl)
 
-	var elo := Label.new()
-	elo.text = "1.248 pontos · 7 vitórias seguidas"
-	elo.add_theme_font_override("font", S.FONT_REG)
-	elo.add_theme_font_size_override("font_size", 12)
-	elo.add_theme_color_override("font_color", S.C_PARCHMENT_D)
-	elo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ranked_margin.add_child(elo)
+	_ranked_elo_lbl = Label.new()
+	_ranked_elo_lbl.text = "—"
+	_ranked_elo_lbl.add_theme_font_override("font", S.FONT_REG)
+	_ranked_elo_lbl.add_theme_font_size_override("font_size", 12)
+	_ranked_elo_lbl.add_theme_color_override("font_color", S.C_PARCHMENT_D)
+	_ranked_elo_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ranked_elo_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ranked_margin.add_child(_ranked_elo_lbl)
 
 	# Linha "na fila" (oculta por padrão)
 	_queue_row = HBoxContainer.new()
@@ -760,6 +804,18 @@ func _open_create_modal() -> void:
 	private_row.add_child(private_check)
 	vbox.add_child(private_row)
 
+	# Sala debug (só ADMIN) — marca a partida como de teste (libera o botão DEBUG no board).
+	var debug_check: CheckBox = null
+	if NetworkState.is_admin():
+		var debug_row := HBoxContainer.new()
+		debug_row.add_theme_constant_override("separation", 8)
+		debug_check = CheckBox.new()
+		debug_check.text = "Sala debug (teste de cartas)"
+		debug_check.add_theme_color_override("font_color", S.C_GOLD_GLOW)
+		debug_check.add_theme_font_override("font", S.FONT_REG)
+		debug_row.add_child(debug_check)
+		vbox.add_child(debug_row)
+
 	# Reveal senha
 	var pass_reveal := VBoxContainer.new()
 	pass_reveal.add_theme_constant_override("separation", 4)
@@ -803,7 +859,8 @@ func _open_create_modal() -> void:
 			name_edit.text.strip_edges(),
 			selected_type["value"],
 			private_check.button_pressed,
-			pass_edit.text)
+			pass_edit.text,
+			debug_check != null and debug_check.button_pressed)
 		overlay.queue_free()
 		_show_toast("✦  Criando sala…"))
 	actions.add_child(cancel_btn)
@@ -1042,32 +1099,6 @@ func _make_lock_icon() -> Control:
 	bs.set_corner_radius_all(2)
 	body.add_theme_stylebox_override("panel", bs)
 	holder.add_child(body)
-	return holder
-
-
-func _make_ranked_emblem() -> Control:
-	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(64, 64)
-	var diamond := Panel.new()
-	diamond.size = Vector2(44, 44)
-	diamond.position = Vector2(10, 10)
-	diamond.pivot_offset = Vector2(22, 22)
-	diamond.rotation = deg_to_rad(45)
-	var ds := StyleBoxFlat.new()
-	ds.bg_color = Color(S.C_GOLD.r, S.C_GOLD.g, S.C_GOLD.b, 0.12)
-	ds.border_color = S.border_gold(0.6)
-	ds.set_border_width_all(2)
-	diamond.add_theme_stylebox_override("panel", ds)
-	holder.add_child(diamond)
-	var iv := Label.new()
-	iv.text = "IV"
-	iv.add_theme_font_override("font", S.FONT_BOLD)
-	iv.add_theme_font_size_override("font_size", 20)
-	iv.add_theme_color_override("font_color", S.C_GOLD_GLOW)
-	iv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	iv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	iv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	holder.add_child(iv)
 	return holder
 
 

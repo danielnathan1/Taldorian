@@ -4,6 +4,7 @@ const S := preload("res://scenes/ui/deck_builder/db_styles.gd")
 
 signal hero_remove_requested(hero_name: String)
 signal card_remove_requested(card_name: String)
+signal foil_change_requested(card_name: String)
 signal clear_cards_requested
 
 const RAIL_HERO_SLOT_SCENE := preload("res://scenes/ui/deck_builder/components/rail_hero_slot.tscn")
@@ -79,21 +80,37 @@ func _rebuild_cards(deck: DeckData) -> void:
 		var atk: int          = card_dict.get("attack_value", 0)
 		var def_v: int        = card_dict.get("defense_value", 0)
 		var symbols: Array    = card_dict.get("symbols", [])
+		var max_foil: int     = mini(count, _owned_foil(card_name))
+		var foil: int         = clampi(int(entry.get("foil", 0)), 0, max_foil)
 
 		var row := RAIL_CARD_ROW_SCENE.instantiate()
 		list.add_child(row)
-		row.bind(card_name, count, atk, def_v, symbols)
+		row.bind(card_name, count, atk, def_v, symbols, foil, max_foil)
 		row.remove_pressed.connect(func(n: String) -> void: card_remove_requested.emit(n))
+		row.foil_pressed.connect(func(n: String) -> void: foil_change_requested.emit(n))
 
 
 func _update_labels(deck: DeckData) -> void:
 	_heroes_label.text = "HERÓIS  %d/%d" % [deck.hero_names.size(), DeckData.MAX_HEROES]
-	_cards_label.text  = "CARTAS  %d/%d" % [deck.total_cards(), DeckData.MAX_CARDS]
+	var foil_total := 0
+	for entry in deck.card_entries:
+		var max_foil: int = mini(int(entry["count"]), _owned_foil(entry["name"]))
+		foil_total += clampi(int(entry.get("foil", 0)), 0, max_foil)
+	var foil_suffix := "  ·  ✦ %d foil" % foil_total if foil_total > 0 else ""
+	_cards_label.text  = "CARTAS  %d/%d%s" % [deck.total_cards(), DeckData.MAX_CARDS, foil_suffix]
 
 	var card_color := S.C_GREEN if deck.total_cards() == DeckData.MAX_CARDS else S.C_GOLD
 	_cards_label.add_theme_color_override("font_color", card_color)
 	var hero_color := S.C_GREEN if deck.hero_names.size() == DeckData.MAX_HEROES else S.C_GOLD
 	_heroes_label.add_theme_color_override("font_color", hero_color)
+
+
+# Quantas cópias foil desta carta o jogador POSSUI (teto para a escolha no deck).
+func _owned_foil(card_name: String) -> int:
+	var card_id := int(Collection.get_card_dict(card_name).get("id", -1))
+	if card_id < 0:
+		return 0
+	return Collection.get_foil_quantity(card_id)
 
 
 func _get_card_list() -> VBoxContainer: return _card_list

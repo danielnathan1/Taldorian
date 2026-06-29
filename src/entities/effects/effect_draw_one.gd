@@ -3,3 +3,4 @@ extends CardEffect
 
 func execute(ctx: CardEffectContext) -> void:
 	ctx.source_player.draw_cards(1)
+	ctx.request_vfx("draw")

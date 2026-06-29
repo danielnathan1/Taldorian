@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Fragmentos Arcanos</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05050c;
+    font-family: 'Cinzel', serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage {
+    width: 1280px; height: 720px;
+    transform-origin: center center;
+    position: relative; overflow: hidden;
+    background: #08080f;
+  }
+
+  /* ── Board halves ── */
+  .bg-opponent {
+    position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.30 0.12 300 / 0.18) 0%, transparent 65%),
+      linear-gradient(180deg, oklch(0.10 0.05 295) 0%, oklch(0.08 0.04 270) 100%);
+  }
+  .bg-player {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background:
+      radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.30 0.12 290 / 0.16) 0%, transparent 65%),
+      linear-gradient(0deg, oklch(0.10 0.05 285) 0%, oklch(0.08 0.04 270) 100%);
+  }
+  .bg-center-line {
+    position: absolute; top: 50%; left: 0; right: 0; height: 1px; margin-top: -0.5px;
+    background: linear-gradient(90deg, transparent 0%, oklch(0.72 0.16 300 / 0.20) 20%,
+      oklch(0.72 0.16 300 / 0.44) 50%, oklch(0.72 0.16 300 / 0.20) 80%, transparent 100%);
+  }
+  .bg-noise {
+    position: absolute; inset: 0; opacity: 0.028; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+  .half-label {
+    position: absolute; left: 0; right: 0; text-align: center;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.28; pointer-events: none;
+  }
+  .half-label.opp { top: 14px; color: oklch(0.66 0.16 300); }
+  .half-label.pl  { bottom: 14px; color: oklch(0.66 0.14 288); }
+
+  /* ── Slots ── */
+  .slot {
+    position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .slot-card {
+    border: 1px solid var(--slot-border); background: var(--slot-bg);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+  }
+  .slot-label {
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--slot-label-color); white-space: nowrap;
+  }
+  .size-std    .slot-card { width: 70px; height: 98px; }
+  .size-sm     .slot-card { width: 58px; height: 81px; }
+  .size-active .slot-card { width: 90px; height: 126px; }
+  .theme-player {
+    --slot-border: oklch(0.55 0.14 288 / 0.42);
+    --slot-bg: oklch(0.10 0.04 285 / 0.55);
+    --slot-label-color: oklch(0.66 0.14 288);
+  }
+  .theme-opponent {
+    --slot-border: oklch(0.55 0.18 300 / 0.40);
+    --slot-bg: oklch(0.10 0.04 300 / 0.52);
+    --slot-label-color: oklch(0.62 0.16 300);
+  }
+  .caster-charging {
+    border-color: oklch(0.80 0.18 300) !important;
+    box-shadow: 0 0 0 1px oklch(0.80 0.18 300 / 0.85), 0 0 26px oklch(0.70 0.22 300 / 0.5), 0 0 64px oklch(0.70 0.22 300 / 0.28);
+    transform: translateY(-2px) scale(1.03);
+  }
+
+  /* ── Ability banner ── */
+  .ability-banner {
+    position: absolute; left: 50%; top: 84px; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 60;
+  }
+  .ability-sub {
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.45em;
+    text-transform: uppercase; color: oklch(0.74 0.14 300); opacity: 0.9;
+  }
+  .ability-name {
+    font-family: 'Cinzel Decorative', serif; font-size: 32px; font-weight: 700;
+    color: oklch(0.93 0.10 305); letter-spacing: 0.14em; text-transform: uppercase;
+    text-shadow: 0 0 22px oklch(0.74 0.22 300 / 0.9), 0 0 50px oklch(0.64 0.24 300 / 0.5), 0 2px 0 oklch(0.14 0.06 290 / 0.7);
+  }
+  .ability-rule {
+    width: 300px; height: 1px; margin-top: 4px;
+    background: linear-gradient(90deg, transparent, oklch(0.72 0.18 302 / 0.8), transparent);
+  }
+
+  .fx-layer { position: absolute; inset: 0; pointer-events: none; }
+  .screen-flash {
+    position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none; z-index: 55;
+    background: radial-gradient(ellipse 60% 60% at 50% 50%, oklch(0.97 0.06 305) 0%, oklch(0.80 0.20 305 / 0.5) 30%, transparent 68%);
+  }
+
+  /* ── Controls ── */
+  .controls {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: oklch(0.10 0.03 290 / 0.85); border: 1px solid oklch(0.72 0.14 300 / 0.30);
+    backdrop-filter: blur(8px); z-index: 1000; font-family: 'JetBrains Mono', monospace;
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 4px; padding-right: 12px; margin-right: 2px; border-right: 1px solid oklch(0.72 0.14 300 / 0.22); }
+  .ctrl-btn {
+    background: oklch(0.16 0.05 290 / 0.9); color: oklch(0.82 0.16 300);
+    border: 1px solid oklch(0.72 0.14 300 / 0.45); padding: 6px 12px;
+    font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: all 0.15s;
+  }
+  .ctrl-btn:hover {
+    background: oklch(0.22 0.06 290 / 0.95); border-color: oklch(0.72 0.14 300 / 0.8);
+    box-shadow: 0 0 14px oklch(0.72 0.14 300 / 0.30);
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(180deg, oklch(0.32 0.16 300 / 0.95), oklch(0.18 0.10 298 / 0.95));
+    color: oklch(0.94 0.10 305); border-color: oklch(0.72 0.20 302 / 0.7);
+  }
+  .ctrl-btn.primary:hover { box-shadow: 0 0 18px oklch(0.66 0.22 302 / 0.5); }
+  .eff-btn {
+    background: oklch(0.13 0.04 290 / 0.9); color: oklch(0.66 0.12 300);
+    border: 1px solid oklch(0.55 0.12 300 / 0.35); padding: 5px 9px;
+    font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; cursor: pointer; transition: all 0.15s; min-width: 34px;
+  }
+  .eff-btn:hover { border-color: oklch(0.72 0.14 300 / 0.7); color: oklch(0.82 0.14 300); }
+  .eff-btn.active {
+    background: linear-gradient(180deg, oklch(0.34 0.16 300 / 0.95), oklch(0.20 0.10 298 / 0.95));
+    color: oklch(0.95 0.08 305); border-color: oklch(0.78 0.20 302 / 0.85);
+    box-shadow: 0 0 14px oklch(0.66 0.22 302 / 0.4);
+  }
+  .ctrl-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: oklch(0.65 0.10 300); }
+  .ctrl-scrub { width: 190px; accent-color: oklch(0.72 0.16 300); }
+  .ctrl-time { color: oklch(0.82 0.16 300); font-size: 10px; min-width: 44px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="root" style="position:absolute;inset:0;"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ───────────────────────────── Geometry ─────────────────────────────
+const STAGE_W = 1280, STAGE_H = 720;
+const CENTER = { x: 640, y: 360 };
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeInQuad     = t => t * t;
+const easeInCubic    = t => t * t * t;
+const easeOutCubic   = t => 1 - Math.pow(1 - t, 3);
+const easeOutBack    = t => { const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const easeInOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+const lerp = (a, b, t) => a + (b - a) * t;
+const norm = v => { const m = Math.hypot(v.x, v.y) || 1; return { x: v.x/m, y: v.y/m }; };
+
+// Quadratic-arc travel from p0 to p1, arc = perpendicular bow offset
+function travel(p0, p1, u, arc = 0) {
+  const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+  const dir = norm({ x: p1.x - p0.x, y: p1.y - p0.y });
+  const nrm = { x: -dir.y, y: dir.x };
+  const cx = mid.x + nrm.x * arc, cy = mid.y + nrm.y * arc;
+  const v = 1 - u;
+  return { x: v*v*p0.x + 2*v*u*cx + u*u*p1.x, y: v*v*p0.y + 2*v*u*cy + u*u*p1.y };
+}
+function trailOf(posAt, time, n = 6, step = 0.028) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) pts.push(posAt(time - i * step));
+  return pts;
+}
+
+// Stable randomized debris/spark directions
+const SPARKS = Array.from({ length: 28 }, (_, i) => {
+  const a = (i / 28) * Math.PI * 2 + (i * 1.7 % 1) * 0.5;
+  return { a, speed: 0.6 + (i * 0.37 % 1) * 0.8, size: 0.6 + (i * 0.53 % 1) * 1.3, spin: (i % 2 ? 1 : -1) * (1 + i % 3) };
+});
+
+// ───────────────────────────── Effect configs ─────────────────────────────
+const EFFECTS = {
+  1: { roman: 'I', name: 'Impacto', sub: 'Fragmento único', END: 3.1 },
+  2: { roman: 'II', name: 'Colisão', sub: 'Par instável', END: 3.5 },
+  3: { roman: 'III', name: 'Fusão', sub: 'Tríade arcana', END: 4.3 },
+};
+
+// ───────────────────────────── Effect 1: single stone → explode ─────────────────────────────
+function deriveE1(t) {
+  const SPAWN = { x: 640, y: 628 }, REL = 0.35, IMPACT = 1.4, FLIGHT = IMPACT - REL;
+  const posAt = (tt) => travel(SPAWN, CENTER, clamp01((tt - REL) / FLIGHT) ** 1, -200);
+  const flyU = clamp01((t - REL) / FLIGHT);
+
+  const rifts = [{ x: SPAWN.x, y: SPAWN.y, open: Math.min(clamp01(t / 0.3), clamp01((0.7 - t) / 0.3)), w: 54 }];
+  const fragments = [];
+  let centerGlow = 0;
+  if (t >= REL && t < IMPACT) {
+    const eu = easeInQuad(flyU);
+    const p = travel(SPAWN, CENTER, eu, -200);
+    fragments.push({ x: p.x, y: p.y, rot: t * 320, scale: 0.85 + eu * 0.5, glow: 0.5 + eu * 0.7,
+      trail: trailOf((tt) => travel(SPAWN, CENTER, easeInQuad(clamp01((tt - REL) / FLIGHT)), -200), t) });
+    centerGlow = eu * 0.7;
+  }
+
+  const since = t - IMPACT;
+  const bursts = [], debris = [];
+  let flash = 0, shake = 0;
+  if (since >= 0) {
+    const life = since / 1.3;
+    if (life < 1) {
+      bursts.push({ x: CENTER.x, y: CENTER.y, life, intensity: 1.0 });
+      bursts.push({ x: CENTER.x, y: CENTER.y, life: clamp01(since / 0.7), intensity: 0.55, delay: 0.12 });
+      debris.push({ x: CENTER.x, y: CENTER.y, life, spread: 230, count: 22 });
+      flash = since < 0.32 ? (1 - since / 0.32) * 0.85 : 0;
+      shake = Math.max(0, (1 - since / 0.5)) * 14 * Math.sin(since * 60);
+      centerGlow = Math.max(centerGlow, (1 - life) * 0.9);
+    }
+  }
+  return { rifts, fragments, bursts, debris, flash, shake, centerGlow,
+    banner: t < IMPACT ? 'A pedra arcana converge ao centro' : 'Detonação arcana' };
+}
+
+// ───────────────────────────── Effect 2: two stones collide → small light ─────────────────────────────
+function deriveE2(t) {
+  const L = { x: 130, y: 352 }, R = { x: 1150, y: 368 }, REL = 0.35, IMPACT = 1.35, FLIGHT = IMPACT - REL;
+  const flyU = clamp01((t - REL) / FLIGHT);
+  const posL = (tt) => travel(L, CENTER, easeInQuad(clamp01((tt - REL) / FLIGHT)), 70);
+  const posR = (tt) => travel(R, CENTER, easeInQuad(clamp01((tt - REL) / FLIGHT)), 70);
+
+  const rifts = [
+    { x: L.x, y: L.y, open: Math.min(clamp01(t / 0.3), clamp01((0.7 - t) / 0.3)), w: 46 },
+    { x: R.x, y: R.y, open: Math.min(clamp01(t / 0.3), clamp01((0.7 - t) / 0.3)), w: 46 },
+  ];
+  const fragments = [];
+  let centerGlow = 0;
+  if (t >= REL && t < IMPACT) {
+    const eu = easeInQuad(flyU);
+    const pl = posL(t), pr = posR(t);
+    fragments.push({ x: pl.x, y: pl.y, rot: t * 260, scale: 0.8 + eu * 0.4, glow: 0.45 + eu * 0.5, trail: trailOf(posL, t) });
+    fragments.push({ x: pr.x, y: pr.y, rot: -t * 260, scale: 0.8 + eu * 0.4, glow: 0.45 + eu * 0.5, trail: trailOf(posR, t) });
+    centerGlow = eu * 0.35;
+  }
+
+  const since = t - IMPACT;
+  const bursts = [], debris = [], orbs = [];
+  let flash = 0, shake = 0;
+  if (since >= 0) {
+    // small contained collision flash
+    const bl = clamp01(since / 0.5);
+    if (bl < 1) { bursts.push({ x: CENTER.x, y: CENTER.y, life: bl, intensity: 0.42 }); debris.push({ x: CENTER.x, y: CENTER.y, life: bl, spread: 90, count: 12 }); }
+    flash = since < 0.18 ? (1 - since / 0.18) * 0.4 : 0;
+    shake = Math.max(0, (1 - since / 0.28)) * 5 * Math.sin(since * 70);
+    // sustained small light that gently breathes, then fades at the end
+    const orbFade = clamp01(since / 0.45) * clamp01((EFFECTS[2].END - t) / 0.6);
+    const pulse = 0.78 + 0.22 * Math.sin(since * 5.5);
+    orbs.push({ x: CENTER.x, y: CENTER.y, r: 13 * pulse, glow: orbFade, halo: 30 + 6 * Math.sin(since * 4) });
+    centerGlow = orbFade * 0.5;
+  }
+  return { rifts, fragments, bursts, debris, orbs, flash, shake, centerGlow,
+    banner: t < IMPACT ? 'Dois fragmentos rumam ao impacto' : 'Uma centelha nasce do choque' };
+}
+
+// ───────────────────────────── Effect 3: three stones spin → fuse → strong light ─────────────────────────────
+function deriveE3(t) {
+  const SPAWNS = [ { x: 640, y: 92 }, { x: 232, y: 600 }, { x: 1048, y: 600 } ];
+  const ARRIVE = 1.2, MERGE = 2.35, ORBIT_R = 158;
+  const baseAng = i => -Math.PI / 2 + i * (Math.PI * 2 / 3);
+
+  // position of fragment i at time tt
+  function fragPosAt(i, tt) {
+    if (tt < ARRIVE) {
+      const u = easeOutCubic(clamp01((tt - 0.4) / (ARRIVE - 0.4)));
+      const target = { x: CENTER.x + Math.cos(baseAng(i)) * ORBIT_R, y: CENTER.y + Math.sin(baseAng(i)) * ORBIT_R };
+      const p = travel(SPAWNS[i], target, u, 60 * (i === 0 ? 1 : -1));
+      return { x: p.x, y: p.y };
+    }
+    const lt = clamp01((tt - ARRIVE) / (MERGE - ARRIVE));
+    const spin = (lt + lt * lt * 1.8) * Math.PI * 2 * 2.4;       // accelerating rotation
+    const rad = lerp(ORBIT_R, 4, easeInCubic(lt));
+    const ang = baseAng(i) + spin;
+    return { x: CENTER.x + Math.cos(ang) * rad, y: CENTER.y + Math.sin(ang) * rad };
+  }
+
+  const rifts = SPAWNS.map(s => ({ x: s.x, y: s.y, open: Math.min(clamp01(t / 0.34), clamp01((0.85 - t) / 0.3)), w: 46 }));
+  const fragments = [];
+  let centerGlow = 0;
+  if (t < MERGE) {
+    const lt = clamp01((t - ARRIVE) / (MERGE - ARRIVE));
+    for (let i = 0; i < 3; i++) {
+      const p = fragPosAt(i, t);
+      fragments.push({ x: p.x, y: p.y, rot: t * 300 + i * 120, scale: 0.85 + lt * 0.55, glow: 0.5 + lt * 0.6,
+        trail: trailOf((tt) => fragPosAt(i, tt), t, 7, 0.024) });
+    }
+    centerGlow = t < ARRIVE ? 0.1 : 0.1 + lt * lt * 0.85;
+  }
+
+  const since = t - MERGE;
+  const bursts = [], debris = [], rays = [];
+  let flash = 0, shake = 0, pillar = 0;
+  if (since >= 0) {
+    const life = since / 1.7;
+    if (life < 1) {
+      bursts.push({ x: CENTER.x, y: CENTER.y, life, intensity: 1.35 });
+      bursts.push({ x: CENTER.x, y: CENTER.y, life: clamp01(since / 1.0), intensity: 0.8, delay: 0.16 });
+      bursts.push({ x: CENTER.x, y: CENTER.y, life: clamp01(since / 0.6), intensity: 0.5, delay: 0.3 });
+      debris.push({ x: CENTER.x, y: CENTER.y, life, spread: 330, count: 28 });
+      rays.push({ x: CENTER.x, y: CENTER.y, life: clamp01(since / 1.2), angle: since * 90, intensity: 1.0 });
+      pillar = clamp01(since / 0.3) * clamp01((1.5 - since) / 1.0);
+      flash = since < 0.4 ? (1 - since / 0.4) * 1.0 : 0;
+      shake = Math.max(0, (1 - since / 0.7)) * 20 * Math.sin(since * 55);
+      centerGlow = Math.max(0.4, (1 - life) * 1.0);
+    }
+  }
+  return { rifts, fragments, bursts, debris, rays, pillar, flash, shake, centerGlow,
+    banner: t < ARRIVE ? 'Três fragmentos despertam' : t < MERGE ? 'Os fragmentos giram e se atraem' : 'Fusão — uma luz intensa irrompe' };
+}
+
+const DERIVE = { 1: deriveE1, 2: deriveE2, 3: deriveE3 };
+
+// ───────────────────────────── Static board ─────────────────────────────
+function StaticBoard({ casterCharging }) {
+  const opp = [
+    { x: 96, y: 130, size: 'sm', label: 'Deck' },
+    { x: 96, y: 232, size: 'sm', label: 'Cemitério' },
+    { x: 470, y: 196, size: 'std', label: 'Herói 2' },
+    { x: 560, y: 196, size: 'std', label: 'Herói 1' },
+    { x: 1184, y: 178, size: 'std', label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 96, y: 540, size: 'std', label: 'Arsenal' },
+    { x: 470, y: 540, size: 'std', label: 'Cavaleiro' },
+    { x: 560, y: 540, size: 'std', label: 'Sacerdote' },
+    { x: 720, y: 540, size: 'active', label: 'Conjurador', isCaster: true },
+    { x: 1184, y: 510, size: 'sm', label: 'Deck' },
+    { x: 1184, y: 612, size: 'sm', label: 'Cemitério' },
+  ];
+  return (
+    <>
+      {opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}
+      {player.map((s, i) => <Slot key={'p'+i} theme="player" {...s} charging={s.isCaster && casterCharging} />)}
+    </>
+  );
+}
+function Slot({ x, y, size, label, theme, isCaster, charging }) {
+  const cls = ['slot-card', isCaster && charging ? 'caster-charging' : ''].filter(Boolean).join(' ');
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className={cls}><CardArt theme={theme} size={size} isCaster={isCaster} /></div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+function CardArt({ theme, size, isCaster }) {
+  const accent = theme === 'player' ? 'oklch(0.55 0.14 288 / 0.55)' : 'oklch(0.55 0.18 300 / 0.5)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+  if (isCaster) {
+    const cx = w/2, cy = h/2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.74 0.16 300 / 0.7)" strokeWidth="0.6"/>
+        <path d={`M ${cx} ${cy-26} L ${cx+11} ${cy-2} L ${cx-11} ${cy-2} Z`} stroke="oklch(0.70 0.18 300 / 0.9)" strokeWidth="0.7" fill="oklch(0.14 0.05 290 / 0.6)"/>
+        <circle cx={cx} cy={cy-26} r="1.6" fill="oklch(0.92 0.16 305)"/>
+        <line x1={cx-13} y1={cy+24} x2={cx+8} y2={cy-2} stroke="oklch(0.62 0.10 290 / 0.85)" strokeWidth="1.1" strokeLinecap="round"/>
+        <circle cx={cx+8} cy={cy-2} r="3.2" fill="oklch(0.90 0.16 305)"/>
+        <circle cx={cx+8} cy={cy-2} r="5.6" fill="none" stroke="oklch(0.78 0.20 305 / 0.5)" strokeWidth="0.6"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.2} L ${w*0.76} ${h*0.5} L ${w/2} ${h*0.8} L ${w*0.24} ${h*0.5} Z`} stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.05} fill={accent}/>
+    </svg>
+  );
+}
+
+// ───────────────────────────── FX components ─────────────────────────────
+function CenterRune({ glow }) {
+  const op = 0.18 + glow * 0.7;
+  const r = 46 + glow * 10;
+  return (
+    <g transform={`translate(${CENTER.x} ${CENTER.y})`} style={{ mixBlendMode: 'screen' }}>
+      <circle r={r} fill="none" stroke={`oklch(0.72 0.18 302 / ${op})`} strokeWidth="0.8"/>
+      <circle r={r - 8} fill="none" stroke={`oklch(0.66 0.16 300 / ${op * 0.7})`} strokeWidth="0.5" strokeDasharray="2 6"/>
+      {[0,1,2,3].map(i => {
+        const a = i * Math.PI / 2;
+        return <line key={i} x1={Math.cos(a)*(r-2)} y1={Math.sin(a)*(r-2)} x2={Math.cos(a)*(r+5)} y2={Math.sin(a)*(r+5)}
+          stroke={`oklch(0.80 0.18 304 / ${op})`} strokeWidth="0.9"/>;
+      })}
+      {glow > 0.02 && <circle r={glow * 24} fill={`oklch(0.95 0.10 305 / ${glow * 0.4})`}/>}
+    </g>
+  );
+}
+
+function Rift({ x, y, open, w }) {
+  if (open <= 0.01) return null;
+  const ww = w * open, hh = (4 + open * 5);
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      <ellipse rx={ww * 0.7} ry={hh * 2.4} fill={`oklch(0.70 0.20 303 / ${0.22 * open})`}/>
+      <ellipse rx={ww * 0.5} ry={hh} fill={`oklch(0.92 0.14 305 / ${0.7 * open})`}/>
+      <ellipse rx={ww * 0.5} ry={hh} fill="none" stroke={`oklch(0.98 0.06 305 / ${open})`} strokeWidth="0.8"/>
+    </g>
+  );
+}
+
+function CrystalShard({ x, y, rot, scale, glow, trail }) {
+  return (
+    <g>
+      {trail && trail.length > 1 && (
+        <polyline points={trail.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none"
+          stroke="oklch(0.78 0.20 304 / 0.4)" strokeWidth={5 * scale} strokeLinecap="round" strokeLinejoin="round"/>
+      )}
+      {trail && trail.length > 1 && (
+        <polyline points={trail.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none"
+          stroke="oklch(0.92 0.14 306 / 0.6)" strokeWidth={1.6 * scale} strokeLinecap="round" strokeLinejoin="round"/>
+      )}
+      <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+        <circle r={20 * glow * scale} fill={`oklch(0.78 0.20 304 / ${0.28 * glow})`}/>
+        <circle r={11 * glow * scale} fill={`oklch(0.90 0.16 306 / ${0.4 * glow})`}/>
+      </g>
+      <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${scale})`}>
+        <polygon points="0,-13 7,-2 0,13 -7,-2" fill="oklch(0.30 0.14 298 / 0.95)" stroke="oklch(0.88 0.18 305 / 0.95)" strokeWidth="1"/>
+        <polygon points="0,-13 7,-2 0,2 -7,-2" fill="oklch(0.74 0.18 305 / 0.85)"/>
+        <line x1="0" y1="-13" x2="0" y2="13" stroke="oklch(0.97 0.08 305 / 0.8)" strokeWidth="0.7"/>
+        <circle cx="0" cy="-1" r="2" fill="oklch(0.99 0.04 305)"/>
+      </g>
+    </g>
+  );
+}
+
+function Burst({ x, y, life, intensity, delay = 0 }) {
+  if (life >= 1) return null;
+  const op = (1 - life);
+  const R = (10 + life * 120 * intensity);
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      <circle r={R} fill="none" stroke={`oklch(0.88 0.18 305 / ${op * 0.9})`} strokeWidth={2.2 * intensity}/>
+      <circle r={R * 0.62} fill="none" stroke={`oklch(0.96 0.10 306 / ${op * 0.7})`} strokeWidth={1.1 * intensity}/>
+      {life < 0.4 && <circle r={(34 * intensity) * (1 - life / 0.4)} fill={`oklch(0.99 0.05 305 / ${(1 - life / 0.4) * 0.95})`}/>}
+      {life < 0.6 && <circle r={(20 * intensity) * (1 - life / 0.6)} fill={`oklch(0.86 0.18 305 / ${(1 - life / 0.6) * 0.55})`}/>}
+    </g>
+  );
+}
+
+function Debris({ x, y, life, spread, count }) {
+  if (life >= 1) return null;
+  const e = easeOutCubic(life), op = 1 - life;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      {SPARKS.slice(0, count).map((s, i) => {
+        const d = e * spread * s.speed;
+        const px = Math.cos(s.a) * d, py = Math.sin(s.a) * d;
+        return (
+          <g key={i}>
+            <line x1={px * 0.7} y1={py * 0.7} x2={px} y2={py} stroke={`oklch(0.92 0.14 306 / ${op * 0.5})`} strokeWidth={s.size * 0.8}/>
+            <circle cx={px} cy={py} r={s.size * (0.5 + op * 0.7)} fill={`oklch(0.95 0.12 306 / ${op * 0.85})`}/>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function Rays({ x, y, life, angle, intensity }) {
+  if (life >= 1) return null;
+  const op = (1 - life) * 0.85;
+  const len = 60 + easeOutCubic(life) * 300 * intensity;
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle})`} style={{ mixBlendMode: 'screen' }}>
+      {[0,1,2,3,4,5,6,7,8,9,10,11].map(i => {
+        const a = (i / 12) * 360;
+        const l = len * (i % 2 ? 0.6 : 1);
+        return <line key={i} transform={`rotate(${a})`} x1="0" y1="0" x2={l} y2="0"
+          stroke={`oklch(0.95 0.12 305 / ${op * (i % 2 ? 0.4 : 0.8)})`} strokeWidth={i % 2 ? 1.2 : 2.4}/>;
+      })}
+    </g>
+  );
+}
+
+function LightOrb({ x, y, r, glow, halo }) {
+  if (glow <= 0.01) return null;
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      <circle r={halo} fill={`oklch(0.72 0.20 303 / ${0.18 * glow})`}/>
+      <circle r={r * 1.7} fill={`oklch(0.86 0.16 305 / ${0.4 * glow})`}/>
+      <circle r={r} fill={`oklch(0.95 0.10 306 / ${0.85 * glow})`}/>
+      <circle r={r * 0.5} fill={`oklch(0.99 0.03 305 / ${glow})`}/>
+    </g>
+  );
+}
+
+// ───────────────────────────── App ─────────────────────────────
+function App() {
+  const [effect, setEffect] = useState(() => parseInt(localStorage.getItem('arcaneFragments.effect') || '1', 10) || 1);
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+  const END = EFFECTS[effect].END;
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = Math.min((now - lastRef.current) / 1000, 0.05);
+      lastRef.current = now;
+      if (playing) setT(prev => {
+        const next = prev + dt;
+        if (next >= END + 1.0) return 0;
+        return next;
+      });
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing, END]);
+
+  useEffect(() => { window.__setT = (v) => { setPlaying(false); setT(v); }; }, []);
+
+  function pickEffect(n) {
+    setEffect(n); localStorage.setItem('arcaneFragments.effect', String(n)); setT(0); setPlaying(true);
+  }
+
+  const s = DERIVE[effect](t);
+  const casterCharging = (s.centerGlow > 0.05 && t < (effect === 3 ? 2.35 : effect === 2 ? 1.35 : 1.4));
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0, transform: `translate(${(s.shake || 0).toFixed(2)}px, ${((s.shake || 0) * 0.5).toFixed(2)}px)` }}>
+        <div className="bg-opponent"/>
+        <div className="bg-player"/>
+        <div className="bg-center-line"/>
+        <div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente</div>
+        <div className="half-label pl">Sua Área — Conjurador</div>
+
+        <StaticBoard casterCharging={casterCharging} />
+
+        <div className="ability-banner">
+          <div className="ability-sub">Fragmentos Arcanos · {EFFECTS[effect].roman}</div>
+          <div className="ability-name">{EFFECTS[effect].name}</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>{s.banner}</div>
+        </div>
+
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          <CenterRune glow={s.centerGlow || 0} />
+          {(s.rifts || []).map((r, i) => <Rift key={'rf'+i} {...r} />)}
+          {(s.rays || []).map((r, i) => <Rays key={'ry'+i} {...r} />)}
+          {(s.bursts || []).map((b, i) => <Burst key={'b'+i} {...b} />)}
+          {(s.debris || []).map((d, i) => <Debris key={'d'+i} {...d} />)}
+          {(s.orbs || []).map((o, i) => <LightOrb key={'o'+i} {...o} />)}
+          {(s.fragments || []).map((f, i) => <CrystalShard key={'f'+i} {...f} />)}
+        </svg>
+
+        {s.pillar > 0.001 && (
+          <div style={{
+            position: 'absolute', left: CENTER.x - 60, top: 0, width: 120, height: STAGE_H, pointerEvents: 'none',
+            mixBlendMode: 'screen', opacity: s.pillar,
+            background: 'linear-gradient(90deg, transparent, oklch(0.96 0.10 305 / 0.55) 42%, oklch(0.99 0.04 305 / 0.85) 50%, oklch(0.96 0.10 305 / 0.55) 58%, transparent)',
+          }}/>
+        )}
+
+        {s.flash > 0.001 && <div className="screen-flash" style={{ opacity: s.flash }}/>}
+      </div>
+
+      <div className="controls">
+        <div className="ctrl-group">
+          {[1,2,3].map(n => (
+            <button key={n} className={`eff-btn ${effect === n ? 'active' : ''}`} onClick={() => pickEffect(n)}>{EFFECTS[n].roman}</button>
+          ))}
+        </div>
+        <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>✦ Conjurar</button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>{playing ? '❚❚' : '▶'}</button>
+        <span className="ctrl-label">Tempo</span>
+        <input type="range" className="ctrl-scrub" min="0" max={(END + 1.0).toFixed(2)} step="0.01"
+               value={t} onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}/>
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth;
+    const vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  requestAnimationFrame(fit);
+  fit();
+})();
+</script>
+</body>
+</html>

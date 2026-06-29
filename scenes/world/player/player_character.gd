@@ -9,17 +9,23 @@ const STAND_FRAME   := 18   # row 2 (frente) × hframes(9) + col 0
 
 var tile_pos: Vector2i = Vector2i(62, 34)
 var _is_moving: bool   = false
+var _movement_locked: bool = false   # true enquanto uma UI modal (ex.: troca) está aberta
 var _move_tween: Tween
 var _chat_timer: float = 0.0
 const CHAT_DISPLAY_TIME := 4.0
 
 var _last_dir: Vector2i = Vector2i(0, 1)  # padrão: olhando para baixo
 
+## Modo ATOR de cena instanciada (onboarding/cutscene): não fala com o WorldState
+## (movimento é local) e pode ser dirigido por script via walk_to(). Default: jogador normal.
+@export var cutscene_mode: bool = false
+
 @onready var name_label  : Label    = $NameLabel
 @onready var chat_bubble : Control  = $ChatBubble
 @onready var chat_label  : Label    = $ChatBubble/Label
 @onready var _body       : Sprite2D = $Skeleton/Body
 @onready var _hair       : Sprite2D = $Skeleton/Hair
+@onready var _beard      : Sprite2D = $Skeleton/Beard
 @onready var _chest      : Sprite2D = $Skeleton/Chest
 @onready var _pants      : Sprite2D = $Skeleton/Pants
 @onready var _shoes      : Sprite2D = $Skeleton/Shoes
@@ -30,7 +36,8 @@ var _last_dir: Vector2i = Vector2i(0, 1)  # padrão: olhando para baixo
 func _ready() -> void:
 	z_index = 1          # garante renderização acima dos TileMapLayers (z=0)
 	chat_bubble.visible = false
-	GameBus.world_state_synced.connect(_on_world_synced)
+	if not cutscene_mode:
+		GameBus.world_state_synced.connect(_on_world_synced)
 	position = _tile_to_world(tile_pos)
 	_load_appearance()
 	_play_idle_anim(_last_dir)
@@ -42,7 +49,7 @@ func _ready() -> void:
 func _load_appearance() -> void:
 	# Garante frame correto mesmo sem CharacterStore (fallback p/ textura do .tscn)
 	_init_sprite_frame(_body)
-	for cat_id in ["hair", "chest", "legs", "shoes"]:
+	for cat_id in ["hair", "beard", "chest", "legs", "shoes"]:
 		var s := _get_sprite(cat_id)
 		if s:
 			_init_sprite_frame(s)
@@ -58,7 +65,7 @@ func _load_appearance() -> void:
 	_apply_sprite(_body, ch.get("body", {}), Color.WHITE)
 
 	# Camadas com cor
-	for cat_id in ["hair", "chest", "legs", "shoes"]:
+	for cat_id in ["hair", "beard", "chest", "legs", "shoes"]:
 		var sprite := _get_sprite(cat_id)
 		if not sprite:
 			continue
@@ -76,6 +83,10 @@ func _init_sprite_frame(sprite: Sprite2D) -> void:
 
 func _apply_sprite(sprite: Sprite2D, cat: Variant, color: Color) -> void:
 	var d    := cat as Dictionary
+	# "none" = sem essa camada (ex.: sem cabelo / sem barba): limpa a textura.
+	if str(d.get("style", "")) == "none":
+		sprite.texture = null
+		return
 	var path := str(d.get("path", ""))
 	if path != "" and ResourceLoader.exists(path):
 		sprite.texture = load(path)
@@ -90,10 +101,17 @@ func _apply_sprite(sprite: Sprite2D, cat: Variant, color: Color) -> void:
 func _get_sprite(cat_id: String) -> Sprite2D:
 	match cat_id:
 		"hair":  return _hair
+		"beard": return _beard
 		"chest": return _chest
 		"legs":  return _pants
 		"shoes": return _shoes
 	return null
+
+# A barba não tem track de animação no .tscn; espelha o frame do corpo a cada quadro
+# para acompanhar a animação de andar/parar (só quando há barba visível).
+func _sync_beard_frame() -> void:
+	if _beard and _beard.texture:
+		_beard.frame = _body.frame
 
 # Converte string hex salva pelo CharacterStore de volta para Color.
 func _parse_color(hex: String, fallback: Color = Color.WHITE) -> Color:
@@ -106,10 +124,18 @@ func _parse_color(hex: String, fallback: Color = Color.WHITE) -> Color:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 func _process(delta: float) -> void:
+	_sync_beard_frame()
+
 	if _chat_timer > 0.0:
 		_chat_timer -= delta
 		if _chat_timer <= 0.0:
 			chat_bubble.visible = false
+
+	# Movimento travado (modal aberto): não inicia novos passos, fica em idle.
+	if _movement_locked:
+		if not _is_moving:
+			_play_idle_anim(_last_dir)
+		return
 
 	if _is_moving:
 		return
@@ -124,11 +150,53 @@ func _process(delta: float) -> void:
 	else:
 		_play_idle_anim(_last_dir)
 
+# Trava/destrava o movimento do personagem local (chamado quando uma UI modal,
+# como a janela de troca, abre ou fecha).
+func set_movement_locked(p_locked: bool) -> void:
+	_movement_locked = p_locked
+	if p_locked:
+		_play_idle_anim(_last_dir)
+
+## Move o personagem como ATOR de cutscene (dirigido por script, sem input/WorldState):
+## toca a animação de andar na direção do movimento, faz o tween de posição e volta ao
+## idle ao chegar. Funciona mesmo com movimento travado. Retorna o Tween
+## (use `await player.walk_to(...).finished`). Marca _is_moving p/ o _process não
+## sobrescrever a animação de andar com idle.
+func walk_to(p_target: Vector2, p_speed: float = 60.0) -> Tween:
+	var delta := p_target - position
+	if delta.is_zero_approx():
+		return null
+	var dir: Vector2i
+	if absf(delta.x) > absf(delta.y):
+		dir = Vector2i(1 if delta.x > 0.0 else -1, 0)
+	else:
+		dir = Vector2i(0, 1 if delta.y > 0.0 else -1)
+	_is_moving = true
+	_last_dir = dir
+	_play_walk_anim(dir)
+	var duration := delta.length() / maxf(1.0, p_speed)
+	var tween := create_tween()
+	tween.tween_property(self, "position", p_target, duration)
+	tween.tween_callback(func() -> void:
+		_is_moving = false
+		_play_idle_anim(_last_dir))
+	return tween
+
+## Vira o personagem para uma direção (Vector2i) e fica parado em idle.
+func face(p_dir: Vector2i) -> void:
+	_last_dir = p_dir
+	_play_idle_anim(p_dir)
+
+## Direção atual que o personagem encara (Vector2i). Usada pelo scanner para mirar a área.
+func get_facing() -> Vector2i:
+	return _last_dir
+
 func _try_move(dir: Vector2i) -> void:
 	_is_moving = true
 	_last_dir  = dir
 	tile_pos  += dir
-	WorldState.request_move(dir)
+	if not cutscene_mode:
+		WorldState.request_move(dir)
 	_play_walk_anim(dir)
 	_animate_move(_tile_to_world(tile_pos))
 

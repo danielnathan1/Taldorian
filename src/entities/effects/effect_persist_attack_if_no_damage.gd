@@ -6,7 +6,7 @@ extends CardEffect
 var _bonus: int = 1
 
 func default_timing() -> int:
-	return Timing.AFTER_COMBAT
+	return Timing.AFTER_TURN
 
 func setup(params: Dictionary) -> void:
 	_bonus = params.get("bonus", 1)

@@ -9,7 +9,10 @@ signal inventory_requested
 signal decks_requested
 signal friends_toggled(open: bool)
 signal logout_requested
+signal shop_requested
+signal forge_requested
 signal chat_message_sent(channel: String, text: String)
+signal profile_requested
 
 # ── Configuração de chat ───────────────────────────────────────────────────────
 const CHANNELS       : Array[String] = ["global", "private", "guild"]
@@ -21,26 +24,11 @@ const CHANNEL_COLORS : Array[Color]  = [
 ]
 const CHANNEL_PREFIXES : Array[String] = ["[G]", "[PV]", "[G]"]
 
-# ── Chat ambient (seed + mensagens periódicas) ─────────────────────────────────
-@export var ambient_chat: bool = true
-
-const AMBIENT_MSGS := [
-	["global",  "Thalwen", "alguém pra dungeon do Pântano? falta 1", false],
-	["global",  "Korrin",  "vendo booster lendário, chama no pv",     false],
-	["global",  "Mirae",   "gg na última, teu deque de relâmpago é insano", false],
-	["global",  "Bromm",   "alguém sabe onde dropa o Selo de Tal'dorian?", false],
-	["private", "Bromm",   "bora um 1v1 rankeado?",                   false],
-	["guild",   "Sayen",   "reunião da Ordem hoje 21h, presença vale ouro", false],
-	["guild",   "Vael",    "guild war sábado — confirmem no quadro",   false],
-]
-
 # ── Estado interno ─────────────────────────────────────────────────────────────
 var _active_channel : int        = 0
 var _unread         : Array[int] = [0, 0, 0]
 var _chat_logs      : Array      = [[], [], []]   # Array[Array[Dictionary]]
 var _friends_open   : bool       = false
-var _ambient_timer  : float      = 0.0
-var _ambient_idx    : int        = 0
 var _xp_ratio       : float      = 0.0
 
 const PROFILE_PATH := "user://profile.cfg"
@@ -72,6 +60,8 @@ const PROFILE_PATH := "user://profile.cfg"
 @onready var btn_battle    : Button        = $Root/IconBar/IB_HBox/BtnBattle
 @onready var btn_inventory : Button        = $Root/IconBar/IB_HBox/BtnInventory
 @onready var btn_decks     : Button        = $Root/IconBar/IB_HBox/BtnDecks
+@onready var btn_shop      : Button        = $Root/IconBar/IB_HBox/BtnShop
+@onready var btn_forge     : Button        = $Root/IconBar/IB_HBox/BtnForge
 @onready var btn_friends   : Button        = $Root/IconBar/IB_HBox/BtnFriends
 @onready var btn_logout    : Button        = $Root/IconBar/IB_HBox/BtnLogout
 @onready var friends_popover : PanelContainer = $Root/IconBar/IB_HBox/BtnFriends/FriendsPopover
@@ -92,25 +82,17 @@ func _ready() -> void:
 	btn_battle.pressed.connect(func() -> void: battle_requested.emit())
 	btn_inventory.pressed.connect(func() -> void: inventory_requested.emit())
 	btn_decks.pressed.connect(func() -> void: decks_requested.emit())
+	btn_shop.pressed.connect(func() -> void: shop_requested.emit())
+	btn_forge.pressed.connect(func() -> void: forge_requested.emit())
 	btn_friends.pressed.connect(_toggle_friends)
 	btn_logout.pressed.connect(func() -> void: logout_requested.emit())
+
+	_setup_avatar_click()
 
 	friends_popover.visible = false
 
 	_switch_tab(0)
 	_load_profile()
-	_seed_chat()
-
-	if ambient_chat:
-		_ambient_timer = randf_range(7.0, 12.0)
-
-func _process(p_delta: float) -> void:
-	if not ambient_chat:
-		return
-	_ambient_timer -= p_delta
-	if _ambient_timer <= 0.0:
-		_ambient_timer = randf_range(7.0, 12.0)
-		_fire_ambient()
 
 # ── API pública ────────────────────────────────────────────────────────────────
 
@@ -125,21 +107,44 @@ func set_player(p_data: Dictionary) -> void:
 	_xp_ratio = clampf(xp, 0.0, 1.0)
 	xp_bar.value = _xp_ratio * 100.0
 
+## Atualiza só o ouro exibido no PlayerCard (ex.: após uma troca), sem refazer o resto.
+func set_gold(p_amount: int) -> void:
+	gold_label.text = _format_num(p_amount)
+
 func set_avatar_photo(p_tex: Texture2D) -> void:
 	if avatar_frame.has_method("set_photo"):
 		avatar_frame.set_photo(p_tex)
 	_save_profile()
 
-func set_avatar_frame(p_id: String) -> void:
-	if avatar_frame.has_method("set_frame"):
-		avatar_frame.set_frame(p_id)
-	_save_profile()
+# Botão transparente sobre o avatar (medalhão) — abre o perfil ao clicar.
+func _setup_avatar_click() -> void:
+	var btn := Button.new()
+	btn.flat = true
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.tooltip_text = "Ver perfil"
+	btn.z_index = 5
+	var empty := StyleBoxEmpty.new()
+	btn.add_theme_stylebox_override("normal", empty)
+	btn.add_theme_stylebox_override("hover", empty)
+	btn.add_theme_stylebox_override("pressed", empty)
+	btn.add_theme_stylebox_override("focus", empty)
+	btn.pressed.connect(func() -> void: profile_requested.emit())
+	avatar_frame.add_child(btn)
 
 func push_chat(p_channel: String, p_who: String, p_body: String, p_system := false) -> void:
 	var ch := CHANNELS.find(p_channel)
 	if ch < 0:
 		ch = 0
 	_add_message(ch, p_who, p_body, p_system)
+
+# Oculta/mostra o conteúdo da HUD (PlayerCard, Chat, IconBar) sem afetar overlays
+# adicionados como filhos deste CanvasLayer (ex.: tela de Salas). Necessário porque
+# vários nós da HUD usam z_index positivo (badges, cantos do avatar) e vazariam por
+# cima de um overlay de z_index 0.
+func set_content_visible(p_visible: bool) -> void:
+	$Root.visible = p_visible
+
 
 func set_friends(p_list: Array) -> void:
 	for child in friends_list.get_children():
@@ -230,29 +235,16 @@ func _on_field_submitted(p_text: String) -> void:
 	_add_message(_active_channel, who, msg, false)
 
 func _on_world_chat_received(p_peer_id: int, p_message: String) -> void:
+	# O servidor ecoa a mensagem de volta a todos os peers, inclusive ao remetente.
+	# A própria mensagem já foi adicionada localmente em _on_field_submitted, então
+	# ignoramos o eco para não duplicar no log.
+	if p_peer_id == multiplayer.get_unique_id():
+		return
 	var players := WorldState.get_players()
 	var name := "???"
 	if players.has(p_peer_id):
 		name = str(players[p_peer_id]["player_name"])
 	_add_message(0, name, p_message, false)
-
-func _seed_chat() -> void:
-	push_chat("global",  "Thalwen", "alguém pra dungeon do Pântano? falta 1")
-	push_chat("global",  "Sistema", "Evento 'Lua de Sangue' começa em 10 min", true)
-	push_chat("global",  "Korrin",  "vendo booster lendário, chama no pv")
-	push_chat("global",  "Mirae",   "gg na última, teu deque de relâmpago é insano")
-	push_chat("global",  "Bromm",   "alguém sabe onde dropa o Selo de Tal'dorian?")
-	push_chat("private", "Bromm",   "bora um 1v1 rankeado?")
-	push_chat("private", "você",    "já vou, só montar o deque")
-	push_chat("private", "Bromm",   "fechou, te mando o convite")
-	push_chat("guild",   "Sayen",   "reunião da Ordem hoje 21h, presença vale ouro")
-	push_chat("guild",   "Dorne",   "subi pra Prata II, valeu pela ajuda no treino")
-	push_chat("guild",   "Vael",    "guild war sábado — confirmem no quadro")
-
-func _fire_ambient() -> void:
-	var entry: Array = AMBIENT_MSGS[_ambient_idx % AMBIENT_MSGS.size()]
-	_ambient_idx += 1
-	push_chat(entry[0] as String, entry[1] as String, entry[2] as String, entry[3] as bool)
 
 # ── Amigos ─────────────────────────────────────────────────────────────────────
 
@@ -302,15 +294,26 @@ func _make_friend_row(p_f: Dictionary) -> HBoxContainer:
 
 func _save_profile() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load(PROFILE_PATH)  # preserva chaves do perfil (ring_color, favorite_card…)
 	cfg.set_value("avatar", "frame_id", "azure")
 	cfg.save(PROFILE_PATH)
 
 func _load_profile() -> void:
+	# Espelha o avatar do perfil: cor do anel (borda) + ícone escolhido.
 	var cfg := ConfigFile.new()
 	if cfg.load(PROFILE_PATH) != OK:
 		return
-	var frame_id: String = cfg.get_value("avatar", "frame_id", "iron")
-	set_avatar_frame(frame_id)
+	var ring_html: String = cfg.get_value("avatar", "ring_color", "e0b04a")  # ouro por padrão
+	if avatar_frame.has_method("set_ring_color"):
+		avatar_frame.set_ring_color(Color.html(ring_html))
+	var photo_path: String = cfg.get_value("avatar", "photo_path", "")
+	if photo_path != "" and ResourceLoader.exists(photo_path):
+		avatar_frame.set_photo(load(photo_path))
+
+## Recarrega o avatar (moldura + ícone) do profile.cfg — chamado quando o jogador
+## fecha o modal de perfil, para refletir mudanças sem recarregar o mundo.
+func reload_avatar() -> void:
+	_load_profile()
 
 # ── Utilitários ────────────────────────────────────────────────────────────────
 

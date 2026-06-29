@@ -29,6 +29,14 @@ const RUNE        := Color("7d7fc0")
 const STAGE       := 210.0
 const AVATAR      := 78.0
 
+# Paper-doll do personagem (espelha o Skeleton do mundo — ver remote_player.gd).
+# walk.png: 9 colunas × 4 linhas; frame 18 = linha 2 (frente), coluna 0 (parado).
+const AV_HFRAMES    := 9
+const AV_VFRAMES    := 4
+const AV_STAND_FRAME := 18
+# Ordem de desenho (trás → frente), igual à ordem dos nós do Skeleton.
+const AV_LAYERS     := ["body", "hair", "beard", "chest", "legs", "shoes"]
+
 # ── Estado ────────────────────────────────────────────────────────────────────
 var _detail: Dictionary = {}
 var _local_ready: bool = false
@@ -163,11 +171,6 @@ func _load_decks() -> void:
 			if d is Dictionary:
 				_decks.append(d)
 				_deck_picker.add_item(str(d.get("name", "Deck")))
-	# Fallback: decks locais (sem id de backend) se a API falhar/estiver vazia.
-	if _decks.is_empty():
-		for d in DeckStore.decks:
-			_decks.append({ "id": "", "name": d.deck_name })
-			_deck_picker.add_item(d.deck_name)
 	if _decks.is_empty():
 		_deck_picker.add_item("(sem decks)")
 		_deck_picker.disabled = true
@@ -477,9 +480,10 @@ func _make_circle_stage(p_seat: Dictionary, p_present: bool, p_ready: bool) -> C
 	cc.add_child(content)
 
 	if p_present:
-		# Avatar (círculo interno + inicial)
+		# Avatar (círculo interno) — ícone do personagem; cai para a inicial se sem aparência.
 		var av := Panel.new()
 		av.custom_minimum_size = Vector2(AVATAR, AVATAR)
+		av.clip_contents = true
 		var avs := StyleBoxFlat.new()
 		avs.bg_color = Color(0.12, 0.10, 0.20, 1.0)
 		avs.border_color = (Color(READY.r, READY.g, READY.b, 0.6) if p_ready
@@ -487,16 +491,21 @@ func _make_circle_stage(p_seat: Dictionary, p_present: bool, p_ready: bool) -> C
 		avs.set_border_width_all(1)
 		avs.set_corner_radius_all(int(AVATAR / 2.0))
 		av.add_theme_stylebox_override("panel", avs)
-		var init := Label.new()
-		init.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		init.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		init.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		init.add_theme_font_override("font", FONT_DISPLAY)
-		init.add_theme_font_size_override("font_size", 34)
-		init.add_theme_color_override("font_color", READY_GLOW if p_ready else GOLD_GLOW)
-		var nm := str(p_seat.get("name", "?"))
-		init.text = (nm.substr(0, 1)).to_upper() if nm.length() > 0 else "?"
-		av.add_child(init)
+		var icon := _build_avatar(p_seat.get("appearance", {}) as Dictionary)
+		if icon != null:
+			icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			av.add_child(icon)
+		else:
+			var init := Label.new()
+			init.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			init.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			init.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			init.add_theme_font_override("font", FONT_DISPLAY)
+			init.add_theme_font_size_override("font_size", 34)
+			init.add_theme_color_override("font_color", READY_GLOW if p_ready else GOLD_GLOW)
+			var nm := str(p_seat.get("name", "?"))
+			init.text = (nm.substr(0, 1)).to_upper() if nm.length() > 0 else "?"
+			av.add_child(init)
 		content.add_child(av)
 
 		if bool(p_seat.get("is_host", false)):
@@ -523,6 +532,48 @@ func _make_circle_stage(p_seat: Dictionary, p_present: bool, p_ready: bool) -> C
 		et.add_theme_color_override("font_color", Color(PARCHMENT_D.r, PARCHMENT_D.g, PARCHMENT_D.b, 0.4))
 		content.add_child(et)
 	return stage
+
+
+# Monta o ícone do jogador empilhando as camadas da aparência (frame parado de frente).
+# Retorna null se não houver aparência utilizável (o chamador cai para a inicial do nome).
+func _build_avatar(p_appearance: Dictionary) -> Control:
+	if p_appearance.is_empty():
+		return null
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(AVATAR, AVATAR)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var any := false
+	for cat_id in AV_LAYERS:
+		var cat := p_appearance.get(cat_id, {}) as Dictionary
+		if cat.is_empty() or str(cat.get("style", "")) == "none":
+			continue
+		var path := str(cat.get("path", ""))
+		if path == "" or not ResourceLoader.exists(path):
+			continue
+		var tex := load(path) as Texture2D
+		if tex == null:
+			continue
+		@warning_ignore("integer_division")
+		var fw := tex.get_width() / AV_HFRAMES
+		@warning_ignore("integer_division")
+		var fh := tex.get_height() / AV_VFRAMES
+		var atlas := AtlasTexture.new()
+		atlas.atlas = tex
+		atlas.region = Rect2((AV_STAND_FRAME % AV_HFRAMES) * fw, (AV_STAND_FRAME / AV_HFRAMES) * fh, fw, fh)
+		var rect := TextureRect.new()
+		rect.texture = atlas
+		rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if cat_id != "body":
+			var hex := str(cat.get("color", "ffffffff"))
+			if hex.length() >= 6:
+				rect.modulate = Color(hex)
+		holder.add_child(rect)
+		any = true
+	return holder if any else null
 
 
 func _make_vs() -> Control:

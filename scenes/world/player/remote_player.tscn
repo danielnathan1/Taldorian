@@ -7,6 +7,9 @@
 [ext_resource type="Texture2D" path="res://assets/character/chest/male/basic_tshirt/walk.png"  id="5_chest"]
 [ext_resource type="Texture2D" path="res://assets/character/shoes/male/basic_shoes/walk.png"   id="6_shoes"]
 
+[sub_resource type="RectangleShape2D" id="Shape_click"]
+size = Vector2(14, 26)
+
 ; ── Animações (espelho do PlayerCharacter) ─────────────────────────────────────
 
 [sub_resource type="Animation" id="Anim_RESET"]
@@ -385,6 +388,13 @@ _data = {
 [node name="RemotePlayer" type="Node2D"]
 script = ExtResource("1_rp")
 
+[node name="ClickArea" type="Area2D" parent="."]
+input_pickable = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
+position = Vector2(0, -4)
+shape = SubResource("Shape_click")
+
 [node name="Skeleton" type="Node2D" parent="."]
 
 [node name="Body" type="Sprite2D" parent="Skeleton"]
@@ -395,6 +405,11 @@ frame = 18
 
 [node name="Hair" type="Sprite2D" parent="Skeleton"]
 texture = ExtResource("3_hair")
+hframes = 9
+vframes = 4
+frame = 18
+
+[node name="Beard" type="Sprite2D" parent="Skeleton"]
 hframes = 9
 vframes = 4
 frame = 18

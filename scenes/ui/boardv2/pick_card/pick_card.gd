@@ -9,6 +9,7 @@ const CardViewScene := preload("res://scenes/ui/card_view/card_view.tscn")
 
 @onready var _cards_container    := $VBoxContainer/ScrollContainer/GridContainer
 @onready var _confirm_button     := $Button
+@onready var _skip_button        := $SkipButton
 @onready var _instruction_label  := $VBoxContainer/InstructionLabel
 @onready var _peek_buttons       := $VBoxContainer/PeekButtons
 @onready var _btn_keep           := $VBoxContainer/PeekButtons/BtnKeep
@@ -21,6 +22,7 @@ func _ready() -> void:
 	visible = false
 	_confirm_button.disabled = true
 	_confirm_button.pressed.connect(_on_confirm_pressed)
+	_skip_button.pressed.connect(_on_skip_pressed)
 	_btn_keep.pressed.connect(_on_keep_pressed)
 	_btn_bottom.pressed.connect(_on_bottom_pressed)
 	GameBus.state_synced.connect(_on_state_synced)
@@ -43,6 +45,8 @@ func _rebuild() -> void:
 	var source      := GameState.get_pending_pick_source()
 	var cards       := GameState.get_pending_pick_cards(local_idx)
 	var is_peek     := source == GameState.PickSource.DECK_PEEK
+	# Guardar no arsenal é opcional (ex.: Passo Estratégico) → oferece "Não guardar".
+	var is_optional := source == GameState.PickSource.HAND_ARSENAL
 	var instruction := GameState.get_pending_pick_instruction()
 
 	# Instrução: mostrar se vier do efeito ou se for DECK_PEEK (tem texto padrão no .tscn)
@@ -52,6 +56,7 @@ func _rebuild() -> void:
 
 	_peek_buttons.visible   = is_peek
 	_confirm_button.visible = not is_peek
+	_skip_button.visible    = is_optional
 
 	for i in cards.size():
 		var view: CardView = CardViewScene.instantiate()
@@ -75,6 +80,11 @@ func _on_confirm_pressed() -> void:
 	if _selected_index < 0:
 		return
 	GameState.rpc_id(1, "rpc_submit_card_pick", [_selected_index])
+	visible = false
+
+# Pick opcional (HAND_ARSENAL): array vazio → servidor não guarda nada (no-op).
+func _on_skip_pressed() -> void:
+	GameState.rpc_id(1, "rpc_submit_card_pick", [])
 	visible = false
 
 # ── interações (modo DECK_PEEK) ───────────────────────────

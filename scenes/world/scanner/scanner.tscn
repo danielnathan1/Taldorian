@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://cscan0w0rld1x"]
+
+[ext_resource type="Script" path="res://scenes/world/scanner/scanner.gd" id="1_scan"]
+[ext_resource type="PackedScene" uid="uid://cscanpulse01x" path="res://scenes/world/scanner/scan_pulse.tscn" id="2_pulse"]
+
+[node name="Scanner" type="Node2D"]
+script = ExtResource("1_scan")
+
+[node name="Pulse" parent="." instance=ExtResource("2_pulse")]

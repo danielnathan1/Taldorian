@@ -58,6 +58,16 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.788, 0.627, 0.298, 0.2)
 
+[sub_resource type="StyleBoxFlat" id="Style_ModalPanel"]
+bg_color = Color(0.05, 0.07, 0.14, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.788, 0.627, 0.298, 0.4)
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 24
+
 [node name="BoosterShop" type="Control" unique_id=82581152]
 layout_mode = 3
 anchors_preset = 15
@@ -123,7 +133,7 @@ size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
 theme_override_fonts/font = ExtResource("4_font_reg")
 theme_override_font_sizes/font_size = 11
-text = "←  Voltar ao Lobby"
+text = "←  Voltar"
 
 [node name="HeaderSep" type="ColorRect" parent="ShopView/TopHeader/HeaderMargin/HeaderHBox" unique_id=42354126]
 custom_minimum_size = Vector2(1, 28)
@@ -309,6 +319,27 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
+
+[node name="InfoButtonsRow" type="HBoxContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=910000001]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="OddsBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/InfoButtonsRow" unique_id=910000002]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "✦  Probabilidades"
+
+[node name="CardsBtn" type="Button" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox/InfoButtonsRow" unique_id=910000003]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "❖  Ver Cartas"
 
 [node name="QtyBlock" type="PanelContainer" parent="ShopView/BodyHBox/PurchasePane/PurchaseMargin/PurchaseVBox" unique_id=1448832259]
 layout_mode = 2
@@ -504,6 +535,22 @@ theme_override_fonts/font = ExtResource("4_font_reg")
 theme_override_font_sizes/font_size = 11
 text = "✕  Sair"
 
+[node name="SkipButton" type="Button" parent="OpeningView" unique_id=267155796]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -252.0
+offset_top = 24.0
+offset_right = -138.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = "Pular  ⏩"
+
 [node name="PackRoot" type="Control" parent="OpeningView" unique_id=1807523416]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 280)
@@ -549,6 +596,7 @@ text = "⟡ Clique para revelar ⟡"
 horizontal_alignment = 1
 
 [node name="RailScroll" type="ScrollContainer" parent="OpeningView" unique_id=189961532]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -600,3 +648,175 @@ theme_override_colors/font_color = Color(0.94, 0.84, 0.62, 1)
 theme_override_fonts/font = ExtResource("4_font_reg")
 theme_override_font_sizes/font_size = 13
 text = "Próximo Pacote →"
+
+[node name="OddsModal" type="Control" parent="." unique_id=910001000]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OddsVeil" type="ColorRect" parent="OddsModal" unique_id=910001001]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.08, 0.9)
+
+[node name="OddsPanel" type="PanelContainer" parent="OddsModal" unique_id=910001002]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -240.0
+offset_right = 250.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Style_ModalPanel")
+
+[node name="OddsMargin" type="MarginContainer" parent="OddsModal/OddsPanel" unique_id=910001003]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="OddsVBox" type="VBoxContainer" parent="OddsModal/OddsPanel/OddsMargin" unique_id=910001004]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="OddsHeader" type="HBoxContainer" parent="OddsModal/OddsPanel/OddsMargin/OddsVBox" unique_id=910001005]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="OddsTitle" type="Label" parent="OddsModal/OddsPanel/OddsMargin/OddsVBox/OddsHeader" unique_id=910001006]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 17
+text = "Probabilidades do Pacote"
+
+[node name="OddsCloseBtn" type="Button" parent="OddsModal/OddsPanel/OddsMargin/OddsVBox/OddsHeader" unique_id=910001007]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 13
+text = "✕"
+
+[node name="OddsDivider" type="ColorRect" parent="OddsModal/OddsPanel/OddsMargin/OddsVBox" unique_id=910001008]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.788, 0.627, 0.298, 0.2)
+
+[node name="OddsContent" type="VBoxContainer" parent="OddsModal/OddsPanel/OddsMargin/OddsVBox" unique_id=910001009]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CardsModal" type="Control" parent="." unique_id=910002000]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CardsVeil" type="ColorRect" parent="CardsModal" unique_id=910002001]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.08, 0.92)
+
+[node name="CardsPanel" type="PanelContainer" parent="CardsModal" unique_id=910002002]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -560.0
+offset_top = -340.0
+offset_right = 560.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Style_ModalPanel")
+
+[node name="CardsMargin" type="MarginContainer" parent="CardsModal/CardsPanel" unique_id=910002003]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 24
+
+[node name="CardsVBox" type="VBoxContainer" parent="CardsModal/CardsPanel/CardsMargin" unique_id=910002004]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="CardsHeader" type="HBoxContainer" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox" unique_id=910002005]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CardsTitle" type="Label" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox/CardsHeader" unique_id=910002006]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.91, 0.784, 0.337, 1)
+theme_override_fonts/font = ExtResource("3_font_black")
+theme_override_font_sizes/font_size = 17
+text = "Cartas da Coleção"
+
+[node name="CardsCountLabel" type="Label" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox/CardsHeader" unique_id=910002007]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="CardsCloseBtn" type="Button" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox/CardsHeader" unique_id=910002008]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("4_font_reg")
+theme_override_font_sizes/font_size = 13
+text = "✕"
+
+[node name="CardsDivider" type="ColorRect" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox" unique_id=910002009]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.788, 0.627, 0.298, 0.2)
+
+[node name="CardsScroll" type="ScrollContainer" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox" unique_id=910002010]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CardsGrid" type="GridContainer" parent="CardsModal/CardsPanel/CardsMargin/CardsVBox/CardsScroll" unique_id=910002011]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 6

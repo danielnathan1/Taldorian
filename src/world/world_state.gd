@@ -41,6 +41,7 @@ func activate(p_appearance: Dictionary = {}, p_as_player: bool = true) -> void:
 			"tile":        Vector2i(62, 34),
 			"map":         "taldorian_city",
 			"player_name": NetworkState.player_name,
+			"player_id":   NetworkState.player_id,
 			"appearance":  p_appearance,
 		}
 		# Atualiza local; nenhum cliente conectado ainda, mas emite o sinal
@@ -48,7 +49,7 @@ func activate(p_appearance: Dictionary = {}, p_as_player: bool = true) -> void:
 		_update_local(_players.duplicate(true))
 		GameBus.world_player_joined.emit(id, _players[id])
 	else:
-		rpc_id(1, "_rpc_enter_world", NetworkState.player_name, p_appearance)
+		rpc_id(1, "_rpc_enter_world", NetworkState.player_name, p_appearance, NetworkState.player_id)
 
 # ── API pública ────────────────────────────────────────────────────────────────
 
@@ -98,12 +99,13 @@ func _process_move(peer_id: int, dir: Vector2i) -> void:
 # ── RPCs recebidos pelo servidor ───────────────────────────────────────────────
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_enter_world(player_name: String, appearance: Dictionary) -> void:
+func _rpc_enter_world(player_name: String, appearance: Dictionary, player_id: String = "") -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
 	_players[sender_id] = {
 		"tile":        Vector2i(62, 34),
 		"map":         "taldorian_city",
 		"player_name": player_name.left(32),
+		"player_id":   player_id,
 		"appearance":  appearance,
 	}
 	_update_and_broadcast()

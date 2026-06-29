@@ -1,0 +1,97 @@
+[gd_scene load_steps=6 format=3 uid="uid://b8cc0sel0row1"]
+
+[ext_resource type="Script" path="res://scenes/ui/character_creator/components/option_selector.gd" id="1_sel"]
+[ext_resource type="FontFile" uid="uid://dmxgycxpbdi5m" path="res://assets/fonts/CinzelDecorative-Bold.ttf" id="2_bold"]
+[ext_resource type="FontFile" uid="uid://dqggxhg6ikx0l" path="res://assets/fonts/CinzelDecorative-Regular.ttf" id="3_reg"]
+
+[sub_resource type="StyleBoxFlat" id="field_bg"]
+bg_color = Color(0.086, 0.071, 0.055, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.902, 0.722, 0.392, 0.3)
+content_margin_left = 2.0
+content_margin_right = 2.0
+
+[sub_resource type="StyleBoxFlat" id="arrow_hover"]
+bg_color = Color(0.902, 0.722, 0.392, 0.1)
+
+[sub_resource type="StyleBoxEmpty" id="empty"]
+
+[node name="OptionSelector" type="GridContainer" node_paths=PackedStringArray()]
+columns = 2
+script = ExtResource("1_sel")
+theme_override_constants/h_separation = 14
+
+[node name="FieldLabel" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.627, 0.49, 0.227, 1)
+theme_override_fonts/font = ExtResource("2_bold")
+theme_override_font_sizes/font_size = 11
+text = "Campo"
+vertical_alignment = 1
+
+[node name="ControlPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("field_bg")
+
+[node name="Row" type="HBoxContainer" parent="ControlPanel"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="PrevBtn" type="Button" parent="ControlPanel/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(46, 44)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.627, 0.49, 0.227, 1)
+theme_override_colors/font_hover_color = Color(1, 0.843, 0.463, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.843, 0.463, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("empty")
+theme_override_styles/hover = SubResource("arrow_hover")
+theme_override_styles/pressed = SubResource("arrow_hover")
+theme_override_styles/focus = SubResource("empty")
+text = "‹"
+
+[node name="ValueLabel" type="Label" parent="ControlPanel/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941, 0.918, 0.839, 1)
+theme_override_fonts/font = ExtResource("3_reg")
+theme_override_font_sizes/font_size = 14
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="NextBtn" type="Button" parent="ControlPanel/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(46, 44)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.627, 0.49, 0.227, 1)
+theme_override_colors/font_hover_color = Color(1, 0.843, 0.463, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.843, 0.463, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("empty")
+theme_override_styles/hover = SubResource("arrow_hover")
+theme_override_styles/pressed = SubResource("arrow_hover")
+theme_override_styles/focus = SubResource("empty")
+text = "›"
+
+[node name="Swatch" type="ColorPickerButton" parent="ControlPanel/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 28)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+color = Color(0.5, 0.5, 0.5, 1)
+edit_alpha = false

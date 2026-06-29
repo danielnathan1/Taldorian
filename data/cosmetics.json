@@ -1,13 +1,13 @@
 {
   "sleeves": [
     { "id": "default", "name": "Padrão",  "art_key": "default" },
-    { "id": "ieldor",  "name": "Ieldor",  "art_key": "ieldor"  },
-    { "id": "irena",   "name": "Irena",   "art_key": "irena"   },
-    { "id": "poppy",   "name": "Poppy",   "art_key": "poppy"   }
+    { "id": "ieldor",  "name": "Ieldor",  "art_key": "ieldor", "backend_id": "f4000000-0000-0000-0000-000000000001" },
+    { "id": "irena",   "name": "Irena",   "art_key": "irena",  "backend_id": "f4000000-0000-0000-0000-000000000002" },
+    { "id": "poppy",   "name": "Poppy",   "art_key": "poppy",  "backend_id": "f4000000-0000-0000-0000-000000000003" }
   ],
   "playmats": [
-    { "id": "default",  "name": "Padrão",   "art_key": "default"  },
-    { "id": "catedral", "name": "Catedral", "art_key": "catedral" },
-    { "id": "florest",  "name": "Floresta", "art_key": "florest"  }
+    { "id": "default",  "name": "Padrão",   "art_key": "default" },
+    { "id": "catedral", "name": "Catedral", "art_key": "catedral", "backend_id": "f3000000-0000-0000-0000-000000000001" },
+    { "id": "florest",  "name": "Floresta", "art_key": "florest",  "backend_id": "f3000000-0000-0000-0000-000000000002" }
   ]
 }

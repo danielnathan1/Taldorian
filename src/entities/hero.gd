@@ -3,7 +3,7 @@ class_name Hero
 extends RefCounted
 
 enum State { ACTIVE, EXHAUSTED, DEFEATED }
-enum HeroClass { BARBARIAN, WARRIOR, MONK, ROGUE, CLERIC, RANGER, GUARDIAN }
+enum HeroClass { BARBARIAN, WARRIOR, MONK, ROGUE, CLERIC, RANGER, GUARDIAN, WIZARD, SORCERER }
 
 var art_key: String = "hero_default"
 var hero_name: String
@@ -25,6 +25,15 @@ var _skill_activated_this_battle: bool = false
 var is_backline_revealed: bool = false
 ## Quando true o herói sempre aparece virado para cima — tanto na backline quanto ao se tornar ativo.
 var starts_face_up: bool = false
+## Passiva de frontline ativada (ex.: Muro de Aço da Valkar). Resetado a cada turno;
+## ligado quando o jogador opta por quebrar a furtividade na confirmação pós-seleção
+## ou quando o herói ativo se revela durante a fase ACTION.
+var wall_active: bool = false
+## Cosmético (client-side, NÃO serializado): liga a aura de fogo na carta enquanto a
+## skill da Poppy (Impacto Sísmico) está ativa no combate. Gerenciado pelo board via
+## skill_activated/combat_resolved; lido pelo HeroSlot ao bindar — assim aparece no
+## slot do tabuleiro, no preview e na resolução de combate (todos usam HeroSlot).
+var skill_fire_active: bool = false
 
 # ── hooks virtuais ──────────────────────────────────────
 # Subclasse faz override APENAS dos que precisa.
@@ -39,6 +48,39 @@ func has_backline_ability() -> bool:
 ## Retorna descrição do efeito para o popup (vazio = sem popup).
 func apply_backline_ability(player: Player, opponent: Player, target: Hero) -> String:
 	return ""
+
+## Habilidades ATIVADAS — o herói declara o que pode ativar AGORA (o gating de
+## fase/segmento e o timing — revelar, abrir janela de reação, consumir o tempo —
+## ficam no GameState). Cada descritor:
+##   { "id": String, "label": String, "cost": "ACTION"|"BONUS"|"FREE", "needs_target": bool }
+## Retorna [] para heróis sem habilidades ativadas.
+func get_active_abilities(_player: Player, _opponent: Player) -> Array[Dictionary]:
+	return []
+
+## Executa a habilidade ativada de `id`. `targets` traz os heróis escolhidos
+## (vazio quando needs_target == false). Retorna a descrição para o popup
+## ("" = sem popup). Aqui roda APENAS o efeito — o timing é responsabilidade do GameState.
+func activate_ability(_id: String, _player: Player, _opponent: Player, _targets: Array) -> String:
+	return ""
+
+## Condição de disparo da habilidade ativa por cadeia (verificada a cada carta jogada,
+## só no herói ATIVO). Padrão: subsequência contígua de `symbols_required`.
+## Heróis com gatilho diferente (ex.: Relicar — "2 elementos distintos") fazem override.
+func is_skill_triggered(chain: Array[String]) -> bool:
+	return not symbols_required.is_empty() and SymbolChain.matches_chain(chain, symbols_required)
+
+## Chamado quando o jogador deste herói DESCARTA uma carta da mão. Roda em TODOS os
+## heróis do jogador com state == ACTIVE (não exausto/morto) — ativo ou na retaguarda.
+## Retorna a descrição para o popup se a passiva disparou ("" caso contrário).
+func on_card_discarded(card: Card, player: Player) -> String:
+	return ""
+
+## True se a passiva de descarte deste herói produz um efeito VISÍVEL que revela sua
+## identidade (ex.: Relicar criando um Fragmento Arcano). Quando true e o herói está
+## furtivo (ativo oculto OU retaguarda não revelada), o GameState pede confirmação
+## antes de disparar a passiva — ativá-la quebra a furtividade.
+func discard_passive_reveals() -> bool:
+	return false
 
 ## Chamado quando a cadeia de símbolos é completada (antes do combate)
 func on_skill_activated(player: Player) -> void:
@@ -58,6 +100,19 @@ func get_team_damage_reduction(_ctx: TurnContext) -> int:
 ## Permite reduzir 1 de dano por herói atingido independentemente do escudo de combate.
 func get_aoe_damage_reduction(_ctx: TurnContext) -> int:
 	return 0
+
+## True se, enquanto for o herói ATIVO (linha de frente), impede que os ALIADOS de
+## retaguarda sejam alvo de dano direcionado/direto (Chuva de Flechas, Mísseis Mágicos,
+## habilidade de alvo escolhido, etc.). A própria linha de frente continua sendo alvo válido.
+func protects_backline_from_targeting() -> bool:
+	return false
+
+## True se este herói, ao virar ativo, deve oferecer ao jogador a escolha de quebrar
+## a furtividade para ativar uma passiva de linha de frente (ex.: Muro de Aço da
+## Valkar). Quando true e o herói está oculto, o servidor abre a confirmação Sim/Não
+## logo após ambos escolherem o herói ativo.
+func wants_frontline_confirm() -> bool:
+	return false
 
 ## Chamado no início de cada nova rodada de combate — permite heróis de suporte
 ## resetarem estado de uso por rodada (ex: escudo de Valkar).
@@ -131,6 +186,15 @@ func take_damage(amount: int, ctx: TurnContext) -> void:
 	else:
 		on_after_damage_taken(ctx)
 
+## Dano de fonte DIRETA (míssil, AoE, habilidade de retaguarda) — respeita o escudo
+## (damage_shield), igual ao combate. Retorna o dano efetivamente aplicado (após o escudo).
+## O CombatResolver NÃO usa isto (ele já chama absorb_shield + take_damage separadamente).
+func take_direct_damage(amount: int, ctx: TurnContext) -> int:
+	var dealt := absorb_shield(amount)
+	if dealt > 0:
+		take_damage(dealt, ctx)
+	return dealt
+
 func exhaust() -> void:
 	if state == State.ACTIVE:
 		state = State.EXHAUSTED
@@ -145,9 +209,8 @@ func is_alive() -> bool:
 func hp_percent() -> float:
 	return float(current_hp) / float(max_hp)
 
-func get_texture() -> Texture2D: 
+func get_texture() -> Texture2D:
 	var path := "res://assets/heros/%s.png" % art_key
-	var art := load(path)
 	if ResourceLoader.exists(path):
 		return load(path)
 	return load("res://assets/heros/placeholder.png")

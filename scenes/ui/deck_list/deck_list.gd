@@ -43,7 +43,39 @@ func _ready() -> void:
 	_apply_styles()
 	_wire()
 	DeckStore.decks_changed.connect(_rebuild_grid)
+	await _initial_load()
+
+
+# Puxa os decks do jogador do backend (DeckStore.refresh) antes de montar o grid.
+func _initial_load() -> void:
+	var overlay := _make_loading_overlay("Carregando decks…")
+	add_child(overlay)
+	var res := await DeckStore.refresh()
+	if is_instance_valid(overlay):
+		overlay.queue_free()
+	if not res.ok:
+		_toast("Falha ao carregar decks: %s" % res.error)
 	_rebuild_grid()
+
+
+func _make_loading_overlay(p_msg: String) -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = 30
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(S.C_BG_DEEP, 0.85)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(center)
+	var label := Label.new()
+	label.text = p_msg
+	label.add_theme_font_override("font", S.FONT_REG)
+	label.add_theme_font_size_override("font_size", 16)
+	label.add_theme_color_override("font_color", S.C_GOLD_GLOW)
+	center.add_child(label)
+	return layer
 
 
 func _wire() -> void:
@@ -159,8 +191,11 @@ func _do_delete() -> void:
 	_close_modal()
 	if _selected_id == id:
 		_selected_id = ""
-	DeckStore.delete_deck(id)   # dispara decks_changed → _rebuild_grid
-	_toast("Deck apagado")
+	var res := await DeckStore.delete_deck(id)   # DELETE /decks/{id} → decks_changed → _rebuild_grid
+	if res.ok:
+		_toast("Deck apagado")
+	else:
+		_toast("Falha ao apagar: %s" % res.error)
 
 
 func _toast(msg: String) -> void:
@@ -194,6 +229,9 @@ func _open_builder(deck_id: String) -> void:
 
 
 func _new_deck() -> void:
+	if DeckStore.decks.size() >= DeckStore.MAX_DECKS:
+		_toast("Limite de %d decks atingido" % DeckStore.MAX_DECKS)
+		return
 	DeckStore.active_deck_id = ""
 	get_tree().change_scene_to_file(DECK_BUILDER_SCENE)
 

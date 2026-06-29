@@ -7,7 +7,7 @@ extends RefCounted
 ##
 ## Efeitos condicionais ao RESULTADO do combate (cura por bloqueio total, contra-ataque,
 ## ricochete, destruir arsenal, descarte por dano, bônus cross-turn, etc.) NÃO são tratados
-## aqui — são efeitos AFTER_COMBAT, enfileirados ao jogar a carta e resolvidos pela fila do
+## aqui — são efeitos AFTER_TURN, enfileirados ao jogar a carta e resolvidos pela fila do
 ## GameState após esta função retornar (ver GameState._drain_after_combat_queue).
 static func resolve_turn(p0: Player, p1: Player) -> void:
 	# Aplica bônus cross-turn ganho no combate anterior (ex: Guarda Inabalável confirmado)
@@ -38,18 +38,16 @@ static func _resolve_directed_turn(source: Player, target: Player) -> int:
 
 	ctx.attacker.on_before_attack(ctx)
 
-	# Fortaleza Inabalável: bônus de defesa espelha como bônus de ataque
-	if target.pending_defense_scales_attack:
-		target.pending_bonus_attack += target.pending_bonus_defense
-
 	# Ataque: base do herói + attack_value das cartas da rodada + pending de efeitos
 	var raw_attack := ctx.attacker.base_attack
 	for card in source.turn_cards:
 		raw_attack += card.attack_value
-	raw_attack += source.pending_bonus_attack
-	raw_attack += source.battle_bonus_attack         # Frenesi: bônus que dura o turno inteiro
-	raw_attack += source.pending_stealth_hidden_bonus  # Execução Silenciosa: oculto ao jogar
-	raw_attack -= target.next_attack_penalty  # Finta rara — penaliza próxima carta adversária
+	# Acúmulo Telúrico: ataque travado neste combate — bônus pendentes não são aplicados.
+	if not source.pending_attack_locked:
+		raw_attack += source.pending_bonus_attack
+		raw_attack += source.battle_bonus_attack         # Frenesi: bônus que dura o turno inteiro
+		raw_attack += source.pending_stealth_hidden_bonus  # Execução Silenciosa: oculto ao jogar
+	raw_attack -= source.battle_attack_penalty  # Finta — debuff de ataque do turno (no próprio atacante)
 
 	# Defesa: base do herói + defense_value das cartas da rodada + pending de efeitos
 	var raw_defense := ctx.defender.base_defense
@@ -68,6 +66,9 @@ static func _resolve_directed_turn(source: Player, target: Player) -> int:
 	var final_dmg: int = maxi(0, ctx.defender.on_before_damage_taken(pre_dmg, ctx))
 	# Escudo de dano (Fluxo Reativo) — absorve antes das verificações de dano
 	final_dmg = ctx.defender.absorb_shield(final_dmg)
+	# Marca do Caçador — dano extra ao herói marcado quando ele de fato sofre dano.
+	if final_dmg > 0 and source.marked_target == ctx.defender:
+		final_dmg += source.marked_bonus
 
 	ctx.defender.take_damage(final_dmg, ctx)
 	if final_dmg > 0:

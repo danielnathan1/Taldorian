@@ -95,6 +95,8 @@ func _build_ui() -> void:
 
 
 func _on_world() -> void:
+	# Garante o cache do personagem sincronizado com o backend antes de checar.
+	await CharacterStore.fetch()
 	if not CharacterStore.has_character():
 		_show_no_character_dialog()
 		return

@@ -16,3 +16,4 @@ func execute(ctx: CardEffectContext) -> void:
 		count = ctx.source_player.cards_this_battle.size()
 	if count == 1:
 		ctx.source_player.pending_bonus_attack += _bonus
+		ctx.request_empower(_bonus, 0)

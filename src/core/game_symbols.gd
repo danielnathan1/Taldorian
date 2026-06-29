@@ -9,23 +9,28 @@ const TERRA := "terra"
 const AGUA := "agua"
 ## Quarto elemento (ar/vento) — id local alinhado ao backend: "wind".
 const AR := "wind"
+## Quinto elemento (raio/relâmpago) — id local alinhado à arte: "lightning".
+const RAIO := "lightning"
 
-const ALL: Array[String] = [FOGO, TERRA, AGUA, AR]
+const ALL: Array[String] = [FOGO, TERRA, AGUA, AR, RAIO]
 
 const DISPLAY: Dictionary = {
 	FOGO: "Fogo",
 	TERRA: "Terra",
 	AGUA: "Água",
 	AR: "Ar",
+	RAIO: "Raio",
 }
 
 ## De-para com o backend (taldorian-service), que usa nomes em inglês.
-## fogo→FIRE · agua→WATER · terra→EARTH · ar→WIND
+## fogo→FIRE · agua→WATER · terra→EARTH · ar→WIND · raio→LIGHTNING
+## NOTA: o backend ainda precisa reconhecer "LIGHTNING" (pendente).
 const TO_API: Dictionary = {
 	FOGO: "FIRE",
 	AGUA: "WATER",
 	TERRA: "EARTH",
 	AR: "WIND",
+	RAIO: "LIGHTNING",
 }
 
 const FROM_API: Dictionary = {
@@ -33,6 +38,7 @@ const FROM_API: Dictionary = {
 	"WATER": AGUA,
 	"EARTH": TERRA,
 	"WIND": AR,
+	"LIGHTNING": RAIO,
 }
 
 

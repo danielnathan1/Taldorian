@@ -8,6 +8,7 @@ func execute(ctx: CardEffectContext) -> void:
 
 	# 1. Compra a carta primeiro
 	p.draw_cards(1)
+	ctx.request_vfx("draw")
 
 	# 2. Se a mão estiver vazia não há nada para devolver
 	if p.hand.is_empty():

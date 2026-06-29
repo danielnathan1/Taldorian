@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bplayerprofile0"]
+
+[ext_resource type="Script" path="res://scenes/ui/profile/player_profile.gd" id="1_profile"]
+
+[node name="PlayerProfile" type="CanvasLayer"]
+layer = 9
+script = ExtResource("1_profile")

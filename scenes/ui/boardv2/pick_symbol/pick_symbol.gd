@@ -13,6 +13,7 @@ const SYMBOL_LABELS := {
 	"terra": "Terra",
 	"agua":  "Água",
 	"wind":  "Ar",
+	"lightning": "Raio",
 }
 
 const SYMBOL_ICONS := {
@@ -20,6 +21,7 @@ const SYMBOL_ICONS := {
 	"terra": "res://assets/icons/elements/earth.png",
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
+	"lightning": "res://assets/icons/elements/lightning.png",
 }
 
 var _required_count: int     = 2
