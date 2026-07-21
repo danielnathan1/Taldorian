@@ -1,0 +1,15 @@
+{
+  "id": "blauber_pos_scan",
+  "speakers": {
+    "blauber": { "name": "Blauber", "portrait": "blauber" },
+    "jogador": { "name": "Você" }
+  },
+  "lines": [
+    { "speaker": "blauber", "text": "Muito bem! Três heróis e tanto. Eu não disse que eles eram fortes?" },
+    { "speaker": "blauber", "text": "Bom... agora sim podemos duelar, não é?" },
+    { "speaker": "jogador", "text": "É que... eu tenho os heróis, mas ainda não tenho nenhuma carta. E, sinceramente, eu nem sei como se joga isso." },
+    { "speaker": "blauber", "text": "Tá bom, tá bom, tá bom... ok. Que aventureiro mais dependente!" },
+    { "speaker": "blauber", "text": "Vou te emprestar umas cartas e te ensinar como o jogo funciona. Mas anota aí: você tá me devendo uma, hein?" },
+    { "speaker": "blauber", "text": "Vamos lá. Pega suas cartas e senta na mesa — eu já te explico tudo, do começo." }
+  ]
+}

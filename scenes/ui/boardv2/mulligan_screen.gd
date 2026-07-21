@@ -10,6 +10,22 @@ const CardViewScene := preload("res://scenes/ui/card_view/card_view.tscn")
 @onready var title_label   := $TitleLabel
 
 var _selected_indices: Array[int] = []
+var _restrict_indices: Array = []   # vazio = sem restrição; tutorial limita a seleção a estes índices
+
+## Tutorial: só permite marcar as cartas nestes índices (re-aplicado a cada rebuild). [] limpa.
+func restrict_to(p_indices: Array) -> void:
+	_restrict_indices = p_indices.duplicate()
+	if is_node_ready() and visible:
+		_apply_restriction()
+
+func _apply_restriction() -> void:
+	if _restrict_indices.is_empty():
+		return
+	var wrappers := cards_row.get_children()
+	for i in wrappers.size():
+		var view := wrappers[i].get_child(0) as CardView
+		if view:
+			view.set_interactable(i in _restrict_indices, true)
 
 func _ready() -> void:
 	btn_confirmar.pressed.connect(_on_btn_confirmar_pressed)
@@ -47,6 +63,7 @@ func _rebuild_cards() -> void:
 		view.bind(hand[i])
 		view.apply_scale(1.6)
 		view.card_clicked.connect(_on_card_clicked.bind(i))
+	_apply_restriction()
 
 func _on_card_clicked(_card: Card, hand_index: int) -> void:
 	if hand_index in _selected_indices:

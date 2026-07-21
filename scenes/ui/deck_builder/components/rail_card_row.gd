@@ -8,6 +8,7 @@ const _ELEMENT_ICONS := {
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
 	"lightning": "res://assets/icons/elements/lightning.png",
+	"trevas": "res://assets/icons/elements/dark.png",
 }
 
 signal remove_pressed(card_name: String)

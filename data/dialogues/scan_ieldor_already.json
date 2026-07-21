@@ -1,0 +1,9 @@
+{
+  "id": "scan_ieldor_already",
+  "speakers": {
+    "ieldor": { "name": "Ieldor", "portrait": "ieldor" }
+  },
+  "lines": [
+    { "speaker": "ieldor", "text": "Já provou sua mira uma vez. Não preciso de outra flecha pra confiar em você." }
+  ]
+}

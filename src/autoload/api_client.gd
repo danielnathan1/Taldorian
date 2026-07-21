@@ -228,6 +228,12 @@ func get_quests() -> Dictionary:
 func complete_quest(p_quest_id: String) -> Dictionary:
 	return await _post("/players/me/quests/%s/complete" % p_quest_id, {})
 
+# ── Scan (rastreio no mundo) ─────────────────────────────────────────────────────
+
+## POST /players/me/scans/heroes/{key} — concede direto um herói rastreável. Idempotente.
+func claim_scanned_hero(p_hero_key: String) -> Dictionary:
+	return await _post("/players/me/scans/heroes/%s" % p_hero_key, {})
+
 # ── Núcleo HTTP ────────────────────────────────────────────────────────────────
 
 func _post(p_path: String, p_body: Dictionary) -> Dictionary:

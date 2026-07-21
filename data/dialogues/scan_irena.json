@@ -1,0 +1,11 @@
+{
+  "id": "scan_irena",
+  "speakers": {
+    "irena": { "name": "???", "portrait": "irena" }
+  },
+  "lines": [
+    { "speaker": "irena", "text": "Oh! Um Olho Arcano... há quanto tempo não via um rastreador por estas terras." },
+    { "speaker": "irena", "name": "Irena", "text": "Minha magia é gentil, mas inquieta. Ela não se entrega a mãos apressadas." },
+    { "speaker": "irena", "name": "Irena", "text": "Vou soltar uma esfera de mana. Mantenha-a serena dentro de sua luz, sem deixá-la fugir. Se tiver paciência, eu o acompanharei." }
+  ]
+}

@@ -5,7 +5,8 @@ extends CanvasLayer
 
 # ── Sinais públicos ────────────────────────────────────────────────────────────
 signal battle_requested
-signal inventory_requested
+signal collection_requested
+signal catalog_requested
 signal decks_requested
 signal friends_toggled(open: bool)
 signal logout_requested
@@ -67,6 +68,9 @@ const PROFILE_PATH := "user://profile.cfg"
 @onready var friends_popover : PanelContainer = $Root/IconBar/IB_HBox/BtnFriends/FriendsPopover
 @onready var friends_list  : VBoxContainer = $Root/IconBar/IB_HBox/BtnFriends/FriendsPopover/Popover_VBox/FriendsList
 @onready var friends_badge : Label         = $Root/IconBar/IB_HBox/BtnFriends/Badge
+@onready var inventory_popover : PanelContainer = $Root/IconBar/IB_HBox/BtnInventory/InventoryPopover
+@onready var btn_collection : Button       = $Root/IconBar/IB_HBox/BtnInventory/InventoryPopover/Popover_VBox/BtnCollection
+@onready var btn_catalog    : Button       = $Root/IconBar/IB_HBox/BtnInventory/InventoryPopover/Popover_VBox/BtnCatalog
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 
@@ -80,7 +84,13 @@ func _ready() -> void:
 	field.text_submitted.connect(_on_field_submitted)
 
 	btn_battle.pressed.connect(func() -> void: battle_requested.emit())
-	btn_inventory.pressed.connect(func() -> void: inventory_requested.emit())
+	btn_inventory.pressed.connect(_toggle_inventory_popover)
+	btn_collection.pressed.connect(func() -> void:
+		inventory_popover.visible = false
+		collection_requested.emit())
+	btn_catalog.pressed.connect(func() -> void:
+		inventory_popover.visible = false
+		catalog_requested.emit())
 	btn_decks.pressed.connect(func() -> void: decks_requested.emit())
 	btn_shop.pressed.connect(func() -> void: shop_requested.emit())
 	btn_forge.pressed.connect(func() -> void: forge_requested.emit())
@@ -90,6 +100,7 @@ func _ready() -> void:
 	_setup_avatar_click()
 
 	friends_popover.visible = false
+	inventory_popover.visible = false
 
 	_switch_tab(0)
 	_load_profile()
@@ -248,9 +259,16 @@ func _on_world_chat_received(p_peer_id: int, p_message: String) -> void:
 
 # ── Amigos ─────────────────────────────────────────────────────────────────────
 
+func _toggle_inventory_popover() -> void:
+	inventory_popover.visible = not inventory_popover.visible
+	if inventory_popover.visible and _friends_open:
+		_toggle_friends()
+
+
 func _toggle_friends() -> void:
 	_friends_open = not _friends_open
 	if _friends_open:
+		inventory_popover.visible = false
 		friends_popover.visible  = true
 		friends_popover.modulate = Color(1, 1, 1, 0)
 		var tw := create_tween()

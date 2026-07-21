@@ -17,9 +17,10 @@ func _init() -> void:
 	base_defense     = 0
 	symbols_required.assign([GameSymbols.RAIO, GameSymbols.FOGO, GameSymbols.RAIO])
 	skill_name       = "Tempestade Arcana"
-	skill_desc       = "Dobra a quantidade de Mísseis Mágicos que você controla"
+	skill_desc       = "Dobra a quantidade de *Mísseis Mágicos* que você controla"
 	passive_name     = "Mísseis Mágicos"
-	passive_desc     = "Ação: descarte 1 carta da mão e crie 2 Mísseis Mágicos."
+	passive_zone     = "frontline"
+	passive_desc     = "*Ação*: descarte 1 carta da mão e crie 2 *Mísseis Mágicos*"
 
 # ── Habilidade ativa por cadeia (Raio · Fogo · Raio) ────────────────────────
 ## Dobra os Mísseis Mágicos controlados (N → 2N).

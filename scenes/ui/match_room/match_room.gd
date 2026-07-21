@@ -714,7 +714,7 @@ func _on_leave_pressed() -> void:
 
 func _on_peer_disconnected(p_peer_id: int) -> void:
 	if p_peer_id == 1 and not multiplayer.is_server():
-		get_tree().change_scene_to_file("res://scenes/ui/lobby/lobby.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/login/login.tscn")
 
 
 # ════════════════════════════════════════════════════════════════════════════

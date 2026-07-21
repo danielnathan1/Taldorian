@@ -1,0 +1,12 @@
+{
+  "id": "encapuzado_cidade_loja",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" },
+    "jogador": { "name": "Você" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "text": "Então é verdade... você aprendeu rápido. Eu sabia que o Olho Arcano tinha escolhido bem." },
+    { "speaker": "encapuzado", "text": "Bem-vindo à cidade de Taldorian, {player_name}. A partir daqui, sua jornada é sua." },
+    { "speaker": "encapuzado", "text": "Está vendo aquele ícone de loja ali em cima? É lá que você compra novas cartas para fortalecer o seu baralho." }
+  ]
+}

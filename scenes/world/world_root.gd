@@ -1,13 +1,14 @@
 # scenes/world/world_root.gd
 extends Node2D
 
-const LOBBY_SCENE         := "res://scenes/ui/lobby/lobby.tscn"
 const LOGIN_SCENE         := "res://scenes/ui/login/login.tscn"
 const REMOTE_PLAYER_SCENE := preload("res://scenes/world/player/remote_player.tscn")
 const DECK_BUILDER_SCENE  := "res://scenes/ui/deck_builder/deck_builder.tscn"
 const DECK_LIST_SCENE     := "res://scenes/ui/deck_list/deck_list.tscn"
 const BOOSTER_SHOP_SCENE  := "res://scenes/ui/booster_shop/booster_shop.tscn"
 const BLACKSMITH_SCENE    := "res://scenes/ui/blacksmith/blacksmith.tscn"
+const COLLECTION_SCENE    := "res://scenes/ui/collection/collection_screen.tscn"
+const CATALOG_SCENE       := "res://scenes/ui/catalog/catalog_screen.tscn"
 const ROOM_LOBBY_SCENE    := preload("res://scenes/ui/room_lobby/room_lobby.tscn")
 const PAUSE_MENU_SCENE    := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
 const PLAYER_CONTEXT_MENU_SCENE := preload("res://scenes/world/ui/player_context_menu/player_context_menu.tscn")
@@ -15,6 +16,18 @@ const PLAYER_PROFILE_SCENE := preload("res://scenes/ui/profile/PlayerProfile.tsc
 const TRADE_REQUEST_SCENE := preload("res://scenes/world/ui/trade_request/trade_request_modal.tscn")
 const TRADE_WINDOW_SCENE  := preload("res://scenes/world/ui/trade/trade_window.tscn")
 const WELCOME_MODAL_SCENE := preload("res://scenes/world/ui/welcome_modal/welcome_modal.tscn")
+const SCANNER_SCENE        := preload("res://scenes/world/scanner/scanner.tscn")
+const SCANNABLE_HERO_SCENE := preload("res://scenes/world/scannable_hero/scannable_hero.tscn")
+const DIALOGUE_SCENE       := preload("res://scenes/world/ui/dialogue/dialogue_box.tscn")
+const NPC_SCENE            := preload("res://scenes/world/npc/npc.tscn")
+# O reward popup / confirm prompt do scan agora vivem no HeroScanFlow (compartilhado).
+const WORLD_SCENE := "res://scenes/world/world_root.tscn"   # recarrega a cidade (offline → online)
+const WORLD_PORT  := 7001
+const REWARD_GOLD := 1200   # ouro da recompensa do tutorial (visual — sem endpoint de grant ainda)
+
+# Heróis rastreáveis na cidade: catálogo COMPARTILHADO (ScannableCatalog) — mesma config usada pela
+# taverna do onboarding. Adicionar herói novo = editar src/world/scannable_catalog.gd.
+const WORLD_SCANNABLES := ScannableCatalog.HEROES
 const CITY_MUSIC := [
 	"res://audio/theme/cities/taldorian.mp3",
 	"res://audio/theme/cities/Cidade de Cinza.mp3",
@@ -30,6 +43,9 @@ var _trade_request: Control = null   # modal de convite de troca recebido
 var _trade_window: Control = null    # janela de troca ativa
 var _trade_request_from: int = -1    # peer que enviou o convite atual
 var _world_music: AudioStreamPlayer = null
+var _scanner: Node2D = null   # Olho Arcano anexado ao player local
+var _blink_tween: Tween = null   # pulso do ícone destacado no onboarding da cidade
+var _blink_btn: Button = null
 var _player_gold: int = 0             # último ouro conhecido (de /players/me) p/ aplicar deltas
 var _music_tracks: Array = []
 var _music_idx: int = 0
@@ -80,12 +96,19 @@ func _ready() -> void:
 	_setup_hud()
 	_load_map("taldorian_city")
 	_setup_pause_menu()
+	_setup_scanner()
 	_setup_world_music()
 	# Carrega o inventário autoritativo do backend uma vez (posse de cartas/heróis).
 	# A troca e o resto do mundo leem do Collection cacheado — sem rebater no backend.
-	_load_inventory()
+	await _load_inventory()
+	# Heróis rastreáveis: spawna DEPOIS do inventário (pra já saber o que é possuído).
+	_spawn_scannables()
 	# Progresso de quests (gate do onboarding, etc.) — fonte de verdade no backend.
 	QuestStore.hydrate()
+	# Trecho FINAL do onboarding (cidade offline): encapuzado parabeniza + dicas → multiplayer.
+	if NetworkState.onboarding_city:
+		_run_city_onboarding()
+		return
 	# Primeira entrada (logo após criar o personagem): mostra o modal de boas-vindas.
 	_maybe_show_welcome()
 
@@ -98,6 +121,86 @@ func _maybe_show_welcome() -> void:
 	var modal := WELCOME_MODAL_SCENE.instantiate()
 	world_hud.add_child(modal)
 	modal.closed.connect(func() -> void: modal.queue_free())
+
+# ── Trecho final do onboarding (cidade OFFLINE): encapuzado + dicas → multiplayer ──────────────
+func _run_city_onboarding() -> void:
+	if local_player == null:
+		return
+	local_player.set_movement_locked(true)
+	if _scanner != null:
+		_scanner.disable()
+	# Ouro de recompensa (visual — o grant real depende de um endpoint no backend, ainda pendente).
+	_player_gold += REWARD_GOLD
+	world_hud.set_gold(_player_gold)
+	await _wait(0.7)
+	# Encapuzado se aproxima do jogador.
+	var npc := NPC_SCENE.instantiate()
+	add_child(npc)
+	npc.setup("encapuzado")
+	npc.position = local_player.position + Vector2(0, -56)
+	npc.face("down")
+	await _npc_walk(npc, local_player.position + Vector2(0, -22), 90.0)
+	npc.face("down")
+	await _wait(0.3)
+	# Dicas com o ícone correspondente piscando no HUD.
+	_blink_icon(world_hud.btn_shop)
+	await _play_world_dialogue("encapuzado_cidade_loja")
+	_blink_icon(world_hud.btn_decks)
+	await _play_world_dialogue("encapuzado_cidade_decks")
+	_blink_icon(world_hud.btn_battle)
+	await _play_world_dialogue("encapuzado_cidade_batalha")
+	_stop_blink()
+	npc.queue_free()
+	# Onboarding 100% concluído → entra no multiplayer de verdade.
+	_go_to_multiplayer()
+
+func _npc_walk(p_npc: Node, p_target: Vector2, p_speed: float) -> void:
+	var tw: Tween = p_npc.walk_to(p_target, p_speed)
+	if tw != null:
+		await tw.finished
+
+## Faz o ícone pulsar (destaque dourado). Só um ícone por vez.
+func _blink_icon(p_btn: Button) -> void:
+	_stop_blink()
+	if p_btn == null:
+		return
+	_blink_btn = p_btn
+	p_btn.modulate = Color.WHITE
+	_blink_tween = create_tween().set_loops()
+	_blink_tween.tween_property(p_btn, "modulate", Color(1.8, 1.6, 0.5), 0.5).set_trans(Tween.TRANS_SINE)
+	_blink_tween.tween_property(p_btn, "modulate", Color.WHITE, 0.5).set_trans(Tween.TRANS_SINE)
+
+func _stop_blink() -> void:
+	if _blink_tween != null:
+		_blink_tween.kill()
+		_blink_tween = null
+	if _blink_btn != null:
+		_blink_btn.modulate = Color.WHITE
+		_blink_btn = null
+
+## Encerra o onboarding: reconecta ao servidor do mundo e recarrega a cidade ONLINE.
+func _go_to_multiplayer() -> void:
+	NetworkState.onboarding_city = false
+	if local_player != null and local_player.has_method("show_chat"):
+		local_player.show_chat("Entrando no multiplayer...")
+	WorldState.reset()
+	multiplayer.multiplayer_peer = null
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_client(ServerConfig.server_host(), WORLD_PORT)
+	if err != OK:
+		push_error("[Onboarding] falha ao conectar ao multiplayer (%d) — voltando ao login" % err)
+		get_tree().change_scene_to_file(LOGIN_SCENE)
+		return
+	multiplayer.multiplayer_peer = peer
+	NetworkState.local_player_index = 1
+	multiplayer.connected_to_server.connect(func() -> void:
+		get_tree().change_scene_to_file(WORLD_SCENE), CONNECT_ONE_SHOT)
+	multiplayer.connection_failed.connect(func() -> void:
+		multiplayer.multiplayer_peer = null
+		get_tree().change_scene_to_file(LOGIN_SCENE), CONNECT_ONE_SHOT)
+
+func _wait(p_seconds: float) -> void:
+	await get_tree().create_timer(p_seconds).timeout
 
 # Busca /players/me/inventory e popula o Collection (fonte de posse do jogador).
 func _load_inventory() -> void:
@@ -145,6 +248,89 @@ func _setup_pause_menu() -> void:
 	add_child(_pause_menu)
 	_pause_menu.quit_to_menu_requested.connect(_return_to_login)
 
+# Anexa o scanner ("Olho Arcano") ao player local — segurar Espaço mostra a animação de
+# rastreio no mundo. Os alvos scannable (mobs na cidade) e a recompensa vêm depois.
+func _setup_scanner() -> void:
+	if local_player == null:
+		return
+	_scanner = SCANNER_SCENE.instantiate()
+	local_player.add_child(_scanner)
+	_scanner.scan_completed.connect(_on_world_scanned)
+	_scanner.scan_blocked.connect(_on_world_scan_blocked)
+	_scanner.enable(local_player)
+
+# Espalha os heróis rastreáveis (ScannableHero) pela cidade, a partir de WORLD_SCANNABLES.
+func _spawn_scannables() -> void:
+	for cfg in WORLD_SCANNABLES:
+		var sh: Node = SCANNABLE_HERO_SCENE.instantiate()
+		# @export setados ANTES de add_child para o _ready do ScannableHero já vê-los.
+		sh.creature_id = cfg["creature_id"]
+		sh.hero_name   = cfg["hero_name"]
+		sh.hero_art    = cfg["hero_art"]
+		sh.hero_key    = cfg["hero_key"]
+		sh.dialogue_id = cfg["dialogue_id"]
+		sh.facing      = cfg["facing"]
+		sh.minigame_id     = cfg.get("minigame_id", "")
+		sh.minigame_config = cfg.get("minigame_config", {})
+		sh.fail_dialogue_id = cfg.get("fail_dialogue_id", "")
+		sh.win_dialogue_id  = cfg.get("win_dialogue_id", "")
+		sh.always_grant     = cfg.get("always_grant", false)
+		sh.already_dialogue_id = cfg.get("already_dialogue_id", "")
+		sh.cost            = cfg.get("cost", 0)
+		var tile: Vector2i = cfg["tile"]
+		sh.position = Vector2(tile.x * 16 + 8, tile.y * 16 + 8)
+		add_child(sh)
+
+# Rastreio concluído num alvo do mundo. Se for um ScannableHero: diálogo → grant → popup.
+func _on_world_scanned(p_target: Node) -> void:
+	if p_target is ScannableHero:
+		_run_hero_scan(p_target as ScannableHero)
+
+func _run_hero_scan(p_sh: ScannableHero) -> void:
+	_scanner.disable()
+	local_player.set_movement_locked(true)
+	# Fluxo de scan COMPARTILHADO (idêntico ao da taverna): diálogo → minigame → custo → grant → popup.
+	var res: Dictionary = await HeroScanFlow.run(p_sh, world_hud, _player_gold, local_player)
+	if res.get("granted", false):
+		var spent: int = int(res.get("gold_spent", 0))
+		if spent > 0:
+			_player_gold = maxi(0, _player_gold - spent)
+			world_hud.set_gold(_player_gold)
+		local_player.set_movement_locked(false)
+		_scanner.enable(local_player)
+		_load_inventory()   # recarrega a coleção → o herói aparece no deck builder
+	else:
+		# Não concedeu (minigame/custo/backend): libera p/ re-tentar, mas só depois de soltar a tecla.
+		await _wait_scan_key_released()
+		local_player.set_movement_locked(false)
+		_scanner.enable(local_player)
+
+# _scanner.disable() reseta o debounce interno dele (_blocked_announced/_consumed). Se o jogador
+# ainda estiver segurando a tecla de scan quando reabilitarmos, ele detecta o alvo no mesmo frame
+# e dispara o mesmo gatilho de novo (loop de diálogo reabrindo sem parar). Só reabilita depois
+# que soltar.
+func _wait_scan_key_released() -> void:
+	while Input.is_key_pressed(KEY_SPACE):
+		await get_tree().process_frame
+
+func _on_world_scan_blocked(p_target: Node) -> void:
+	# Já rastreado. ScannableHero com already_dialogue_id → fala curta; senão, bolha de chat.
+	if p_target is ScannableHero and (p_target as ScannableHero).already_dialogue_id != "":
+		_scanner.disable()
+		local_player.set_movement_locked(true)
+		await _play_world_dialogue((p_target as ScannableHero).already_dialogue_id)
+		await _wait_scan_key_released()
+		local_player.set_movement_locked(false)
+		_scanner.enable(local_player)
+	elif local_player != null and local_player.has_method("show_chat"):
+		local_player.show_chat("Já rastreei este.")
+
+func _play_world_dialogue(p_dialogue_id: String) -> void:
+	var box := DIALOGUE_SCENE.instantiate()
+	world_hud.add_child(box)
+	box.play(p_dialogue_id)
+	await box.finished
+
 func _request_sync_deferred() -> void:
 	await get_tree().process_frame
 	if multiplayer.multiplayer_peer != null:
@@ -173,6 +359,12 @@ func _setup_hud() -> void:
 	world_hud.logout_requested.connect(_return_to_login)
 	world_hud.decks_requested.connect(func() -> void:
 		get_tree().change_scene_to_file(DECK_LIST_SCENE)
+	)
+	world_hud.collection_requested.connect(func() -> void:
+		get_tree().change_scene_to_file(COLLECTION_SCENE)
+	)
+	world_hud.catalog_requested.connect(func() -> void:
+		get_tree().change_scene_to_file(CATALOG_SCENE)
 	)
 	world_hud.shop_requested.connect(func() -> void:
 		get_tree().change_scene_to_file(BOOSTER_SHOP_SCENE)
@@ -269,7 +461,7 @@ func _on_player_left(p_peer_id: int) -> void:
 
 func _on_peer_disconnected(_peer_id: int) -> void:
 	if not multiplayer.is_server():
-		_return_to_lobby()
+		_return_to_login_screen()
 
 func _on_world_chat_received(p_peer_id: int, _p_message: String) -> void:
 	# Exibe a bolha de chat na cabeça de quem falou — inclusive o próprio jogador
@@ -401,13 +593,19 @@ func _update_movement_lock() -> void:
 			or (_trade_window != null and is_instance_valid(_trade_window))
 	if local_player != null and local_player.has_method("set_movement_locked"):
 		local_player.set_movement_locked(busy)
+	# Pausa o scanner enquanto há modal (troca etc.) — não rastrear durante UI.
+	if _scanner != null:
+		if busy:
+			_scanner.disable()
+		else:
+			_scanner.enable(local_player)
 
 # ── Navegação ──────────────────────────────────────────────────────────────────
 
-func _return_to_lobby() -> void:
+func _return_to_login_screen() -> void:
 	WorldState.reset()
 	multiplayer.multiplayer_peer = null
-	get_tree().change_scene_to_file(LOBBY_SCENE)
+	get_tree().change_scene_to_file(LOGIN_SCENE)
 
 # Botão "Sair" da HUD: desconecta do mundo e volta à tela de login.
 func _return_to_login() -> void:

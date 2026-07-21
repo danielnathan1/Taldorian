@@ -9,6 +9,7 @@ extends Control
 const SETTINGS_PATH := "user://settings.cfg"
 const WORLD_SCENE   := "res://scenes/world/world_root.tscn"
 const CHARACTER_CREATOR_SCENE := "res://scenes/ui/character_creator/character_creator.tscn"
+const ONBOARDING_SCENE := "res://scenes/world/quests/onboarding/onboarding.tscn"
 const PAUSE_MENU_SCENE := preload("res://scenes/ui/pausemenu/PauseMenu.tscn")
 const WORLD_PORT    := 7001   # host vem do ServerConfig (resolve por ambiente)
 const MIN_PASS_LEN  := 8
@@ -18,6 +19,7 @@ const MIN_PASS_LEN  := 8
 @onready var _user_input: LineEdit = %UserInput
 @onready var _pass_input: LineEdit = %PassInput
 @onready var _error_lbl:  Label    = %ErrorLabel
+@onready var _success_lbl: Label   = %SuccessLabel
 @onready var _enter_btn:  Button   = %EnterButton
 @onready var _go_signup:  Button   = %GoSignup
 
@@ -49,6 +51,7 @@ func _ready() -> void:
 	multiplayer.multiplayer_peer = null
 	_user_input.text = _load_last_user()
 	_error_lbl.visible = false
+	_success_lbl.visible = false
 	_su_error.visible = false
 	_loading.visible = false
 
@@ -100,6 +103,7 @@ func _start_music() -> void:
 # ── Alternância login / cadastro ─────────────────────────────────────────────
 func _show_login() -> void:
 	_su_error.visible = false
+	_success_lbl.visible = false
 	_signup_form.visible = false
 	_login_form.visible = true
 	if _user_input.text.is_empty():
@@ -109,6 +113,7 @@ func _show_login() -> void:
 
 func _show_signup() -> void:
 	_error_lbl.visible = false
+	_success_lbl.visible = false
 	_login_form.visible = false
 	_signup_form.visible = true
 	_su_user.grab_focus()
@@ -163,9 +168,14 @@ func _on_create() -> void:
 		_show_signup_error(res.error if res.error != "" else "Não foi possível criar a conta.")
 		return
 
-	# Conta criada no servidor — guarda localmente e segue o fluxo de entrada.
+	# Conta criada — NÃO loga automaticamente: volta para a tela de login para o jogador entrar.
 	_save_account(user, email)
-	_login_as(user)
+	ApiClient.clear_tokens()       # registro não mantém sessão; o login refaz a auth
+	_user_input.text = user        # pré-preenche o usuário no login
+	_pass_input.text = ""
+	_show_login()
+	_success_lbl.text = "Conta criada! Faça login para entrar."
+	_success_lbl.visible = true
 
 func _is_valid_email(p_email: String) -> bool:
 	var re := RegEx.new()
@@ -182,6 +192,8 @@ func _login_as(p_user: String) -> void:
 	await ApiClient.get_me()
 	# Busca o personagem no backend (popula o cache do CharacterStore) antes de decidir o destino.
 	await CharacterStore.fetch()
+	# Progresso de quests (gate do onboarding) — autoritativo do backend.
+	await QuestStore.hydrate()
 	# Sem personagem criado: vai para a criação antes de entrar no mundo.
 	if not CharacterStore.has_character():
 		get_tree().change_scene_to_file(CHARACTER_CREATOR_SCENE)
@@ -206,7 +218,9 @@ func _connect_to_world() -> void:
 func _on_world_connected() -> void:
 	if multiplayer.connection_failed.is_connected(_on_world_failed):
 		multiplayer.connection_failed.disconnect(_on_world_failed)
-	get_tree().change_scene_to_file(WORLD_SCENE)
+	# Quem ainda não fez o tutorial entra pelo onboarding; senão, direto pro mundo.
+	var next_scene := ONBOARDING_SCENE if not QuestStore.is_tutorial_done() else WORLD_SCENE
+	get_tree().change_scene_to_file(next_scene)
 
 func _on_world_failed() -> void:
 	if multiplayer.connected_to_server.is_connected(_on_world_connected):
@@ -243,6 +257,7 @@ func _show_loading(p_on: bool, p_msg: String = "Carregando informações…") ->
 		_spinner_tween = null
 
 func _show_error(p_msg: String) -> void:
+	_success_lbl.visible = false
 	_error_lbl.text = p_msg
 	_error_lbl.visible = true
 

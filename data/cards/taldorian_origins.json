@@ -210,12 +210,14 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "encadeamento",
-      "description": "Se for a 3ª carta do combate, compre 1.",
+      "description": "Se for a 3ª carta do turno, ganhe um *escudo* que previne 2 de dano por 1 turno.",
       "effects": [
         {
-          "id": "draw_if_nth_card",
+          "id": "persistent_shield",
+          "condition": "nth",
           "n": 3,
-          "scope": "turn"
+          "amount": 2,
+          "turns": 1
         }
       ]
     },
@@ -246,8 +248,8 @@
       "card_id": "f2000000-0000-0000-0000-000000000014",
       "name": "Pequenos Riscos",
       "timing": "ACTION",
-      "attack_value": 1,
-      "defense_value": 0,
+      "attack_value": 0,
+      "defense_value": 1,
       "symbols": [
         "terra"
       ],
@@ -255,12 +257,12 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "pequenos_riscos",
-      "description": "Compre 1, descarte 1.",
+      "description": "Ganhe um *escudo* que previne 1 de dano por 2 turnos.",
       "effects": [
         {
-          "id": "draw_discard",
-          "discard": 1,
-          "draw": 1
+          "id": "persistent_shield",
+          "amount": 1,
+          "turns": 2
         }
       ]
     },
@@ -270,7 +272,7 @@
       "name": "Corrente",
       "timing": "ACTION",
       "attack_value": 1,
-      "defense_value": 2,
+      "defense_value": 1,
       "symbols": [
         "wind"
       ],
@@ -278,12 +280,11 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "corrente",
-      "description": "Compre 1 carta, depois descarte 1.",
+      "description": "*Perfuração*: este ataque ignora até 2 de defesa e escudo do alvo.",
       "effects": [
         {
-          "id": "draw_discard",
-          "discard": 1,
-          "draw": 1
+          "id": "pierce",
+          "amount": 2
         }
       ]
     },
@@ -415,12 +416,10 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "reflexo_liquido",
-      "description": "Compre 1, descarte 1.",
+      "description": "*Purificar*: remove todas as *Queimaduras* dos seus heróis.",
       "effects": [
         {
-          "id": "draw_discard",
-          "discard": 1,
-          "draw": 1
+          "id": "cleanse"
         }
       ]
     },
@@ -580,12 +579,13 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "ajuste_fino",
-      "description": "Compre 1 carta, depois descarte 1.",
+      "description": "Descarte 1 carta, depois compre 1.",
       "effects": [
         {
           "id": "draw_discard",
           "discard": 1,
-          "draw": 1
+          "draw": 1,
+          "order": "discard_first"
         }
       ]
     },
@@ -665,7 +665,7 @@
       "card_id": "f2000000-0000-0000-0000-000000000033",
       "name": "Brisa Ardente",
       "timing": "BONUS_ACTION",
-      "attack_value": 3,
+      "attack_value": 1,
       "defense_value": -1,
       "symbols": [
         "fogo"
@@ -674,7 +674,14 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "brisa_ardente",
-      "description": "Uma rajada de calor intenso que abrasa sem cerimônia."
+      "description": "Se o herói ativo inimigo sofrer dano neste turno, ele recebe *Queimadura* (perde 1 de vida no início dos próximos 2 turnos).",
+      "effects": [
+        {
+          "id": "burn_on_hit",
+          "amount": 1,
+          "turns": 2
+        }
+      ]
     },
     {
       "id": 34,
@@ -806,12 +813,11 @@
       "copies": 3,
       "rarity": "COMMON",
       "art_key": "desvio_rapido",
-      "description": "Compre 1, descarte 2.",
+      "description": "*Esquiva*: previne 1 de dano ao seu herói ativo neste combate.",
       "effects": [
         {
-          "id": "draw_discard",
-          "discard": 2,
-          "draw": 1
+          "id": "prevent_damage",
+          "amount": 1
         }
       ]
     },
@@ -939,12 +945,14 @@
       "copies": 3,
       "rarity": "RARE",
       "art_key": "solo_firme",
-      "description": "Se não sofrer dano neste turno, compre 1 e descarte 1.",
+      "description": "Se não sofrer dano neste turno, ganhe um *escudo* que previne 2 de dano por 2 turnos.",
       "effects": [
         {
-          "id": "draw_discard_if_no_damage",
-          "discard": 1,
-          "draw": 1
+          "id": "persistent_shield",
+          "condition": "no_damage",
+          "timing": "after_turn",
+          "amount": 2,
+          "turns": 2
         }
       ]
     },
@@ -1002,16 +1010,14 @@
       "symbols": [
         "wind"
       ],
-      "stealth": false,
+      "stealth": true,
       "copies": 3,
       "rarity": "RARE",
       "art_key": "ritmo_calculado",
-      "description": "Se for a 2ª carta deste combate, compre 1.",
+      "description": "Fica *furtivo*. Se não sofrer dano neste turno, seu herói continua *furtivo* no próximo turno.",
       "effects": [
         {
-          "id": "draw_if_nth_card",
-          "n": 2,
-          "scope": "turn"
+          "id": "grant_stealth"
         }
       ]
     },
@@ -1504,7 +1510,7 @@
       "copies": 2,
       "rarity": "LEGENDARY",
       "art_key": "frenesi",
-      "description": "Se sua defesa atual for menor que a base, +1 de ataque até o final do turno.",
+      "description": "Se sua defesa atual for menor que a base, +1 de ataque até o final do combate.",
       "effects": [
         {
           "id": "attack_if_defense_low",
@@ -1562,8 +1568,8 @@
       "card_id": "f2000000-0000-0000-0000-000000000078",
       "name": "Fluxo Perfeito",
       "timing": "ACTION",
-      "attack_value": 2,
-      "defense_value": 1,
+      "attack_value": 3,
+      "defense_value": -1,
       "symbols": [
         "wind"
       ],
@@ -1571,12 +1577,10 @@
       "copies": 2,
       "rarity": "LEGENDARY",
       "art_key": "fluxo_perfeito",
-      "description": "Se for a 3ª carta jogada neste combate, compre 1.",
+      "description": "*Dominar*: esta ação não pode ser reagida.",
       "effects": [
         {
-          "id": "draw_if_nth_card",
-          "n": 3,
-          "scope": "turn"
+          "id": "unreactable"
         }
       ]
     },
@@ -1709,7 +1713,7 @@
       "attack_value": 4,
       "defense_value": 0,
       "symbols": [
-        "terra"
+        "fogo"
       ],
       "stealth": false,
       "copies": 3,
@@ -2314,6 +2318,431 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "id": 121,
+      "card_id": "f2000000-0000-0000-0000-000000000121",
+      "name": "Fagulha Persistente",
+      "timing": "BONUS_ACTION",
+      "attack_value": 1,
+      "defense_value": 0,
+      "symbols": ["fogo"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "fagulha_persistente",
+      "description": "Se o herói ativo inimigo sofrer dano neste turno, ele recebe *Queimadura* (1 turno).",
+      "effects": [ { "id": "burn_on_hit", "amount": 1, "turns": 1 } ]
+    },
+    {
+      "id": 122,
+      "card_id": "f2000000-0000-0000-0000-000000000122",
+      "name": "Brasas Apagadas",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": 0,
+      "symbols": ["agua"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "is_heal": true,
+      "art_key": "brasas_apagadas",
+      "description": "*Purificar*: remove as *Queimaduras* dos seus heróis e cure 1 de vida.",
+      "effects": [ { "id": "cleanse" }, { "id": "heal", "amount": 1 } ]
+    },
+    {
+      "id": 123,
+      "card_id": "f2000000-0000-0000-0000-000000000123",
+      "name": "Bênção Restauradora",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": ["agua"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "is_heal": true,
+      "art_key": "bencao_restauradora",
+      "description": "Cure 1 de vida de todos os heróis aliados.",
+      "effects": [ { "id": "heal_all_allies", "amount": 1 } ]
+    },
+    {
+      "id": 124,
+      "card_id": "f2000000-0000-0000-0000-000000000124",
+      "name": "Dilúvio Purificador",
+      "timing": "ACTION",
+      "attack_value": 0,
+      "defense_value": 2,
+      "symbols": ["agua"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "is_heal": true,
+      "art_key": "diluvio_purificador",
+      "description": "*Purificar* o time inteiro e cure 1 de vida em cada aliado.",
+      "effects": [ { "id": "cleanse" }, { "id": "heal_all_allies", "amount": 1 } ]
+    },
+    {
+      "id": 125,
+      "card_id": "f2000000-0000-0000-0000-000000000125",
+      "name": "Lâmina nas Sombras",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 0,
+      "symbols": ["wind"],
+      "stealth": true,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "lamina_nas_sombras",
+      "description": "Fica *furtivo*. Se causar dano neste turno, o oponente descarta 1 carta.",
+      "effects": [ { "id": "opponent_discards_on_hit", "amount": 1 } ]
+    },
+    {
+      "id": 126,
+      "card_id": "f2000000-0000-0000-0000-000000000126",
+      "name": "Névoa Rápida",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": 1,
+      "symbols": ["wind"],
+      "stealth": true,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "nevoa_rapida",
+      "description": "Fica *furtivo*. *Vislumbre*: olhe o topo do seu deck e decida deixá-lo no topo ou no fundo.",
+      "effects": [ { "id": "scry" } ]
+    },
+    {
+      "id": 127,
+      "card_id": "f2000000-0000-0000-0000-000000000127",
+      "name": "Flecha Dupla",
+      "timing": "ACTION",
+      "attack_value": 2,
+      "defense_value": 0,
+      "symbols": ["wind"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "flecha_dupla",
+      "description": "*Marca* o herói ativo inimigo (+1 de dano a ele até o fim do turno).",
+      "effects": [ { "id": "mark_hero_extra_damage", "bonus": 1 } ]
+    },
+    {
+      "id": 128,
+      "card_id": "f2000000-0000-0000-0000-000000000128",
+      "name": "Marca Flamejante",
+      "timing": "BONUS_ACTION",
+      "attack_value": 1,
+      "defense_value": 0,
+      "symbols": ["fogo"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "marca_flamejante",
+      "description": "*Marca* o herói ativo inimigo; se ele sofrer dano, recebe *Queimadura* 1 turno.",
+      "effects": [ { "id": "mark_hero_extra_damage", "bonus": 1 }, { "id": "burn_on_hit", "amount": 1, "turns": 1 } ]
+    },
+    {
+      "id": 129,
+      "card_id": "f2000000-0000-0000-0000-000000000129",
+      "name": "Segunda Respiração",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": -1,
+      "symbols": ["wind"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "segunda_respiracao",
+      "description": "Você pode jogar +1 ação neste turno.",
+      "effects": [ { "id": "extra_action", "amount": 1 } ]
+    },
+    {
+      "id": 130,
+      "card_id": "f2000000-0000-0000-0000-000000000130",
+      "name": "Muralha Viva",
+      "timing": "ACTION",
+      "attack_value": 0,
+      "defense_value": 3,
+      "symbols": ["terra"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "muralha_viva",
+      "description": "Ganhe um *escudo* que previne 1 de dano por 1 turno.",
+      "effects": [ { "id": "persistent_shield", "amount": 1, "turns": 1 } ]
+    },
+    {
+      "id": 131,
+      "card_id": "f2000000-0000-0000-0000-000000000131",
+      "name": "Recarga Arcana",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": 0,
+      "symbols": ["lightning"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "recarga_arcana",
+      "description": "Crie 1 Míssil Mágico.",
+      "effects": [ { "id": "create_missiles", "count": 1 } ]
+    },
+    {
+      "id": 132,
+      "card_id": "f2000000-0000-0000-0000-000000000132",
+      "name": "Eco Elemental",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": 0,
+      "symbols": [],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "eco_elemental",
+      "description": "Escolha 2 elementos para esta carta.",
+      "effects": [ { "id": "pick_symbols", "count": 2 } ]
+    },
+    {
+      "id": 133,
+      "card_id": "f2000000-0000-0000-0000-000000000133",
+      "name": "Erupção",
+      "timing": "ACTION",
+      "attack_value": 2,
+      "defense_value": -1,
+      "symbols": ["fogo"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "erupcao",
+      "description": "O herói ativo inimigo recebe *Queimadura* (1 de dano por 2 turnos).",
+      "effects": [ { "id": "burn", "amount": 1, "turns": 2 } ]
+    },
+    {
+      "id": 134,
+      "card_id": "f2000000-0000-0000-0000-000000000134",
+      "name": "Execução Sombria",
+      "timing": "ACTION",
+      "attack_value": 2,
+      "defense_value": -1,
+      "symbols": ["wind"],
+      "stealth": true,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "execucao_sombria",
+      "description": "Fica *furtivo*. +3 de ataque se o herói ativo inimigo estiver abaixo de metade da vida.",
+      "effects": [ { "id": "attack_if_target_low_hp", "bonus": 3 } ]
+    },
+    {
+      "id": 135,
+      "card_id": "f2000000-0000-0000-0000-000000000135",
+      "name": "Dança das Lâminas",
+      "timing": "ACTION",
+      "attack_value": 3,
+      "defense_value": -1,
+      "symbols": ["wind"],
+      "stealth": true,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "danca_das_laminas",
+      "description": "Fica *furtivo*. +1 de ataque para cada carta furtiva jogada neste combate.",
+      "effects": [ { "id": "attack_per_stealth_card", "bonus": 1 } ]
+    },
+    {
+      "id": 136,
+      "card_id": "f2000000-0000-0000-0000-000000000136",
+      "name": "Fluxo Interior",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": ["wind"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "art_key": "fluxo_interior",
+      "description": "Se jogou uma ação e uma ação bônus neste turno, compre 1.",
+      "effects": [ { "id": "draw_if_action_and_bonus", "draw": 1 } ]
+    },
+    {
+      "id": 137,
+      "card_id": "f2000000-0000-0000-0000-000000000137",
+      "name": "Convergência",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": [],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "convergencia",
+      "description": "+1 de ataque e +1 de defesa para cada elemento distinto na chain.",
+      "effects": [ { "id": "bonus_per_distinct_element", "atk": 1, "def": 1 } ]
+    },
+    {
+      "id": 138,
+      "card_id": "f2000000-0000-0000-0000-000000000138",
+      "name": "Chuva de Estrelas",
+      "timing": "ACTION",
+      "attack_value": 0,
+      "defense_value": 0,
+      "symbols": ["lightning"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "chuva_de_estrelas",
+      "description": "Crie 1 Míssil Mágico; se você já controla mísseis, crie 4.",
+      "effects": [ { "id": "create_missiles", "count": 1, "count_if_has": 4 } ]
+    },
+    {
+      "id": 139,
+      "card_id": "f2000000-0000-0000-0000-000000000139",
+      "name": "Fúria Incandescente",
+      "timing": "ACTION",
+      "attack_value": 2,
+      "defense_value": -1,
+      "symbols": ["fogo"],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "furia_incandescente",
+      "description": "Descarte cartas de Fogo da mão: +2 de ataque por carta. Se causar dano, o herói ativo inimigo recebe *Queimadura* por 1 turno para cada carta de Fogo descartada.",
+      "effects": [ { "id": "discard_fire_for_attack", "bonus": 2 }, { "id": "burn_on_hit_per_fire", "amount": 1 } ]
+    },
+    {
+      "id": 140,
+      "card_id": "f2000000-0000-0000-0000-000000000140",
+      "name": "Fonte da Vida",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": ["agua"],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "is_heal": true,
+      "art_key": "fonte_da_vida",
+      "description": "No fim dos próximos 2 turnos, cure 1 de vida de todos os heróis aliados.",
+      "effects": [ { "id": "team_regen", "amount": 1, "turns": 2 } ]
+    },
+    {
+      "id": 141,
+      "card_id": "f2000000-0000-0000-0000-000000000141",
+      "name": "Toque Límpido",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": ["agua"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "COMMON",
+      "is_heal": true,
+      "art_key": "toque_limpido",
+      "description": "*Purifique* um aliado à sua escolha e cure 1 de vida nele.",
+      "effects": [ { "id": "cleanse_heal_ally_pick", "amount": 1 } ]
+    },
+    {
+      "id": 142,
+      "card_id": "f2000000-0000-0000-0000-000000000142",
+      "name": "Saraivada",
+      "timing": "ACTION",
+      "attack_value": 2,
+      "defense_value": -1,
+      "symbols": ["wind"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "saraivada",
+      "description": "Cause 1 de dano direto a 2 heróis inimigos aleatórios.",
+      "effects": [ { "id": "random_direct_damage", "amount": 1, "count": 2 } ]
+    },
+    {
+      "id": 143,
+      "card_id": "f2000000-0000-0000-0000-000000000143",
+      "name": "Iluminação",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 1,
+      "symbols": ["wind"],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "iluminacao",
+      "description": "Se você jogou uma ação e uma ação bônus neste turno, o herói ativo não exausta neste turno.",
+      "effects": [ { "id": "prevent_exhaust" } ]
+    },
+    {
+      "id": 144,
+      "card_id": "f2000000-0000-0000-0000-000000000144",
+      "name": "Provocação",
+      "timing": "BONUS_ACTION",
+      "attack_value": 0,
+      "defense_value": 1,
+      "symbols": ["terra"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "provocacao",
+      "description": "*Provocar*: até o fim do turno, o dano direcionado ao seu time mira este herói.",
+      "effects": [ { "id": "taunt" } ]
+    },
+    {
+      "id": 145,
+      "card_id": "f2000000-0000-0000-0000-000000000145",
+      "name": "Baluarte Eterno",
+      "timing": "ACTION",
+      "attack_value": 0,
+      "defense_value": 2,
+      "symbols": ["terra"],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "baluarte_eterno",
+      "description": "Todos os heróis aliados ganham um *escudo* que previne 2 de dano por 2 turnos.",
+      "effects": [ { "id": "team_persistent_shield", "amount": 2, "turns": 2 } ]
+    },
+    {
+      "id": 146,
+      "card_id": "f2000000-0000-0000-0000-000000000146",
+      "name": "Espinhos de Ferro",
+      "timing": "REACTION",
+      "attack_value": 0,
+      "defense_value": 1,
+      "symbols": ["terra"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "espinhos_de_ferro",
+      "description": "Ao defender, o atacante sofre 1 de dano.",
+      "effects": [ { "id": "ricochet" } ]
+    },
+    {
+      "id": 147,
+      "card_id": "f2000000-0000-0000-0000-000000000147",
+      "name": "Sobrecarga Arcana",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 0,
+      "symbols": ["lightning"],
+      "stealth": false,
+      "copies": 2,
+      "rarity": "LEGENDARY",
+      "art_key": "sobrecarga_arcana",
+      "description": "Até o fim do combate, seus Mísseis Mágicos aplicam *Marca* ao causar dano e recriam 1 míssil.",
+      "effects": [ { "id": "missile_overcharge" } ]
+    },
+    {
+      "id": 148,
+      "card_id": "f2000000-0000-0000-0000-000000000148",
+      "name": "Sacrifício Arcano",
+      "timing": "ACTION",
+      "attack_value": 1,
+      "defense_value": 0,
+      "symbols": ["lightning"],
+      "stealth": false,
+      "copies": 3,
+      "rarity": "RARE",
+      "art_key": "sacrificio_arcano",
+      "description": "Descarte 1 carta: crie 1 Fragmento Arcano e compre 1 carta.",
+      "effects": [ { "id": "discard_create_fragment_draw" } ]
     }
   ]
 }

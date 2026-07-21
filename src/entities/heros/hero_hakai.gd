@@ -12,9 +12,10 @@ func _init() -> void:
 	current_hp       = 10
 	symbols_required.assign([GameSymbols.AR, GameSymbols.AR, GameSymbols.AR])
 	skill_name       = "Instinto de caça"
-	skill_desc       = "Hakai fica furtivo"
+	skill_desc       = "Hakai fica *furtivo*"
 	passive_name     = "Golpe das Sombras"
-	passive_desc     = "Sempre que causar dano enquanto furtivo recebe +1 de ataque permanente"
+	passive_zone     = "frontline"
+	passive_desc     = "Sempre que causar dano enquanto *furtivo*, ganha +1 de *ataque* permanente"
 	passive_animation = "assassin_attack"
 	base_attack      = 1
 	base_defense     = 0

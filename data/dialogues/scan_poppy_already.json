@@ -1,0 +1,9 @@
+{
+  "id": "scan_poppy_already",
+  "speakers": {
+    "poppy": { "name": "Poppy", "portrait": "poppy" }
+  },
+  "lines": [
+    { "speaker": "poppy", "text": "De novo? Já provei minha força uma vez, não preciso repetir o show!" }
+  ]
+}

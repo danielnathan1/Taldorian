@@ -1,0 +1,9 @@
+{
+  "id": "scan_hakai_already",
+  "speakers": {
+    "hakai": { "name": "Hakai", "portrait": "hakai" }
+  },
+  "lines": [
+    { "speaker": "hakai", "text": "Já paguei o que devia com aquele ouro todo. Não vou pagar de novo, se é isso que você quer." }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "scan_poppy_win",
+  "speakers": {
+    "poppy": { "name": "Poppy", "portrait": "poppy" }
+  },
+  "lines": [
+    { "speaker": "poppy", "text": "...! Meu braço! Ninguém... ninguém vence a Poppy numa queda de braço há anos!" },
+    { "speaker": "poppy", "text": "Tá bom, tá bom, eu admito: você é forte. Pode me escanear, guerreiro. Ganhou com honra." }
+  ]
+}

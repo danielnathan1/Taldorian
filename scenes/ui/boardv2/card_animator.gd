@@ -4,6 +4,8 @@
 class_name CardAnimator
 extends Node
 
+const CardViewScene := preload("res://scenes/ui/card_view/card_view.tscn")
+
 const CARD_W   := 112.0
 const CARD_H   := 168.0
 const ARC_H    := -115.0
@@ -73,17 +75,17 @@ func fly_draw(from_pos: Vector2, to_pos: Vector2, sleeve: Texture2D, on_done: Ca
 	)
 
 # Carta face-up voando da mão para o cemitério / zona de combate.
-func fly_discard(from_pos: Vector2, to_pos: Vector2, card_tex: Texture2D, on_done: Callable = Callable()) -> void:
-	_fly(from_pos, to_pos, card_tex, _COL_DISCARD, on_done)
+func fly_discard(from_pos: Vector2, to_pos: Vector2, card_tex: Texture2D, on_done: Callable = Callable(),
+		card_dict: Dictionary = {}) -> void:
+	_fly(from_pos, to_pos, card_tex, _COL_DISCARD, on_done, card_dict)
 
 # Descarte com CORTE: a carta sobe e cresce no centro do board (apresenta), leva um
 # talho rápido (streak diagonal + flash) e despenca PARTIDA EM DUAS METADES até o cemitério.
 const _SLASH_DEG := -35.0
 
 func fly_discard_to_graveyard(from_pos: Vector2, center_pos: Vector2, grave_pos: Vector2,
-		card_tex: Texture2D, on_done: Callable = Callable()) -> void:
-	var ghost := _make_ghost(card_tex)
-	_layer.add_child(ghost)
+		card_tex: Texture2D, on_done: Callable = Callable(), card_dict: Dictionary = {}) -> void:
+	var ghost := _spawn_card_node(card_dict, card_tex)
 	ghost.position = from_pos - ghost.pivot_offset
 	ghost.scale    = Vector2(0.85, 0.85)
 	_burst(from_pos, _COL_DISCARD, 5)
@@ -113,7 +115,7 @@ func fly_discard_to_graveyard(from_pos: Vector2, center_pos: Vector2, grave_pos:
 
 	# 4) as duas metades despencam ao cemitério
 	tw.tween_callback(func() -> void:
-		_fall_cut_halves(center_pos, grave_pos, card_tex, on_done))
+		_fall_cut_halves(center_pos, grave_pos, card_tex, on_done, card_dict))
 
 # Talho diagonal rápido + flash branco na área da carta.
 func _slash_at(center_pos: Vector2) -> void:
@@ -145,16 +147,15 @@ func _slash_at(center_pos: Vector2) -> void:
 
 # Duas metades (cartas inteiras divergindo perpendicular ao corte) caem ao cemitério.
 func _fall_cut_halves(center_pos: Vector2, grave_pos: Vector2, card_tex: Texture2D,
-		on_done: Callable) -> void:
+		on_done: Callable, card_dict: Dictionary = {}) -> void:
 	var perp := Vector2(cos(deg_to_rad(_SLASH_DEG + 90.0)), sin(deg_to_rad(_SLASH_DEG + 90.0)))
 	for i in 2:
 		var dir := 1.0 if i == 0 else -1.0
-		var ghost := _make_ghost(card_tex)
+		var ghost := _spawn_card_node(card_dict, card_tex)
 		var start := center_pos + perp * (16.0 * dir)
 		ghost.position = start - ghost.pivot_offset
 		ghost.scale    = Vector2(1.3, 1.3)
 		ghost.rotation = deg_to_rad(_SLASH_DEG)
-		_layer.add_child(ghost)
 		var tw := create_tween()
 		tw.tween_method(func(t: float) -> void:
 			if not is_instance_valid(ghost):
@@ -180,9 +181,8 @@ func _fall_cut_halves(center_pos: Vector2, grave_pos: Vector2, card_tex: Texture
 # Carta voando de volta para o BARALHO (ex.: colocar no fundo do deck): arco, encolhe,
 # gira e some "entrando" no deck.
 func fly_card_to_deck(from_pos: Vector2, deck_pos: Vector2, card_tex: Texture2D,
-		on_done: Callable = Callable()) -> void:
-	var ghost := _make_ghost(card_tex)
-	_layer.add_child(ghost)
+		on_done: Callable = Callable(), card_dict: Dictionary = {}) -> void:
+	var ghost := _spawn_card_node(card_dict, card_tex)
 	ghost.position = from_pos - ghost.pivot_offset
 	ghost.scale    = Vector2(0.9, 0.9)
 	_burst(from_pos, _COL_TODECK, 5)
@@ -209,7 +209,31 @@ func fly_card_to_deck(from_pos: Vector2, deck_pos: Vector2, card_tex: Texture2D,
 			on_done.call()
 	)
 
-# Cria o nó-carta (TextureRect) usado nas animações de voo.
+# Cria o nó da carta em voo. Se houver card_dict (do catálogo Collection.all_card_dicts),
+# renderiza a CardView COMPLETA (moldura + arte + nome + atk/def + símbolo); senão, cai no
+# ghost só-arte. O nó já entra em _layer aqui (a CardView precisa estar na árvore antes do
+# bind_dict, que toca @onready). Retorna um Control (CardView ou TextureRect).
+func _spawn_card_node(card_dict: Dictionary, tex: Texture2D) -> Control:
+	if not card_dict.is_empty():
+		return _make_card_ghost(card_dict)
+	var g := _make_ghost(tex)
+	_layer.add_child(g)
+	return g
+
+func _make_card_ghost(card_dict: Dictionary) -> Control:
+	var cv: CardView = CardViewScene.instantiate()
+	cv.custom_minimum_size = Vector2.ZERO
+	cv.size         = Vector2(CARD_W, CARD_H)
+	cv.pivot_offset = Vector2(CARD_W * 0.5, CARD_H * 0.5)
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(cv)                 # antes do bind: bind_dict toca @onready (precisa _ready)
+	cv.bind_dict(card_dict)
+	cv.set_preview_enabled(false)
+	cv.set_interactable(false, false)
+	cv.apply_scale(CARD_W / 160.0)       # fontes proporcionais ao tamanho reduzido do voo
+	return cv
+
+# Cria o nó-carta (TextureRect) usado nas animações de voo (só-arte / fallback).
 func _make_ghost(texture: Texture2D) -> TextureRect:
 	var ghost := TextureRect.new()
 	ghost.size         = Vector2(CARD_W, CARD_H)
@@ -232,14 +256,9 @@ func _spawn_afterimage(texture: Texture2D, center: Vector2, scale: Vector2, rot:
 	tw.tween_property(img, "scale", scale * 0.85, 0.28)
 	tw.chain().tween_callback(img.queue_free)
 
-func _fly(from_pos: Vector2, to_pos: Vector2, texture: Texture2D, pcolor: Color, on_done: Callable) -> void:
-	var ghost := TextureRect.new()
-	ghost.size         = Vector2(CARD_W, CARD_H)
-	ghost.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-	ghost.stretch_mode = TextureRect.STRETCH_SCALE
-	ghost.pivot_offset = Vector2(CARD_W / 2.0, CARD_H / 2.0)
-	ghost.texture      = texture
-	_layer.add_child(ghost)
+func _fly(from_pos: Vector2, to_pos: Vector2, texture: Texture2D, pcolor: Color, on_done: Callable,
+		card_dict: Dictionary = {}) -> void:
+	var ghost := _spawn_card_node(card_dict, texture)
 	ghost.position = from_pos - ghost.pivot_offset
 
 	_burst(from_pos, pcolor, 6)

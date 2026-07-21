@@ -18,9 +18,9 @@ func _init() -> void:
 	base_defense = 1
 	# symbols_required fica vazio — o gatilho da skill é customizado (is_skill_triggered).
 	skill_name   = "Ressonância Elemental"
-	skill_desc   = "Jogue 2 elementos diferentes: crie 2 Fragmentos Arcanos"
+	skill_desc   = "Jogue 2 elementos diferentes: crie 2 *Fragmentos Arcanos*"
 	passive_name = "Coleta Arcana"
-	passive_desc = "Enquanto não exausto: ao descartar uma carta, crie 1 Fragmento Arcano"
+	passive_desc = "Ao descartar uma carta, crie 1 *Fragmento Arcano*"
 
 ## Gatilho da skill ativa: pelo menos 2 símbolos DISTINTOS na cadeia da batalha.
 func is_skill_triggered(chain: Array[String]) -> bool:

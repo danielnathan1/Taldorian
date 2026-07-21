@@ -148,7 +148,7 @@ expand_mode = 1
 stretch_mode = 5
 mouse_filter = 2
 
-[node name="DescLabel" type="Label" parent="."]
+[node name="DescLabel" type="RichTextLabel" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = -1
@@ -157,12 +157,13 @@ anchor_top = 0.81
 anchor_right = 0.92
 anchor_bottom = 0.89
 grow_horizontal = 2
-text = "Descrição da carta."
-horizontal_alignment = 1
-vertical_alignment = 0
+bbcode_enabled = true
+scroll_active = false
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
-theme_override_font_sizes/font_size = 22
+text = "[center]Descrição da carta.[/center]"
+theme_override_colors/default_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_font_sizes/normal_font_size = 22
+theme_override_font_sizes/bold_font_size = 22
 
 [node name="AtkValueLabel" type="Label" parent="."]
 unique_name_in_owner = true

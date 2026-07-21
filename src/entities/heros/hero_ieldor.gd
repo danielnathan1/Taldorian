@@ -11,7 +11,8 @@ func _init() -> void:
 	skill_name       = "Chuva de Flechas"
 	skill_desc       = "Causa 1 de dano a todos os heróis do oponente"
 	passive_name     = "Retaguarda Precisa"
-	passive_desc     = "No inicio de cada batalha se estiver na retaguarda, cause 1 de dano a um herói de sua escolha"
+	passive_zone     = "backline"
+	passive_desc     = "No início de cada batalha, cause 1 de dano a um herói de sua escolha"
 	base_attack      = 1
 	base_defense     = -1
 	skill_animation  = "arrow_rain"
@@ -27,6 +28,9 @@ func apply_backline_ability(player: Player, opponent: Player, target: Hero) -> S
 	ctx.attacker_player = player
 	ctx.defender_player = opponent if target in opponent.heroes else player
 	ctx.attacker = self
+	# Provocar (Provocação da Valkar): dano direcionado ao time inimigo é puxado para o provocador.
+	if target in opponent.heroes:
+		target = opponent.redirect_target(target)
 	ctx.defender = target
 	# Muro de Aço (Valkar na linha de frente) torna os aliados de retaguarda inalvejáveis.
 	if ctx.defender_player.is_targeting_protected(target):

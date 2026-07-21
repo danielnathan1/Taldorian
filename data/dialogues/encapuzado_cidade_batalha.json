@@ -1,0 +1,11 @@
+{
+  "id": "encapuzado_cidade_batalha",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "text": "E quando estiver pronto para provar o seu valor, é só clicar no ícone de batalhar para enfrentar outros jogadores." },
+    { "speaker": "encapuzado", "text": "Isso é tudo o que eu tinha para te ensinar. O resto... o resto você descobre por conta própria." },
+    { "speaker": "encapuzado", "text": "Boa sorte, aventureiro. Tenho certeza de que nossos caminhos vão se cruzar novamente. Até logo." }
+  ]
+}

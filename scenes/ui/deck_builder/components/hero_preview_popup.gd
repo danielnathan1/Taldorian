@@ -20,10 +20,13 @@ func show_hero(hero: Hero) -> void:
 	_get_class_label().text        = _class_display(hero.hero_class)
 	_get_stats_label().text        = "⚔ %d   🛡 %d   ♥ %d" % [hero.base_attack, hero.base_defense, hero.max_hp]
 	_get_symbols_label().text      = " ".join(hero.symbols_required) if hero.symbols_required.size() > 0 else ""
+	var icon_px := maxi(1, _get_passive_desc_label().get_theme_font_size("normal_font_size"))
 	_get_skill_name_label().text   = hero.skill_name
-	_get_skill_desc_label().text   = hero.skill_desc
-	_get_passive_name_label().text = "[u]%s[/u]" % hero.passive_name
-	_get_passive_desc_label().text = hero.passive_desc
+	_get_skill_desc_label().text   = TextMarkup.to_bbcode(hero.skill_desc, icon_px)
+	var passive_zone := hero.passive_zone_label()
+	_get_passive_name_label().text    = "[b][u]%s:[/u][/b]" % passive_zone if passive_zone != "" else ""
+	_get_passive_name_label().visible = passive_zone != ""
+	_get_passive_desc_label().text    = TextMarkup.to_bbcode(hero.passive_desc, icon_px)
 	visible = true
 
 
@@ -69,6 +72,6 @@ func _get_class_label()        -> Label:          return $DimBG/Panel/HBox/InfoP
 func _get_stats_label()        -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/StatsLabel
 func _get_symbols_label()      -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/SymbolsLabel
 func _get_skill_name_label()   -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/SkillNameLabel
-func _get_skill_desc_label()   -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/SkillDescLabel
+func _get_skill_desc_label()   -> RichTextLabel:  return $DimBG/Panel/HBox/InfoPad/InfoCol/SkillDescLabel
 func _get_passive_name_label() -> RichTextLabel:  return $DimBG/Panel/HBox/InfoPad/InfoCol/PassiveNameLabel
-func _get_passive_desc_label() -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/PassiveDescLabel
+func _get_passive_desc_label() -> RichTextLabel:  return $DimBG/Panel/HBox/InfoPad/InfoCol/PassiveDescLabel

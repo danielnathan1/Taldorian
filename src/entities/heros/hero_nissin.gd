@@ -13,9 +13,10 @@ func _init() -> void:
 	current_hp       = 10
 	symbols_required.assign([GameSymbols.AR, GameSymbols.AR, GameSymbols.RAIO])
 	skill_name       = "Passos Ágeis"
-	skill_desc       = "Puxe uma carta"
+	skill_desc       = "Puxa uma carta do deck"
 	passive_name     = "Fluxo Suave"
-	passive_desc     = "Se jogou uma ação e ação bônus no mesmo turno: +1 de ataque até o fim do turno"
+	passive_zone     = "frontline"
+	passive_desc     = "Se jogou uma *ação* e uma *ação bônus* no mesmo turno: +1 de *ataque* até o fim do turno"
 	base_attack      = 1
 	base_defense     = 2
 

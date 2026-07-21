@@ -2,7 +2,7 @@
 extends Control
 
 const WORLD_PORT  := 7001
-const LOBBY_SCENE := "res://scenes/ui/lobby/lobby.tscn"
+const LOGIN_SCENE := "res://scenes/ui/login/login.tscn"
 const WORLD_SCENE := "res://scenes/world/world_root.tscn"
 
 @onready var ip_input       : LineEdit = %IpInput
@@ -59,7 +59,7 @@ func _on_connection_failed() -> void:
 
 func _on_back_pressed() -> void:
 	multiplayer.multiplayer_peer = null
-	get_tree().change_scene_to_file(LOBBY_SCENE)
+	get_tree().change_scene_to_file(LOGIN_SCENE)
 
 func _set_buttons_enabled(value: bool) -> void:
 	host_button.disabled    = not value

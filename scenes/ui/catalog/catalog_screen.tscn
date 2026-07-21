@@ -1,0 +1,293 @@
+[gd_scene load_steps=5 format=3 uid="uid://catalog_screen"]
+
+[ext_resource type="Script" path="res://scenes/ui/catalog/catalog_screen.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/ui/deck_builder/components/card_preview_popup.gd" id="2_cardpopup"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="3_cardview"]
+
+[node name="CatalogScreen" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.039, 0.039, 0.094, 1)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+; ── Header ─────────────────────────────────────────────────────────────────────
+
+[node name="Header" type="PanelContainer" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 64)
+
+[node name="HeaderHBox" type="HBoxContainer" parent="VBox/Header"]
+layout_mode = 2
+
+[node name="BackBtn" type="Button" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(96, 0)
+flat = true
+text = "← VOLTAR"
+
+[node name="LSpacer" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleBox" type="VBoxContainer" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="EyebrowLine" type="Label" parent="VBox/Header/HeaderHBox/TitleBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "TALDORIAN TCCG"
+
+[node name="EyebrowTitle" type="Label" parent="VBox/Header/HeaderHBox/TitleBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "CATÁLOGO"
+
+[node name="RSpacer" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightPad" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+
+; ── Estado: lista de coleções ──────────────────────────────────────────────────
+
+[node name="ListState" type="MarginContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 24
+
+[node name="ListScroll" type="ScrollContainer" parent="VBox/ListState"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="CollectionList" type="HFlowContainer" parent="VBox/ListState/ListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 18
+
+; ── Estado: fichário ───────────────────────────────────────────────────────────
+
+[node name="BinderState" type="MarginContainer" parent="VBox"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 18
+
+[node name="BinderVBox" type="VBoxContainer" parent="VBox/BinderState"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="BinderTitle" type="Label" parent="VBox/BinderState/BinderVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Coleção"
+
+[node name="Book" type="HBoxContainer" parent="VBox/BinderState/BinderVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="PageLeftPanel" type="PanelContainer" parent="VBox/BinderState/BinderVBox/Book"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PageLeftMargin" type="MarginContainer" parent="VBox/BinderState/BinderVBox/Book/PageLeftPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PageLeft" type="GridContainer" parent="VBox/BinderState/BinderVBox/Book/PageLeftPanel/PageLeftMargin"]
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+columns = 4
+
+[node name="Spine" type="Panel" parent="VBox/BinderState/BinderVBox/Book"]
+layout_mode = 2
+custom_minimum_size = Vector2(18, 0)
+
+[node name="PageRightPanel" type="PanelContainer" parent="VBox/BinderState/BinderVBox/Book"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PageRightMargin" type="MarginContainer" parent="VBox/BinderState/BinderVBox/Book/PageRightPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PageRight" type="GridContainer" parent="VBox/BinderState/BinderVBox/Book/PageRightPanel/PageRightMargin"]
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+columns = 4
+
+[node name="NavRow" type="HBoxContainer" parent="VBox/BinderState/BinderVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 28
+
+[node name="PrevBtn" type="Button" parent="VBox/BinderState/BinderVBox/NavRow"]
+layout_mode = 2
+focus_mode = 0
+text = "‹"
+
+[node name="PageCounter" type="Label" parent="VBox/BinderState/BinderVBox/NavRow"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(160, 0)
+horizontal_alignment = 1
+text = "1 / 1"
+
+[node name="NextBtn" type="Button" parent="VBox/BinderState/BinderVBox/NavRow"]
+layout_mode = 2
+focus_mode = 0
+text = "›"
+
+; ── Preview de carta (subtree espelhada do deck_builder) ───────────────────────
+
+[node name="CardPreviewPopup" type="CanvasLayer" parent="."]
+layer = 16
+script = ExtResource("2_cardpopup")
+visible = false
+
+[node name="DimBG" type="ColorRect" parent="CardPreviewPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+mouse_filter = 0
+
+[node name="Panel" type="PanelContainer" parent="CardPreviewPopup/DimBG"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -455.0
+offset_top = -312.0
+offset_right = 455.0
+offset_bottom = 312.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="HBox" type="HBoxContainer" parent="CardPreviewPopup/DimBG/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="CardWrapper" type="AspectRatioContainer" parent="CardPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 3
+ratio = 0.6667
+stretch_mode = 2
+clip_contents = true
+
+[node name="CardView" parent="CardPreviewPopup/DimBG/Panel/HBox/CardWrapper" instance=ExtResource("3_cardview")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="InfoPad" type="MarginContainer" parent="CardPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="InfoCol" type="VBoxContainer" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CloseBtnRow" type="HBoxContainer" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseBtn" type="Button" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+text = "✕"
+
+[node name="NameLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Nome da Carta"
+
+[node name="TimingLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Ação"
+
+[node name="SymbolsLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="StatsLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="HSep1" type="HSeparator" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="RarityLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="CopiesLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="StealthLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "👁 Carta Furtiva"
+visible = false
+
+[node name="HSep2" type="HSeparator" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="DescLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 13

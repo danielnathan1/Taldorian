@@ -1,0 +1,9 @@
+{
+  "id": "scan_nox_already",
+  "speakers": {
+    "nox": { "name": "Nox", "portrait": "nox" }
+  },
+  "lines": [
+    { "speaker": "nox", "text": "Já vasculhou minha mente uma vez. Não precisa repetir, eu não fugi pra lugar nenhum." }
+  ]
+}

@@ -35,6 +35,9 @@ var _end_submitted: Array[bool]       = [false, false]
 var _pending_effect_card: Card          = null
 var _pending_effect_player: int         = -1
 var _pending_effect_from_arsenal: bool  = false
+# Habilidade de retaguarda (ex.: Darian) declarada, resolvida só quando a janela de
+# reação fechar (reação é mais rápida que ação bônus). {} = nenhuma pendente.
+var _pending_backline_ability: Dictionary = {}
 
 # Fila de efeitos AFTER_TURN do turno corrente. Cada entrada é um Dictionary:
 #   { effect: CardEffect, player: int, card: Card, from_arsenal: bool, hero_hidden: bool }

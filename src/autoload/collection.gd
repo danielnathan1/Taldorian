@@ -1,6 +1,7 @@
 extends Node
 
-const CARD_DATA_PATH        := "res://data/cards/taldorian_origins.json"
+const CARD_DATA_DIR         := "res://data/cards"
+const CARD_DATA_PATH        := "res://data/cards/taldorian_origins.json"  # fallback (set base)
 const PLAYER_CARD_PATH      := "res://data/player_cards.json"
 const PLAYER_CARD_SAVE_PATH := "user://player_cards.json"
 
@@ -266,20 +267,46 @@ func _is_hero_owned(p_hero: Hero) -> bool:
 		return true
 	return _owned_hero_keys.has(p_hero.hero_name.to_lower())
 
+## True se o jogador possui o herói identificado por hero_key (= art_key). Requer inventário carregado.
+func owns_hero(p_hero_key: String) -> bool:
+	return _owned_hero_keys.has(p_hero_key.strip_edges().to_lower())
 
+
+# Carrega TODOS os JSONs de coleção em res://data/cards/ (um arquivo por coleção:
+# taldorian_origins.json, ecos_do_abismo.json, ...). Cada arquivo tem a chave "deck".
+# Os `id` (int) das cartas precisam ser únicos ENTRE os arquivos — o catálogo/posse
+# keyeia por esse id. Ordem estável por nome de arquivo.
 func _load_cards() -> void:
-	var file := FileAccess.open(CARD_DATA_PATH, FileAccess.READ)
+	var dir := DirAccess.open(CARD_DATA_DIR)
+	if dir == null:
+		# Fallback: carrega ao menos o set base se o diretório não abrir.
+		_load_card_file(CARD_DATA_PATH)
+		return
+	var files: Array[String] = []
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir() and fname.to_lower().ends_with(".json"):
+			files.append(fname)
+		fname = dir.get_next()
+	dir.list_dir_end()
+	files.sort()
+	for f in files:
+		_load_card_file("%s/%s" % [CARD_DATA_DIR, f])
+
+func _load_card_file(path: String) -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		push_error("Collection: não conseguiu abrir %s" % CARD_DATA_PATH)
+		push_error("Collection: não conseguiu abrir %s" % path)
 		return
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
 	if not parsed is Dictionary:
-		push_error("Collection: JSON inválido em %s" % CARD_DATA_PATH)
+		push_error("Collection: JSON inválido em %s" % path)
 		return
 	var raw: Variant = parsed.get("deck", [])
 	if not raw is Array:
-		push_error("Collection: chave 'deck' não encontrada")
+		push_error("Collection: chave 'deck' não encontrada em %s" % path)
 		return
 	for entry in raw:
 		if entry is Dictionary:

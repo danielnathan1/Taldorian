@@ -35,6 +35,11 @@ func disable() -> void:
 func _process(delta: float) -> void:
 	if not _enabled:
 		return
+	# Não rastreia enquanto um campo de texto (ex.: chat do mundo) estiver focado.
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
+		_reset()
+		return
 	if not Input.is_key_pressed(KEY_SPACE):
 		_reset()
 		return

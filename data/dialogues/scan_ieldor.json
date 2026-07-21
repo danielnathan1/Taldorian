@@ -1,0 +1,11 @@
+{
+  "id": "scan_ieldor",
+  "speakers": {
+    "ieldor": { "name": "???", "portrait": "ieldor" }
+  },
+  "lines": [
+    { "speaker": "ieldor", "text": "Um Olho Arcano apontado pra mim? Poucos me veem antes de eu vê-los." },
+    { "speaker": "ieldor", "name": "Ieldor", "text": "Ieldor, arqueiro de Taldor. Se quer me rastrear, prove que sua mira é digna disso." },
+    { "speaker": "ieldor", "text": "Três rodadas de alvos. Clique rápido, e clique certo. Vamos ver do que você é capaz." }
+  ]
+}

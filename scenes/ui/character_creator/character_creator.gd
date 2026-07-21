@@ -6,6 +6,7 @@ extends Control
 
 const LOGIN_SCENE := "res://scenes/ui/main.tscn"   # tela de login (entry point do app)
 const WORLD_SCENE := "res://scenes/world/world_root.tscn"
+const ONBOARDING_SCENE := "res://scenes/world/quests/onboarding/onboarding.tscn"
 const WORLD_PORT  := 7001   # host vem do ServerConfig (resolve por ambiente)
 
 # ── Cenários trocáveis ─────────────────────────────────────────────────────────
@@ -373,7 +374,9 @@ func _connect_to_world() -> void:
 func _on_world_connected() -> void:
 	if multiplayer.connection_failed.is_connected(_on_world_failed):
 		multiplayer.connection_failed.disconnect(_on_world_failed)
-	get_tree().change_scene_to_file(WORLD_SCENE)
+	# Personagem recém-criado → sempre passa pelo onboarding (tutorial do Olho Arcano),
+	# que ao terminar entra na cidade. O peer ENet persiste através da troca de cena.
+	get_tree().change_scene_to_file(ONBOARDING_SCENE)
 
 func _on_world_failed() -> void:
 	if multiplayer.connected_to_server.is_connected(_on_world_connected):

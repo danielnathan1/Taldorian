@@ -9,9 +9,10 @@ func _init() -> void:
 	current_hp       = 11
 	symbols_required.assign([GameSymbols.TERRA, GameSymbols.TERRA, GameSymbols.AGUA])
 	skill_name       = "Escudo de Espinhos"
-	skill_desc       = "Recebe metade da defesa atual como bônus de ataque"
+	skill_desc       = "Recebe metade da *defesa* atual como bônus de *ataque*"
 	passive_name     = "Muro de Aço"
-	passive_desc     = "Enquanto está na linha de frente, nenhum aliado pode ser alvo de dano direcionado"
+	passive_zone     = "frontline"
+	passive_desc     = "Nenhum aliado sofre dano."
 	base_attack      = 0
 	base_defense     = 3
 

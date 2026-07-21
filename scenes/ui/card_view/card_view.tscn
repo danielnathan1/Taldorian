@@ -7,6 +7,7 @@
 [ext_resource type="FontFile" uid="uid://bm23jumepppl1" path="res://assets/fonts/palatino/palr45w.ttf" id="5_font_reg"]
 [ext_resource type="FontFile" uid="uid://oe74r7bbi6u8" path="res://assets/fonts/palatino/fonnts.com-Palatino-LT-Bold.ttf" id="6_font_bold"]
 [ext_resource type="FontFile" uid="uid://dxi5fbo2jhp36" path="res://assets/fonts/KNYuanmo-Regular.ttf" id="7_font_num"]
+[ext_resource type="FontFile" uid="uid://buufhcrkt32yu" path="res://assets/fonts/palatino/Palatino Italic Regular.ttf" id="8_font_ital"]
 
 [node name="CardView" type="Control" unique_id=1754183775]
 custom_minimum_size = Vector2(160, 240)
@@ -87,7 +88,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="DescLabel" type="Label" parent="CardContent" unique_id=487949865]
+[node name="DescLabel" type="RichTextLabel" parent="CardContent" unique_id=487949865]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.06
@@ -99,12 +100,15 @@ offset_top = 8.399994
 offset_right = -5.399994
 offset_bottom = 8.399994
 grow_horizontal = 2
-theme_override_colors/font_color = Color(0.08, 0.06, 0.05, 1)
-theme_override_fonts/font = ExtResource("5_font_reg")
-theme_override_font_sizes/font_size = 1
-horizontal_alignment = 1
-vertical_alignment = 1
+bbcode_enabled = true
+scroll_active = false
 autowrap_mode = 3
+theme_override_colors/default_color = Color(0.08, 0.06, 0.05, 1)
+theme_override_fonts/normal_font = ExtResource("5_font_reg")
+theme_override_fonts/bold_font = ExtResource("6_font_bold")
+theme_override_fonts/italics_font = ExtResource("8_font_ital")
+theme_override_font_sizes/normal_font_size = 1
+theme_override_font_sizes/bold_font_size = 1
 
 [node name="AtkIcon" type="TextureRect" parent="CardContent" unique_id=487949870]
 layout_mode = 1

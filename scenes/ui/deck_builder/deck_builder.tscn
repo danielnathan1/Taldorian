@@ -472,8 +472,11 @@ layout_mode = 2
 layout_mode = 2
 text = "Habilidade Ativa"
 
-[node name="SkillDescLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+[node name="SkillDescLabel" type="RichTextLabel" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
 layout_mode = 2
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
 autowrap_mode = 3
 text = ""
 
@@ -487,8 +490,11 @@ bbcode_enabled = true
 scroll_active = false
 text = "[u]Passiva[/u]"
 
-[node name="PassiveDescLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+[node name="PassiveDescLabel" type="RichTextLabel" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
 layout_mode = 2
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
 autowrap_mode = 3
 text = ""
 
@@ -600,8 +606,10 @@ visible = false
 [node name="HSep2" type="HSeparator" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
 layout_mode = 2
 
-[node name="DescLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+[node name="DescLabel" type="RichTextLabel" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
 layout_mode = 2
 size_flags_vertical = 3
+bbcode_enabled = true
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/normal_font_size = 13
+theme_override_font_sizes/bold_font_size = 13

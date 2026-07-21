@@ -55,6 +55,16 @@ static func _resolve_directed_turn(source: Player, target: Player) -> int:
 		raw_defense += card.defense_value
 	raw_defense -= target.next_defense_penalty
 	raw_defense += target.pending_bonus_defense
+	# Veneno (Ecos): o herói envenenado tem −1 de DEFESA por turno de veneno bancado.
+	raw_defense -= ctx.defender.poison_turns
+
+	# Perfuração (Corrente): o atacante ignora até `pending_pierce` de defesa; o excedente
+	# corrói o escudo do alvo antes da absorção (aplicado mais abaixo).
+	var pierce_shield := 0
+	if source.pending_pierce > 0:
+		var def_ignored: int = mini(source.pending_pierce, maxi(0, raw_defense))
+		raw_defense -= def_ignored
+		pierce_shield = source.pending_pierce - def_ignored
 
 	var raw_dmg := (raw_attack + ctx.bonus_damage) - (raw_defense + ctx.bonus_block)
 	var pre_dmg := maxi(0, raw_dmg)
@@ -64,16 +74,33 @@ static func _resolve_directed_turn(source: Player, target: Player) -> int:
 			if h != ctx.defender:
 				pre_dmg = maxi(0, pre_dmg - h.get_team_damage_reduction(ctx))
 	var final_dmg: int = maxi(0, ctx.defender.on_before_damage_taken(pre_dmg, ctx))
+	# Perfuração excedente corrói o escudo do alvo antes da absorção.
+	if pierce_shield > 0 and ctx.defender.damage_shield > 0:
+		ctx.defender.damage_shield = maxi(0, ctx.defender.damage_shield - pierce_shield)
 	# Escudo de dano (Fluxo Reativo) — absorve antes das verificações de dano
 	final_dmg = ctx.defender.absorb_shield(final_dmg)
+	# Esquiva (Desvio Rápido): previne dano que o defensor sofreria neste turno.
+	if final_dmg > 0 and target.pending_damage_prevention > 0:
+		final_dmg = maxi(0, final_dmg - target.pending_damage_prevention)
 	# Marca do Caçador — dano extra ao herói marcado quando ele de fato sofre dano.
 	if final_dmg > 0 and source.marked_target == ctx.defender:
 		final_dmg += source.marked_bonus
+	# Marca (status Ecos) — +dano recebido enquanto marcado.
+	if final_dmg > 0:
+		final_dmg += ctx.defender.incoming_mark_bonus()
 
 	ctx.defender.take_damage(final_dmg, ctx)
 	if final_dmg > 0:
 		GameBus.hero_damaged.emit(ctx.defender, final_dmg)
 		target.took_damage_this_turn = true
+		# Sangramento (Ecos): o ATACANTE perde vida ao causar dano, enquanto sangra.
+		# Ignora escudo (é DoT, não ataque) e usa um contexto próprio (o defensor deste ctx
+		# é o oponente — não pode ser reusado se o Sangramento derrotar o atacante).
+		if ctx.attacker.bleed_turns > 0 and ctx.attacker.bleed_amount > 0:
+			var bctx := TurnContext.new()
+			bctx.defender = ctx.attacker
+			ctx.attacker.take_damage(ctx.attacker.bleed_amount, bctx)
+			GameBus.hero_damaged.emit(ctx.attacker, ctx.attacker.bleed_amount)
 
 	# Execução Silenciosa — se causou dano, marca herói para começar oculto no próximo combate
 	if final_dmg > 0 and source.pending_next_turn_stealth:

@@ -310,6 +310,30 @@ func _refresh_screen() -> void:
 	_apply_peek_state()   # preserva o estado "espiando" caso um sync rebuilde a tela
 
 
+var _restrict_hero_name: String = ""   # tutorial: só permite escolher este herói ("" = livre)
+var _tutorial_no_timer: bool = false   # tutorial: desliga o auto-pick por tempo
+
+## Tutorial: desliga o timer de auto-escolha (o diretor controla o ritmo).
+func disable_timer_for_tutorial() -> void:
+	_tutorial_no_timer = true
+	if _tick_timer != null and is_instance_valid(_tick_timer):
+		_tick_timer.stop()
+	if is_node_ready():
+		_timer_lbl.visible = false
+
+## Tutorial: limita a escolha a um herói (por nome). Re-aplicado a cada rebuild.
+func restrict_to_hero(p_name: String) -> void:
+	_restrict_hero_name = p_name
+	if is_node_ready() and visible:
+		_apply_hero_restriction()
+
+func _apply_hero_restriction() -> void:
+	if _restrict_hero_name == "":
+		return
+	for i in _slots.size():
+		if _heroes[i].hero_name != _restrict_hero_name:
+			_slots[i].modulate = Color(1, 1, 1, 0.35)
+
 func _rebuild_heroes(local_idx: int) -> void:
 	_slots.clear()
 	for child in _heroes_row.get_children():
@@ -343,6 +367,7 @@ func _rebuild_heroes(local_idx: int) -> void:
 
 	_schedule_scale()
 	_update_status()
+	_apply_hero_restriction()
 
 
 func _rebuild_hand(local_idx: int) -> void:
@@ -388,6 +413,9 @@ func _restart_timer() -> void:
 	if _tick_timer != null and is_instance_valid(_tick_timer):
 		_tick_timer.stop()
 		_tick_timer.queue_free()
+	if _tutorial_no_timer:
+		_timer_lbl.visible = false
+		return   # tutorial: sem auto-pick por tempo (o diretor controla o ritmo)
 	_time_left = 75
 	_update_timer_label()
 	_start_dot_pulse(false)
@@ -405,7 +433,13 @@ func _on_tick() -> void:
 		_tick_timer.stop()
 		if not _confirmed:
 			if _selected_hero == null and not _slots.is_empty():
-				_on_slot_clicked(_heroes[0])
+				var auto: Hero = _heroes[0]
+				if _restrict_hero_name != "":
+					for h in _heroes:
+						if h.hero_name == _restrict_hero_name:
+							auto = h
+							break
+				_on_slot_clicked(auto)
 			_on_confirm_pressed()
 
 
@@ -433,6 +467,8 @@ func _start_dot_pulse(urgent: bool) -> void:
 func _on_slot_clicked(hero: Hero) -> void:
 	if _confirmed or hero.state == Hero.State.DEFEATED:
 		return
+	if _restrict_hero_name != "" and hero.hero_name != _restrict_hero_name:
+		return   # tutorial: só a Poppy
 	_selected_hero = hero
 	for i in _slots.size():
 		var slot: HeroSlot = _slots[i]

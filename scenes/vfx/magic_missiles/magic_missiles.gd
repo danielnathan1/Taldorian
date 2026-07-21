@@ -61,7 +61,7 @@ signal finished
 # ── Configuração sobrescrevível por outras habilidades de homing bolt ─────────
 @export var head_texture: Texture2D  = _TEX_HEAD
 @export var trail_texture: Texture2D = _TEX_TRAIL
-@export var flight_time: float       = 0.95
+@export var flight_time: float       = 1.25
 @export var ability_name: String     = "MÍSSEIS MÁGICOS"
 @export var ability_subtitle: String = "Magia Arcana"
 @export var bolt_color: Color        = _C_BOLT

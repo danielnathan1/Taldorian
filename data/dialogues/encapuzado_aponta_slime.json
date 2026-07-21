@@ -1,9 +1,31 @@
 {
   "id": "encapuzado_aponta_slime",
   "speakers": {
-    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+    "encapuzado": {
+      "name": "Encapuzado",
+      "portrait": "encapuzado"
+    }
   },
   "lines": [
-    { "speaker": "encapuzado", "text": "Está vendo aquela geleia ali adiante? Uma slime — dócil, lenta... e perfeitamente rastreável. Um ótimo primeiro alvo." }
+    {
+      "speaker": "encapuzado",
+      "text": "Olhe adiante."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Está vendo aquela pequena criatura azul? É uma Slime."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "São pacíficas, curiosas... e costumam ser o primeiro desafio de todo rastreador."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Concentre sua magia no Olho Arcano e tente rastreá-la."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Se sua afinidade for tão grande quanto imagino... você não terá dificuldades."
+    }
   ]
 }

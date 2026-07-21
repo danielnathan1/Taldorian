@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Taldorian TCCG — Rosas Negras</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #060406; font-family: 'Cinzel', serif; display: flex; align-items: center; justify-content: center; }
+#stage-wrap { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+#stage { width: 1280px; height: 720px; transform-origin: center center; position: relative; overflow: hidden; background: #0a0709; }
+
+.bg-opponent { position: absolute; top: 0; left: 0; right: 0; height: 50%;
+  background: radial-gradient(ellipse 80% 120% at 50% -10%, oklch(0.22 0.09 20 / 0.22) 0%, transparent 65%),
+    linear-gradient(180deg, oklch(0.09 0.03 20) 0%, oklch(0.07 0.02 25) 100%); }
+.bg-player { position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+  background: radial-gradient(ellipse 80% 120% at 50% 110%, oklch(0.22 0.09 18 / 0.20) 0%, transparent 65%),
+    linear-gradient(0deg, oklch(0.09 0.03 18) 0%, oklch(0.07 0.02 25) 100%); }
+.bg-center-line { position: absolute; top: 50%; left: 0; right: 0; height: 1px; margin-top: -0.5px;
+  background: linear-gradient(90deg, transparent 0%, oklch(0.55 0.18 20 / 0.22) 20%, oklch(0.55 0.18 20 / 0.48) 50%, oklch(0.55 0.18 20 / 0.22) 80%, transparent 100%); }
+.bg-noise { position: absolute; inset: 0; opacity: 0.03; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px; }
+
+.half-label { position: absolute; left: 0; right: 0; text-align: center; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; opacity: 0.30; pointer-events: none; }
+.half-label.opp { top: 14px; color: oklch(0.62 0.16 20); }
+.half-label.pl { bottom: 14px; color: oklch(0.60 0.14 18); }
+
+.slot { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%); pointer-events: none; }
+.slot-card { border: 1px solid var(--slot-border); background: var(--slot-bg); position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s; }
+.slot-label { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--slot-label-color); white-space: nowrap; }
+.size-std .slot-card { width: 70px; height: 98px; }
+.size-sm .slot-card { width: 58px; height: 81px; }
+.size-active .slot-card { width: 90px; height: 126px; }
+.theme-player { --slot-border: oklch(0.50 0.14 18 / 0.45); --slot-bg: oklch(0.09 0.03 20 / 0.60); --slot-label-color: oklch(0.62 0.14 18); }
+.theme-opponent { --slot-border: oklch(0.50 0.16 20 / 0.42); --slot-bg: oklch(0.09 0.03 22 / 0.55); --slot-label-color: oklch(0.60 0.16 20); }
+.hp-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: oklch(0.14 0.03 20); }
+.hp-fill { height: 100%; transition: width 0.35s ease-out; background: linear-gradient(90deg, oklch(0.48 0.16 18), oklch(0.70 0.18 18)); }
+.hp-fill.enemy { background: linear-gradient(90deg, oklch(0.48 0.20 20), oklch(0.66 0.20 20)); }
+
+.caster-charging { border-color: oklch(0.66 0.20 20) !important;
+  box-shadow: 0 0 0 1px oklch(0.66 0.20 20 / 0.85), 0 0 26px oklch(0.55 0.22 20 / 0.55), 0 0 64px oklch(0.55 0.22 20 / 0.30);
+  transform: translateY(-2px) scale(1.03); }
+.caster-firing { border-color: oklch(0.80 0.20 20) !important;
+  box-shadow: 0 0 0 1px oklch(0.80 0.20 20), 0 0 38px oklch(0.75 0.22 20 / 0.7), 0 0 96px oklch(0.75 0.22 20 / 0.42);
+  transform: translateY(-2px) scale(1.05); }
+
+.ability-banner { position: absolute; left: 50%; top: calc(50% - 20px); transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 60; }
+.ability-sub { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.45em; text-transform: uppercase; color: oklch(0.64 0.16 20); opacity: 0.9; }
+.ability-name { font-family: 'Cinzel Decorative', serif; font-size: 34px; font-weight: 700; color: oklch(0.88 0.10 20);
+  letter-spacing: 0.16em; text-transform: uppercase;
+  text-shadow: 0 0 22px oklch(0.60 0.22 20 / 0.9), 0 0 50px oklch(0.50 0.24 20 / 0.5), 0 2px 0 oklch(0.10 0.06 20 / 0.7); }
+.ability-rule { width: 300px; height: 1px; background: linear-gradient(90deg, transparent, oklch(0.58 0.18 20 / 0.8), transparent); margin-top: 4px; }
+
+.target-aura { position: absolute; border: 1px solid oklch(0.58 0.20 20 / 0.45);
+  background: radial-gradient(ellipse at center, oklch(0.48 0.22 20 / 0.16) 0%, oklch(0.48 0.22 20 / 0.04) 60%, transparent 100%);
+  pointer-events: none; transition: opacity 0.35s; }
+.target-aura .c { position: absolute; width: 13px; height: 13px; border: 1px solid oklch(0.62 0.20 20 / 0.9); }
+.target-aura .tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.target-aura .tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.target-aura .bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.target-aura .br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+.fx-layer { position: absolute; inset: 0; pointer-events: none; }
+
+.dmg { position: absolute; transform: translate(-50%, -50%); font-family: 'Cinzel Decorative', serif; font-size: 24px; font-weight: 700;
+  color: oklch(0.88 0.14 20); text-shadow: 0 0 14px oklch(0.60 0.22 20), 0 2px 0 oklch(0.12 0.06 20); pointer-events: none; letter-spacing: 0.05em; }
+
+.screen-flash { position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 56% 28%, oklch(0.85 0.10 20) 0%, oklch(0.62 0.22 20 / 0.5) 32%, transparent 70%); z-index: 55; }
+
+.controls { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+  background: oklch(0.09 0.02 20 / 0.85); border: 1px solid oklch(0.58 0.16 20 / 0.30); backdrop-filter: blur(8px); z-index: 1000; font-family: 'JetBrains Mono', monospace; }
+.ctrl-btn { background: oklch(0.14 0.05 20 / 0.9); color: oklch(0.78 0.16 20); border: 1px solid oklch(0.58 0.16 20 / 0.45); padding: 6px 14px;
+  font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+.ctrl-btn:hover { background: oklch(0.20 0.06 20 / 0.95); border-color: oklch(0.58 0.16 20 / 0.8); box-shadow: 0 0 14px oklch(0.58 0.16 20 / 0.30); }
+.ctrl-btn.primary { background: linear-gradient(180deg, oklch(0.28 0.16 20 / 0.95), oklch(0.15 0.10 20 / 0.95)); color: oklch(0.90 0.10 20); border-color: oklch(0.58 0.20 20 / 0.7); }
+.ctrl-btn.primary:hover { box-shadow: 0 0 18px oklch(0.55 0.22 20 / 0.5); }
+.ctrl-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: oklch(0.58 0.10 20); }
+.ctrl-scrub { width: 220px; accent-color: oklch(0.58 0.16 20); }
+.ctrl-time { color: oklch(0.78 0.16 20); font-size: 10px; min-width: 48px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><div id="stage"><div id="root" style="position:absolute;inset:0;"></div></div></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const STAGE_W = 1280, STAGE_H = 720;
+const CASTER_ORIGIN = { x: 720, y: 500 };
+
+const OPP = {
+  h3: { x: 380, y: 200 }, h2: { x: 470, y: 200 }, h1: { x: 560, y: 200 }, active: { x: 720, y: 200 },
+};
+
+const T = {
+  CHARGE_START: 0.0, CHARGE_END: 0.9,
+  BANNER_IN: 0.15, BANNER_OUT: 2.6,
+  TARGET_IN: 0.45, TARGET_OUT: 3.5,
+  LAUNCH_FIRST: 0.9, LAUNCH_LAST: 1.5,
+  FLIGHT: 0.85, HOLD_END: 4.0,
+};
+
+// 3 black roses, fired "randomly" — each independently assigned a target from the enemy pool.
+const ROSES = [
+  { id: 0, target: 'h2',     side:  1, curve: 190, waves: 1.6, dmg: 5 },
+  { id: 1, target: 'active', side: -1, curve: 220, waves: 2.0, dmg: 6 },
+  { id: 2, target: 'h1',     side:  1, curve: 160, waves: 1.4, dmg: 5 },
+];
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeInQuad = t => t * t;
+const easeInOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+function norm(v) { const m = Math.hypot(v.x, v.y) || 1; return { x: v.x/m, y: v.y/m }; }
+function cbez(p0, p1, p2, p3, t) {
+  const u = 1 - t, uu = u*u, tt = t*t;
+  const a = uu*u, b = 3*uu*t, c = 3*u*tt, d = tt*t;
+  return { x: a*p0.x + b*p1.x + c*p2.x + d*p3.x, y: a*p0.y + b*p1.y + c*p2.y + d*p3.y };
+}
+function cbezTangent(p0, p1, p2, p3, t) {
+  const u = 1 - t; const a = 3*u*u, b = 6*u*t, c = 3*t*t;
+  return { x: a*(p1.x-p0.x) + b*(p2.x-p1.x) + c*(p3.x-p2.x), y: a*(p1.y-p0.y) + b*(p2.y-p1.y) + c*(p3.y-p2.y) };
+}
+
+const paths = ROSES.map((m, i) => {
+  const p0 = { ...CASTER_ORIGIN };
+  const tgt = OPP[m.target];
+  const p3 = { x: tgt.x, y: tgt.y + 6 };
+  const dir = norm({ x: p3.x - p0.x, y: p3.y - p0.y });
+  const nrm = { x: -dir.y, y: dir.x };
+  const len = Math.hypot(p3.x - p0.x, p3.y - p0.y);
+  const c1 = { x: p0.x + dir.x * len * 0.30 + nrm.x * m.curve * m.side, y: p0.y + dir.y * len * 0.30 + nrm.y * m.curve * m.side };
+  const c2 = { x: p0.x + dir.x * len * 0.72 + nrm.x * m.curve * 0.55 * m.side, y: p0.y + dir.y * len * 0.72 + nrm.y * m.curve * 0.55 * m.side };
+  const launchT = T.LAUNCH_FIRST + (T.LAUNCH_LAST - T.LAUNCH_FIRST) * (i / (ROSES.length - 1));
+  return { ...m, p0, c1, c2, p3, dir, nrm, len, launchT };
+});
+
+function rosePos(pth, u) {
+  const base = cbez(pth.p0, pth.c1, pth.c2, pth.p3, u);
+  const tan = norm(cbezTangent(pth.p0, pth.c1, pth.c2, pth.p3, u));
+  const wn = { x: -tan.y, y: tan.x };
+  const fade = Math.sin(u * Math.PI);
+  const wob = Math.sin(u * Math.PI * pth.waves + pth.id) * 14 * fade * (1 - u * 0.4);
+  return { x: base.x + wn.x * wob, y: base.y + wn.y * wob };
+}
+function roseAngle(pth, u) {
+  const a = rosePos(pth, Math.max(0, u - 0.012));
+  const b = rosePos(pth, Math.min(1, u + 0.012));
+  return Math.atan2(b.y - a.y, b.x - a.x);
+}
+
+function StaticBoard({ heroHps, casterState }) {
+  const opp = [
+    { x: 100, y: 130, size: 'sm', label: 'Deck' },
+    { x: 100, y: 232, size: 'sm', label: 'Cemitério' },
+    { x: 380, y: 200, size: 'std', label: 'Herói 3', hp: heroHps.h3, enemy: true },
+    { x: 470, y: 200, size: 'std', label: 'Herói 2', hp: heroHps.h2, enemy: true },
+    { x: 560, y: 200, size: 'std', label: 'Herói 1', hp: heroHps.h1, enemy: true },
+    { x: 720, y: 200, size: 'active', label: 'Herói Ativo', hp: heroHps.active, enemy: true },
+    { x: 1180, y: 180, size: 'std', label: 'Arsenal' },
+  ];
+  const player = [
+    { x: 100, y: 540, size: 'std', label: 'Arsenal' },
+    { x: 360, y: 540, size: 'std', label: 'Cavaleiro', hp: 90 },
+    { x: 450, y: 540, size: 'std', label: 'Sacerdote', hp: 60 },
+    { x: 540, y: 540, size: 'std', label: 'Arqueiro', hp: 65 },
+    { x: 720, y: 540, size: 'active', label: 'Darian', hp: 75, isCaster: true, casterState },
+    { x: 1180, y: 510, size: 'sm', label: 'Deck' },
+    { x: 1180, y: 612, size: 'sm', label: 'Cemitério' },
+  ];
+  return (<>{opp.map((s, i) => <Slot key={'o'+i} theme="opponent" {...s} />)}{player.map((s, i) => <Slot key={'p'+i} theme="player" {...s} />)}</>);
+}
+
+function Slot({ x, y, size, label, theme, hp, enemy, isCaster, casterState }) {
+  const cardCls = ['slot-card', isCaster && casterState === 'charging' ? 'caster-charging' : '', isCaster && casterState === 'firing' ? 'caster-firing' : ''].filter(Boolean).join(' ');
+  return (
+    <div className={`slot size-${size} theme-${theme}`} style={{ left: x, top: y }}>
+      <div className={cardCls}>
+        <CardArt theme={theme} size={size} label={label} />
+        {hp !== undefined && (<div className="hp-bar"><div className={`hp-fill ${enemy ? 'enemy' : ''}`} style={{ width: `${hp}%` }} /></div>)}
+      </div>
+      <div className="slot-label">{label}</div>
+    </div>
+  );
+}
+
+function CardArt({ theme, size, label }) {
+  const accent = theme === 'player' ? 'oklch(0.50 0.14 18 / 0.55)' : 'oklch(0.50 0.16 20 / 0.55)';
+  const w = size === 'active' ? 90 : size === 'sm' ? 58 : 70;
+  const h = size === 'active' ? 126 : size === 'sm' ? 81 : 98;
+
+  if (label === 'Darian') {
+    const cx = w/2, cy = h/2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+        <rect x="3" y="3" width={w-6} height={h-6} stroke="oklch(0.58 0.18 20 / 0.7)" strokeWidth="0.6"/>
+        {/* hooded silhouette */}
+        <path d={`M ${cx} ${cy-24} q -14 6 -14 20 q 0 14 14 18 q 14 -4 14 -18 q 0 -14 -14 -20 z`}
+              fill="oklch(0.07 0.02 20 / 0.85)" stroke="oklch(0.55 0.16 20 / 0.7)" strokeWidth="0.6"/>
+        {/* black rose bloom */}
+        <g transform={`translate(${cx} ${cy+22})`}>
+          <circle r="6" fill="oklch(0.12 0.03 20)" stroke="oklch(0.55 0.20 20 / 0.8)" strokeWidth="0.5"/>
+          <circle r="3" fill="oklch(0.30 0.14 20)" />
+          <path d="M -6 4 Q 0 16 6 4" stroke="oklch(0.30 0.06 130 / 0.8)" strokeWidth="0.8" fill="none"/>
+        </g>
+        <rect x="6" y={h-22} width={w-12} height="12" fill="oklch(0.06 0.02 20 / 0.7)" stroke="oklch(0.58 0.18 20 / 0.5)" strokeWidth="0.4"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" style={{ position: 'absolute', inset: 0 }}>
+      <rect x="3" y="3" width={w-6} height={h-6} stroke={accent} strokeWidth="0.5" opacity="0.6"/>
+      <path d={`M ${w/2} ${h*0.18} L ${w*0.78} ${h*0.5} L ${w/2} ${h*0.82} L ${w*0.22} ${h*0.5} Z`} stroke={accent} strokeWidth="0.5" fill="none" opacity="0.8"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.14} stroke={accent} strokeWidth="0.4" fill="none"/>
+      <circle cx={w/2} cy={h*0.5} r={w*0.04} fill={accent}/>
+    </svg>
+  );
+}
+
+// Black rose petal shape, drawn pointing "up" then rotated to travel direction
+function PetalShape({ scale, color }) {
+  return <path d={`M 0 0 C ${-3*scale} ${-2*scale}, ${-3*scale} ${-6*scale}, 0 ${-8*scale} C ${3*scale} ${-6*scale}, ${3*scale} ${-2*scale}, 0 0 Z`} fill={color} />;
+}
+
+function Rose({ pth, u }) {
+  const head = rosePos(pth, u);
+  const ang = roseAngle(pth, u) * 180 / Math.PI;
+  const TRAIL_STEPS = 12, TRAIL_SPAN = 0.15;
+  const pts = [];
+  for (let i = 0; i <= TRAIL_STEPS; i++) {
+    const uu = u - (i / TRAIL_STEPS) * TRAIL_SPAN;
+    if (uu < 0) break;
+    pts.push(rosePos(pth, uu));
+  }
+  const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  return (
+    <g>
+      {pts.length > 1 && <polyline points={poly} fill="none" stroke="oklch(0.42 0.18 20 / 0.30)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />}
+      {pts.length > 1 && <polyline points={poly} fill="none" stroke="oklch(0.62 0.20 20 / 0.55)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
+      {pts.filter((_, i) => i % 3 === 1).map((p, i) => {
+        const op = 1 - (i / (TRAIL_STEPS / 3));
+        const a = (pth.id * 47 + i * 91) % 360;
+        return <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${a})`}><PetalShape scale={0.55} color={`oklch(0.14 0.03 20 / ${0.6*op})`} /></g>;
+      })}
+      <g transform={`translate(${head.x} ${head.y}) rotate(${ang+90})`}>
+        <circle r="9" fill="oklch(0.45 0.18 20 / 0.30)" />
+        <circle r="5" fill="oklch(0.20 0.06 20 / 0.9)" />
+        <circle r="2.4" fill="oklch(0.66 0.18 18)" />
+      </g>
+    </g>
+  );
+}
+
+function Impact({ x, y, life }) {
+  const r = 4 + life * 26, op = (1 - life);
+  return (
+    <g transform={`translate(${x} ${y})`} style={{ mixBlendMode: 'screen' }}>
+      <circle r={r} fill="none" stroke={`oklch(0.62 0.18 20 / ${op * 0.85})`} strokeWidth="1.5"/>
+      {life < 0.35 && <circle r={8 * (1 - life/0.35)} fill={`oklch(0.80 0.10 20 / ${(1 - life/0.35) * 0.85})`}/>}
+      {[0,1,2,3,4,5].map(i => {
+        const a = (i / 6) * Math.PI * 2;
+        const d = life * 22;
+        return <g key={i} transform={`translate(${Math.cos(a)*d} ${Math.sin(a)*d}) rotate(${a*180/Math.PI})`}><PetalShape scale={(1-life)*0.6+0.3} color={`oklch(0.30 0.14 20 / ${(1-life)*0.75})`}/></g>;
+      })}
+    </g>
+  );
+}
+
+// Rose stuck permanently on a hit target's card, until scene resets
+function StuckRose({ x, y, rot, appear }) {
+  const s = Math.min(1, appear * 2.2);
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} style={{ opacity: Math.min(1, appear*3) }}>
+      <circle r="7" fill="oklch(0.13 0.03 20)" stroke="oklch(0.55 0.18 20 / 0.85)" strokeWidth="0.7"/>
+      <circle r="3.6" fill="oklch(0.32 0.16 20)"/>
+      <path d="M -8 5 Q -14 14 -10 22" stroke="oklch(0.28 0.05 130 / 0.8)" strokeWidth="1" fill="none"/>
+      <path d="M -10 12 l -3 -1 M -10 12 l -2 3" stroke="oklch(0.28 0.05 130 / 0.8)" strokeWidth="0.8"/>
+    </g>
+  );
+}
+
+function deriveScene(t) {
+  let casterState = 'idle';
+  if (t >= T.CHARGE_START && t < T.CHARGE_END) casterState = 'charging';
+  else if (t >= T.CHARGE_END && t < T.LAUNCH_LAST + 0.4) casterState = 'firing';
+
+  let chargeGlow = 0;
+  if (t < T.CHARGE_END) chargeGlow = easeInQuad(clamp01((t - T.CHARGE_START) / (T.CHARGE_END - T.CHARGE_START)));
+  else if (t < T.CHARGE_END + 0.3) chargeGlow = 1 - (t - T.CHARGE_END) / 0.3;
+
+  const bannerShow = t >= T.BANNER_IN && t < T.BANNER_OUT;
+  const bIn = clamp01((t - T.BANNER_IN) / 0.35), bOut = clamp01((T.BANNER_OUT - t) / 0.4);
+  const bannerOpacity = bannerShow ? Math.min(bIn, bOut) : 0;
+  const bannerLabel = t < T.CHARGE_END ? 'Colhendo espinhos sombrios' : 'As rosas cravam nos inimigos';
+
+  const targetKeys = ['h3','h2','h1','active'];
+  const flying = [], impacts = [], damages = [], stuck = [];
+  const heroHps = { h1: 80, h2: 55, h3: 30, active: 70 };
+
+  for (const pth of paths) {
+    const local = (t - pth.launchT) / T.FLIGHT;
+    if (local <= 0) continue;
+    if (local < 1) {
+      const u = easeInOutCubic(local);
+      flying.push({ id: pth.id, pth, u });
+    } else {
+      const since = t - (pth.launchT + T.FLIGHT);
+      if (since < 0.5) impacts.push({ id: pth.id, x: pth.p3.x, y: pth.p3.y, life: since / 0.5 });
+      if (since > 0.03 && since < 0.8) {
+        const tgt = OPP[pth.target];
+        damages.push({ id: pth.id, val: pth.dmg, x: tgt.x + (pth.id % 3 - 1) * 14, y: tgt.y - 12 - since * 40, opacity: 1 - since / 0.8 });
+      }
+      const tgt = OPP[pth.target];
+      stuck.push({ id: pth.id, x: tgt.x + 32, y: tgt.y - 40, rot: (pth.id * 63) % 40 - 20, appear: clamp01(since / 0.3) });
+      heroHps[pth.target] = Math.max(0, heroHps[pth.target] - pth.dmg);
+    }
+  }
+
+  const targetShow = t >= T.TARGET_IN && t < T.TARGET_OUT;
+  const aIn = clamp01((t - T.TARGET_IN) / 0.4), aOut = clamp01((T.TARGET_OUT - t) / 0.5);
+  const targetOpacity = targetShow ? Math.min(aIn, aOut) : 0;
+
+  let flash = 0;
+  if (t >= T.CHARGE_END - 0.05 && t < T.CHARGE_END + 0.3) flash = (1 - clamp01((t - (T.CHARGE_END - 0.05)) / 0.35)) * 0.35;
+
+  return { casterState, chargeGlow, bannerOpacity, bannerLabel, targetOpacity, flying, impacts, damages, stuck, heroHps, flash };
+}
+
+function CasterOverlay({ chargeGlow, t }) {
+  const { x, y } = CASTER_ORIGIN;
+  if (chargeGlow <= 0.01) return null;
+  const glowSize = 24 + chargeGlow * 84;
+  return (
+    <>
+      <div style={{ position: 'absolute', left: x, top: y, width: glowSize, height: glowSize, transform: 'translate(-50%, -50%)',
+        borderRadius: '50%', pointerEvents: 'none', mixBlendMode: 'screen',
+        background: 'radial-gradient(circle, oklch(0.68 0.18 20 / 0.8) 0%, oklch(0.40 0.22 20 / 0.4) 40%, transparent 72%)', opacity: chargeGlow }}/>
+      <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none" style={{ mixBlendMode: 'screen' }}>
+        {[0,1,2,3,4,5,6].map(i => {
+          const ang = t * 2.6 + i * (Math.PI*2/7);
+          const rad = (1 - chargeGlow) * 40 + 8;
+          return <g key={i} transform={`translate(${x + Math.cos(ang)*rad} ${y + Math.sin(ang)*rad}) rotate(${ang*180/Math.PI})`}>
+            <PetalShape scale={0.5} color={`oklch(0.55 0.18 20 / ${chargeGlow})`}/>
+          </g>;
+        })}
+      </svg>
+    </>
+  );
+}
+
+function App() {
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const rafRef = useRef(null);
+  const lastRef = useRef(performance.now());
+
+  useEffect(() => {
+    function tick(now) {
+      const dt = Math.min((now - lastRef.current) / 1000, 0.05);
+      lastRef.current = now;
+      if (playing) setT(prev => { const next = prev + dt; if (next >= T.HOLD_END) { if (next >= T.HOLD_END + 1.2) return 0; return next; } return next; });
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    lastRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing]);
+
+  useEffect(() => { window.__setT = (v) => { setPlaying(false); setT(v); }; }, []);
+
+  const s = deriveScene(t);
+  const oa = OPP.active;
+
+  return (
+    <>
+      <div id="stage-inner" style={{ position: 'absolute', inset: 0 }}>
+        <div className="bg-opponent"/><div className="bg-player"/><div className="bg-center-line"/><div className="bg-noise"/>
+        <div className="half-label opp">Área do Oponente — Alvos</div>
+        <div className="half-label pl">Sua Área — Darian</div>
+
+        <StaticBoard heroHps={s.heroHps} casterState={s.casterState} />
+
+        <div className="target-aura" style={{ left: oa.x - 52, top: oa.y - 70, width: 104, height: 140, opacity: s.targetOpacity }}>
+          <div className="c tl"/><div className="c tr"/><div className="c bl"/><div className="c br"/>
+        </div>
+
+        <div className="ability-banner" style={{ opacity: s.bannerOpacity }}>
+          <div className="ability-sub">Magia Sombria</div>
+          <div className="ability-name">Rosas Negras</div>
+          <div className="ability-rule"/>
+          <div className="ability-sub" style={{ marginTop: 6, opacity: 0.7 }}>{s.bannerLabel}</div>
+        </div>
+
+        <CasterOverlay chargeGlow={s.chargeGlow} t={t} />
+
+        <svg className="fx-layer" viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} preserveAspectRatio="none">
+          {s.impacts.map(im => <Impact key={'im'+im.id} x={im.x} y={im.y} life={im.life} />)}
+          {s.flying.map(f => <Rose key={'m'+f.id} pth={f.pth} u={f.u} />)}
+          {s.stuck.map(st => <StuckRose key={'st'+st.id} {...st} />)}
+        </svg>
+
+        {s.damages.map(d => (<div key={'d'+d.id} className="dmg" style={{ left: d.x, top: d.y, opacity: d.opacity }}>−{d.val}</div>))}
+
+        {s.flash > 0.001 && <div className="screen-flash" style={{ opacity: s.flash }}/>}
+      </div>
+
+      <div className="controls">
+        <button className="ctrl-btn primary" onClick={() => { setT(0); setPlaying(true); }}>✦ Disparar</button>
+        <button className="ctrl-btn" onClick={() => setPlaying(p => !p)}>{playing ? '❚❚ Pausar' : '▶ Tocar'}</button>
+        <span className="ctrl-label">Tempo</span>
+        <input type="range" className="ctrl-scrub" min="0" max={T.HOLD_END + 1.2} step="0.01" value={t} onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}/>
+        <span className="ctrl-time">{t.toFixed(2)}s</span>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  function fit() {
+    const vw = window.innerWidth, vh = Math.max(window.innerHeight - 70, 0);
+    if (vw <= 0 || vh <= 0) return;
+    const s = Math.max(0.01, Math.min(vw / 1280, vh / 720));
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener('resize', fit); window.addEventListener('load', fit);
+  requestAnimationFrame(fit); fit();
+})();
+</script>
+</body>
+</html>

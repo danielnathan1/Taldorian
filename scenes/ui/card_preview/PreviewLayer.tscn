@@ -1,8 +1,20 @@
-[gd_scene format=3 uid="uid://s4qbculee5f"]
+[gd_scene load_steps=4 format=3 uid="uid://s4qbculee5f"]
 
 [ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="1_herosl"]
 [ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="2_cardvw"]
 [ext_resource type="Script" path="res://scenes/ui/card_preview/card_preview.gd" id="3_prvscr"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
+bg_color = Color(0.06, 0.03, 0.09, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.16, 0.55, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="PreviewLayer" type="CanvasLayer" unique_id=75620574]
 layer = 5
@@ -30,3 +42,58 @@ anchors_preset = 0
 offset_right = 320.0
 offset_bottom = 480.0
 visible = false
+
+[node name="StatusPanel" type="PanelContainer" parent="CardPreview"]
+visible = false
+layout_mode = 3
+anchors_preset = 0
+offset_left = -308.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 172.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_status")
+
+[node name="Margin" type="MarginContainer" parent="CardPreview/StatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="CardPreview/StatusPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="Label" parent="CardPreview/StatusPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.55, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "Efeitos negativos"
+
+[node name="SeloRuina" type="HBoxContainer" parent="CardPreview/StatusPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="CardPreview/StatusPanel/Margin/VBox/SeloRuina"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="CardPreview/StatusPanel/Margin/VBox/SeloRuina"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="CardPreview/StatusPanel/Margin/VBox/SeloRuina/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.82, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "Selo da Ruína"
+
+[node name="Desc" type="Label" parent="CardPreview/StatusPanel/Margin/VBox/SeloRuina/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.78, 0.86, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3

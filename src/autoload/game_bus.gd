@@ -53,6 +53,24 @@ signal backline_arrow_fired(source_player_idx: int, source_hero_idx: int, target
 # targets: Array de [player_idx, hero_idx] (um por míssil).
 signal missiles_fired(caster_player_idx: int, targets: Array)
 
+# Rosas Negras (Darian) lançadas — VFX das 3 rosas em arco (ambos os clientes).
+# source_hero_idx: índice de Darian na retaguarda (origem do disparo).
+# targets: Array de [player_idx, hero_idx] (uma entrada por rosa; podem repetir alvo).
+signal roses_fired(caster_player_idx: int, source_hero_idx: int, targets: Array)
+
+# Especial do Darian (Jardim de Espinhos) — detona as Rosas Negras cravadas. VFX de
+# rosas varrendo o campo + explosão com respingo de sangue por herói (ambos os clientes).
+# targets: Array de [player_idx, hero_idx, dmg] (um por herói que tinha rosas).
+signal roses_detonated(caster_player_idx: int, targets: Array)
+
+# Selo da Ruína (Lilith) aplicado a um herói inimigo — VFX da névoa negra que voa
+# do slot da Lilith até o alvo (ambos os clientes). Marca 1 alvo (ints escalares).
+signal seal_applied(caster_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int)
+
+# Especial "Maldição do Abismo" (Lilith) — VFX de símbolos de Trevas → centro → névoa até
+# o deck do oponente, banindo `banished_art_keys` 1 a 1 (ambos os clientes).
+signal abyss_curse(caster_player_idx: int, opponent_player_idx: int, banished_art_keys: Array)
+
 # Loja do Fragmento Arcano — efeito comprado (toast pros dois jogadores).
 signal fragment_used(player_index: int, effect_id: String, cost: int)
 # Símbolo escolhido via Fragmento entrou na chain — exibe na combat zone (ambos).

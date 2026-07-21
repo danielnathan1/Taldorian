@@ -83,9 +83,9 @@ func _advance_line() -> void:
 	# qualquer um (ex.: name "???" antes da revelação, ou um retrato de expressão).
 	# Sem tabela 'speakers', 'speaker' é tratado como o próprio nome de exibição (formato antigo).
 	var sp: Dictionary = _speakers.get(str(line.get("speaker", "")), {})
-	_speaker_name.text = str(line.get("name", sp.get("name", line.get("speaker", ""))))
+	_speaker_name.text = _resolve(str(line.get("name", sp.get("name", line.get("speaker", "")))))
 	_set_portrait(str(line.get("portrait", sp.get("portrait", ""))))
-	_start_typing(str(line.get("text", "")))
+	_start_typing(_resolve(str(line.get("text", ""))))
 	GameBus.dialogue_advanced.emit(_index)
 
 # ── Máquina de escrever ──────────────────────────────────────────────────────────
@@ -120,6 +120,20 @@ func _set_portrait(p_portrait: String) -> void:
 	else:
 		_portrait.texture = null
 		_portrait.visible = false
+
+# Substitui placeholders no nome/texto da fala. Extensível: adicione mais tokens aqui.
+func _resolve(p_text: String) -> String:
+	if not p_text.contains("{"):
+		return p_text
+	return p_text.replace("{player_name}", _player_name())
+
+# Nome de exibição do jogador: nome do personagem (CharacterStore) com fallback p/ NetworkState.
+func _player_name() -> String:
+	if CharacterStore.has_character():
+		var n := str(CharacterStore.get_character().get("name", "")).strip_edges()
+		if n != "":
+			return n
+	return NetworkState.player_name
 
 func _close() -> void:
 	visible = false

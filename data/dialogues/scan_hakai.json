@@ -1,0 +1,36 @@
+{
+  "id": "scan_hakai",
+  "speakers": {
+    "hakai": {
+      "name": "???",
+      "portrait": "hakai"
+    }
+  },
+  "lines": [
+    {
+      "speaker": "hakai",
+      "text": "Ei! Abaixa esse Olho Arcano! Você quase estragou uma... caminhada completamente pacífica."
+    },
+    {
+      "speaker": "hakai",
+      "name": "Hakai",
+      "text": "Ah... já que me viu. O nome é Hakai."
+    },
+    {
+      "speaker": "hakai",
+      "text": "Não gosto dessa vida de assassino, sabe? Muito sangue, muita perseguição... um ambiente de trabalho péssimo."
+    },
+    {
+      "speaker": "hakai",
+      "text": "Mas fazer o quê? As pessoas insistem em contratar meus serviços."
+    },
+    {
+      "speaker": "hakai",
+      "text": "Quer me transformar em carta? Pode. Desde que me pague duzentas peças de ouro."
+    },
+    {
+      "speaker": "hakai",
+      "text": "Afinal, preciso financiar minha aposentadoria... ou minha próxima adaga. Ainda não decidi."
+    }
+  ]
+}

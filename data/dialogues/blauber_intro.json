@@ -1,0 +1,15 @@
+{
+  "id": "blauber_intro",
+  "speakers": {
+    "blauber": { "name": "Blauber", "portrait": "blauber" },
+    "jogador": { "name": "Você" }
+  },
+  "lines": [
+    { "speaker": "blauber", "text": "Ora, ora! Um rosto novo na taverna. Sente-se, sente-se! O nome é Blauber — velho conhecido destas mesas." },
+    { "speaker": "blauber", "text": "E esse brilho no seu olho... esse é o Olho Arcano, não é? Estou vendo que você também é um jogador!" },
+    { "speaker": "blauber", "text": "Que tal a gente se divertir com um duelo, hein? Faz tempo que não apareceu ninguém pra uma boa partida." },
+    { "speaker": "jogador", "text": "Eu adoraria... mas ainda não consegui nenhuma carta. E nem rastreei nenhum herói decente pra colocar em campo." },
+    { "speaker": "blauber", "text": "Hah! É só isso? Olha lá pra aquele canto." },
+    { "speaker": "blauber", "text": "Está vendo aqueles três ali? Por que não tenta falar com eles? Parecem fortes... e andam procurando alguém que consiga enxergá-los." }
+  ]
+}

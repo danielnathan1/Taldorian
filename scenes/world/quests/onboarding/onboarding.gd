@@ -12,18 +12,25 @@ const DIALOGUE_SCENE := preload("res://scenes/world/ui/dialogue/dialogue_box.tsc
 const SCANNER_SCENE  := preload("res://scenes/world/scanner/scanner.tscn")
 const REWARD_POPUP_SCENE := preload("res://scenes/world/ui/reward_popup/reward_popup.tscn")
 const SLIME_ART := "res://assets/heros/hero_blue_slime.png"
+const WORLD_SCENE := "res://scenes/world/world_root.tscn"
+# Após o encerramento do encapuzado, o onboarding continua na TAVERNA (Blauber + tutorial).
+const TAVERNA_SCENE := "res://scenes/world/quests/onboarding/taverna.tscn"
 
 @onready var _ui_layer: CanvasLayer = $UILayer
 @onready var _item_reveal: Label = $UILayer/ItemReveal
 @onready var _camera: Camera2D = $Camera2D
 @onready var _slime: Node2D = $Slime
 @onready var _toast_label: Label = $UILayer/Toast
+@onready var _hint_label: Label = $UILayer/Hint
+@onready var _fade: ColorRect = $UILayer/Fade
+@onready var _item_image: TextureRect = $UILayer/ItemImage
 
 var _player: CharacterBody2D
 var _npc: Node2D
 var _scanner: Node2D
 var _follow_player: bool = false
 var _toast_tween: Tween
+var _hint_tween: Tween
 
 func _ready() -> void:
 	_item_reveal.visible = false
@@ -55,7 +62,7 @@ func _run_intro() -> void:
 	_player.face(Vector2i(0, 1))
 	await _wait(0.4)
 	# 2. Encapuzado se aproxima e vira para o player.
-	await _walk(_npc, Vector2(0, 64), 45.0)
+	await _walk(_npc, Vector2(0, 64), 110.0)
 	_npc.face("up")
 	await _wait(0.3)
 	# 3. Diálogo de introdução + entrega do item.
@@ -92,15 +99,20 @@ func _reveal_item(p_text: String) -> void:
 	_item_reveal.text = p_text
 	_item_reveal.modulate.a = 0.0
 	_item_reveal.visible = true
-	var tw_in := create_tween()
+	_item_image.modulate.a = 0.0
+	_item_image.visible = true
+	var tw_in := create_tween().set_parallel(true)
 	tw_in.tween_property(_item_reveal, "modulate:a", 1.0, 0.5)
+	tw_in.tween_property(_item_image, "modulate:a", 1.0, 0.5)
 	await tw_in.finished
-	await _wait(1.4)
+	await _wait(1.6)
 	# Some antes do próximo diálogo, para não sobrepor a fala.
-	var tw_out := create_tween()
+	var tw_out := create_tween().set_parallel(true)
 	tw_out.tween_property(_item_reveal, "modulate:a", 0.0, 0.4)
+	tw_out.tween_property(_item_image, "modulate:a", 0.0, 0.4)
 	await tw_out.finished
 	_item_reveal.visible = false
+	_item_image.visible = false
 
 # Move a câmera suavemente até um ponto do mundo (ex.: enquadrar o slime).
 func _pan_camera_to(p_target: Vector2, p_duration: float) -> void:
@@ -121,6 +133,7 @@ func _release_player() -> void:
 	_player.tile_pos = Vector2i(floori(_player.position.x / 16.0), floori(_player.position.y / 16.0))
 	_player.set_movement_locked(false)
 	_attach_scanner()
+	_show_hint("Segure [Espaço] perto do slime para rastreá-lo")
 
 # Anexa o scanner ao player e o liga (só agora que o controle é do jogador).
 func _attach_scanner() -> void:
@@ -131,6 +144,7 @@ func _attach_scanner() -> void:
 	_scanner.enable(_player)
 
 func _on_scan_completed(p_target: Node) -> void:
+	_hide_hint()
 	p_target.set_meta("scanned", true)   # marca como rastreado por mim (→ "já rastreou" depois)
 	_scanner.disable()                   # pausa enquanto o popup está aberto
 	# Payoff imediato: revela a recompensa.
@@ -148,8 +162,33 @@ func _show_reward(p_art: String, p_title: String, p_subtitle: String) -> void:
 	popup.show_reward(p_art, p_title, p_subtitle)
 
 func _on_reward_closed() -> void:
-	# Volta a permitir rastrear (o slime já está marcado → mostrará "já rastreou").
-	_scanner.enable(_player)
+	# Fluxo real (conectado ao mundo): encerra o tutorial e entra na cidade.
+	# Standalone (F6, sem peer): reativa o scanner para testar o "já rastreou".
+	if multiplayer.multiplayer_peer != null:
+		_finish_onboarding()
+	else:
+		_scanner.enable(_player)
+
+func _finish_onboarding() -> void:
+	_player.set_movement_locked(true)
+	await _play_dialogue("onboarding_encerramento")
+	# "Algumas horas depois…" → escurece a tela e abre na taverna (que faz fade-from-black).
+	await _time_skip_transition()
+	get_tree().change_scene_to_file(TAVERNA_SCENE)
+
+# Transição de passagem de tempo: fade-to-black + texto central. Deixa a tela preta ao final —
+# a taverna abre preta e faz o fade-from-black, costurando o corte sem flash.
+func _time_skip_transition() -> void:
+	var tw_black := create_tween()
+	tw_black.tween_property(_fade, "color:a", 1.0, 0.8)
+	await tw_black.finished
+	_item_reveal.text = "Algumas horas depois…"
+	_item_reveal.modulate.a = 0.0
+	_item_reveal.visible = true
+	var tw_in := create_tween()
+	tw_in.tween_property(_item_reveal, "modulate:a", 1.0, 0.5)
+	await tw_in.finished
+	await _wait(1.6)
 
 # Mensagem efêmera no rodapé (ex.: "Você já rastreou isto").
 func _toast(p_text: String) -> void:
@@ -163,6 +202,23 @@ func _toast(p_text: String) -> void:
 	_toast_tween.tween_interval(1.1)
 	_toast_tween.tween_property(_toast_label, "modulate:a", 0.0, 0.4)
 	_toast_tween.tween_callback(func() -> void: _toast_label.visible = false)
+
+# Dica persistente (ex.: "Segure [Espaço]..."), pulsando até ser escondida.
+func _show_hint(p_text: String) -> void:
+	_hint_label.text = p_text
+	_hint_label.visible = true
+	_hint_label.modulate.a = 1.0
+	if _hint_tween != null:
+		_hint_tween.kill()
+	_hint_tween = create_tween().set_loops()
+	_hint_tween.tween_property(_hint_label, "modulate:a", 0.45, 0.8)
+	_hint_tween.tween_property(_hint_label, "modulate:a", 1.0, 0.8)
+
+func _hide_hint() -> void:
+	if _hint_tween != null:
+		_hint_tween.kill()
+		_hint_tween = null
+	_hint_label.visible = false
 
 func _process(_delta: float) -> void:
 	if _follow_player:

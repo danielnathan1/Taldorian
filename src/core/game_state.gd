@@ -112,6 +112,11 @@ var _pending_effect_from_arsenal: bool:
 		return _m._pending_effect_from_arsenal
 	set(value):
 		_m._pending_effect_from_arsenal = value
+var _pending_backline_ability: Dictionary:
+	get:
+		return _m._pending_backline_ability
+	set(value):
+		_m._pending_backline_ability = value
 
 var _pending_ally_pick_player: int:
 	get:
@@ -551,6 +556,7 @@ func _begin_battle_for_active_player() -> void:
 		for h in p.heroes:
 			h.is_backline_revealed = h.starts_face_up
 			h.wall_active = false
+			h.taunt_active = false
 	_backline_queue.clear()
 	_backline_awaiting_response = false
 	_backline_awaiting_target   = false
@@ -558,6 +564,9 @@ func _begin_battle_for_active_player() -> void:
 	_backline_current_hero_idx  = -1
 	_clear_stealth_passive_queue()
 	_clear_frontline_confirm_queue()
+
+	# Escudo persistente re-aplica no início do turno (a Queimadura tica no FIM — _tick_burn).
+	_tick_persistent_shields()
 
 	var idx := battle.current_player_index
 	var player: Player = players[idx]
@@ -1057,21 +1066,71 @@ func action_activate_ability(player_idx: int, ability_id: String, targets: Array
 					return false
 			if cost == "BONUS" and _segment_bonus_done[player_idx]:
 				return false
-			var label := pl.activate_ability(ability_id, opponent, [])
-			print("[TCG] Jogador %d (%s): ativou '%s' (%s)" % [player_idx, pl.player_name, ability_id, cost])
-			_capture_hero_hidden(player_idx)
-			_reveal_active_hero(player_idx)
+			# Marcador de habilidade de RETAGUARDA (ex.: Darian): consome ação bônus do
+			# jogador ativo, mas NÃO revela o herói ativo nem abre janela de reação.
+			var from_backline := bool(entry.get("from_backline", false))
+			# Alvos (ACTION/BONUS com needs_target, ex.: Selo da Ruína) — validação do ramo FREE.
+			var hero_targets: Array = []
+			if bool(entry.get("needs_target", false)):
+				if targets.is_empty():
+					return false
+				for t in targets:
+					if typeof(t) != TYPE_ARRAY or (t as Array).size() < 2:
+						return false
+					var tp := int(t[0])
+					var th := int(t[1])
+					if tp < 0 or tp > 1:
+						return false
+					if th < 0 or th >= players[tp].heroes.size():
+						return false
+					var target_hero: Hero = players[tp].heroes[th]
+					if not target_hero.is_alive():
+						return false
+					hero_targets.append(target_hero)
+			# Herói de origem do popup: o ativo, ou o herói de retaguarda dono da habilidade.
+			var src_hero := hero
+			var src_hero_idx := hero_idx
+			var label := ""
+			if from_backline:
+				for j in pl.heroes.size():
+					var h2: Hero = pl.heroes[j]
+					if h2 == hero or not h2.is_alive():
+						continue
+					var ba := h2.get_backline_bonus_ability(pl, opponent)
+					if not ba.is_empty() and str(ba.get("id", "")) == ability_id:
+						src_hero = h2
+						src_hero_idx = j
+						break
+			print("[TCG] Jogador %d (%s): ativou '%s' (%s%s)" % [player_idx, pl.player_name, ability_id, cost, " backline" if from_backline else ""])
+			# Habilidade normal revela o herói ATIVO. Habilidade de retaguarda que marca
+			# reveals_self quebra a furtividade do PRÓPRIO herói de retaguarda (ex.: Darian),
+			# sem tocar no herói ativo.
+			if not from_backline:
+				_capture_hero_hidden(player_idx)
+				_reveal_active_hero(player_idx)
+			elif bool(entry.get("reveals_self", false)):
+				src_hero.is_backline_revealed = true
 			if cost == "ACTION":
 				_segment_action_done[player_idx] = true
 				_consecutive_empty_turns = 0
 			else:
 				_segment_bonus_done[player_idx] = true
-			if not label.is_empty():
-				GameBus.skill_activated.emit(hero, label)
-				_notify_skill_activated(player_idx, hero_idx, label)
-			# Ação normal: abre janela de reação para o oponente.
+			if from_backline:
+				# Reação é mais rápida que ação bônus: a habilidade de retaguarda só RESOLVE
+				# (efeito + VFX + popup) quando a janela de reação fechar. Guarda pendente.
+				_pending_backline_ability = { "player": player_idx, "id": ability_id, "src_hero_idx": src_hero_idx, "targets": hero_targets }
+			else:
+				label = pl.activate_ability(ability_id, opponent, hero_targets)
+				if not label.is_empty():
+					GameBus.skill_activated.emit(src_hero, label)
+					_notify_skill_activated(player_idx, src_hero_idx, label)
+			# Tanto ACTION quanto ação bônus (incl. habilidade de retaguarda) abrem
+			# janela de reação para o oponente.
 			_reaction_window_for = 1 - player_idx
 			GameBus.reaction_window_opened.emit(1 - player_idx)
+			# Dano externo pode derrotar um herói ativo fora do ciclo de combate.
+			if _end_battle_if_active_defeated():
+				return true
 			_emit_sync()
 			return true
 
@@ -1097,8 +1156,8 @@ func action_activate_ability(player_idx: int, ability_id: String, targets: Array
 					if not target_hero.is_alive():
 						return false
 					hero_targets.append(target_hero)
-			var label := pl.activate_ability(ability_id, opponent, hero_targets)
 			print("[TCG] Jogador %d (%s): ativou '%s' (FREE, %d alvo(s))" % [player_idx, pl.player_name, ability_id, hero_targets.size()])
+			var label := pl.activate_ability(ability_id, opponent, hero_targets)
 			if not label.is_empty():
 				GameBus.skill_activated.emit(hero, label)
 				_notify_skill_activated(player_idx, hero_idx, label)
@@ -1138,7 +1197,7 @@ func _on_card_added_to_play(player_idx: int, card: Card) -> void:
 	var active: Hero = pl.active_hero
 	if active == null:
 		return
-	if not active._skill_activated_this_battle:
+	if not active._skill_activated_this_battle and not active.is_silenced():
 		if active.is_skill_triggered(_build_chain(pl)):
 			active.on_skill_activated(pl)
 			var hero_idx := pl.heroes.find(active)
@@ -1351,6 +1410,7 @@ func _reset_action_phase_state() -> void:
 	_pending_effect_card         = null
 	_pending_effect_player       = -1
 	_pending_effect_from_arsenal = false
+	_pending_backline_ability    = {}
 	_m._after_combat_queue.clear()
 	_pending_pick_player     = -1
 	_pending_pick_source     = PickSource.DECK
@@ -1601,6 +1661,12 @@ func rpc_submit_ally_pick(hero_idx: int) -> void:
 				print("[TCG]   ♥ Ally Pick (J%d): cura aplicada em %s (HP cheio — sem ganho de HP)" % [
 					player_idx, target_hero.hero_name
 				])
+		"cleanse_heal":
+			# Toque Límpido — Purifica (remove Queimaduras) e cura o aliado escolhido.
+			target_hero.clear_burn()
+			target_hero.heal(_pending_ally_pick_amount)
+			_notify_effect_vfx(player_idx, "heal", hero_idx)
+			print("[TCG]   ✦ Ally Pick (J%d): purificou e curou %s" % [player_idx, target_hero.hero_name])
 	_pending_ally_pick_player = -1
 	_pending_ally_pick_action = ""
 	_pending_ally_pick_amount = 0
@@ -1707,7 +1773,7 @@ func rpc_ack_reveal() -> void:
 func _recheck_active_skill(player_idx: int) -> void:
 	var pl: Player = players[player_idx]
 	var active: Hero = pl.active_hero
-	if active == null or active._skill_activated_this_battle:
+	if active == null or active._skill_activated_this_battle or active.is_silenced():
 		return
 	if active.is_skill_triggered(_build_chain(pl)):
 		active.on_skill_activated(pl)
@@ -1769,7 +1835,30 @@ func _reveal_active_hero(player_idx: int) -> void:
 # Chamado quando a janela de reação fecha (pass ou carta REACTION jogada).
 # Se o segmento ativo já completou ACTION e BONUS, encerra-o. Caso contrário,
 # apenas sincroniza — o jogador ainda pode jogar a outra carta.
+## Resolve a habilidade de retaguarda que ficou pendente até a reação fechar (ex.:
+## Darian: aplica as rosas + dispara o VFX + popup só agora, depois da reação).
+func _resolve_pending_backline_ability() -> void:
+	if _pending_backline_ability.is_empty():
+		return
+	var data: Dictionary = _pending_backline_ability
+	_pending_backline_ability = {}
+	var pidx: int = int(data.get("player", -1))
+	if pidx < 0 or pidx > 1:
+		return
+	var pl: Player = players[pidx]
+	var opp: Player = players[1 - pidx]
+	var ability_id: String = str(data.get("id", ""))
+	var targets: Array = data.get("targets", [])
+	var src_idx: int = int(data.get("src_hero_idx", -1))
+	var label := pl.activate_ability(ability_id, opp, targets)
+	if not label.is_empty():
+		var src_hero: Hero = pl.heroes[src_idx] if src_idx >= 0 and src_idx < pl.heroes.size() else pl.active_hero
+		GameBus.skill_activated.emit(src_hero, label)
+		_notify_skill_activated(pidx, src_idx, label)
+
 func _on_reaction_window_closed() -> void:
+	# Habilidade de retaguarda (Darian) declarada agora RESOLVE — depois da reação.
+	_resolve_pending_backline_ability()
 	_execute_pending_effect()
 	# If an effect triggered a pick, pause here — _continue_after_pick() resumes the flow.
 	# Sobrecarga de Núcleo abre o fluxo de tokens/distribuição (_pending_overload_player).
@@ -1851,6 +1940,13 @@ func _after_combat_converge() -> void:
 ## para poder ser retomado depois de um pick aberto por efeito AFTER_TURN.
 func _finish_turn_combat() -> void:
 	_m._post_combat_pending = false
+	# Selo da Ruína (Lilith) sai assim que ESTE combate resolve: o banimento já disparou
+	# durante o CombatResolver + dreno pós-combate acima, então a marca some agora e NÃO
+	# persiste para as próximas rodadas. (Rosas Negras do Darian NÃO saem aqui — persistem
+	# até a especial explodi-las.)
+	for p in players:
+		for h in p.heroes:
+			h.sealed_ruin = false
 	# Execução Silenciosa: se marcado, oculta herói para o próximo combate
 	for i in 2:
 		if players[i].next_turn_stealth:
@@ -1921,6 +2017,17 @@ func _run_combat_and_enter_end() -> void:
 		if h and not _hero_revealed[i]:
 			_hero_revealed[i] = true
 			GameBus.hero_revealed.emit(i, h)
+	# Queimadura tica no FIM do turno (após o combate deste turno), antes das passivas de
+	# cura de fim de turno — assim o Cleric pode compensar. Pode derrotar heróis.
+	_tick_burn()
+	var burn_winner := _evaluate_winner()
+	if burn_winner >= 0 and _winner_index < 0:
+		_conclude_match(burn_winner)
+	# Fonte da Vida — regeneração de área tica no fim do turno (após a Queimadura).
+	_tick_team_regen()
+	# Status negativos de Ecos (veneno/sangramento/marca/ferida/silêncio) perdem 1 turno de
+	# duração no fim do turno. Depois da regeneração (a Ferida ainda bloqueia a cura deste turno).
+	_tick_status_decay()
 	# Onda Reversa: carta vai ao fundo do deck em vez do cemitério
 	for p in players:
 		if p.pending_return_card != null:
@@ -1941,6 +2048,7 @@ func _run_combat_and_enter_end() -> void:
 		p.discard_pile.append_array(p.cards_this_battle)
 	players[0].clear_combat_cards()
 	players[1].clear_combat_cards()
+	# (O Selo da Ruína já foi limpo em _finish_turn_combat, logo após o combate resolver.)
 	# Só os tokens marcados (ex.: Mísseis Mágicos) somem quando o combate resolve;
 	# os persistentes (ex.: Fragmento Arcano) ficam no campo até serem usados.
 	players[0].clear_combat_end_tokens()
@@ -1960,11 +2068,14 @@ func _run_combat_and_enter_end() -> void:
 				GameBus.skill_activated.emit(h, desc)
 				_notify_skill_activated(i, hero_idx, desc)
 
-	# Exausta heróis e devolve aos slots
-	players[0].exhaust_active_hero()
-	players[1].exhaust_active_hero()
-	players[0].active_hero = null
-	players[1].active_hero = null
+	# Exausta heróis e devolve aos slots. Iluminação (Nissin): se pending_prevent_exhaust,
+	# o herói ativo NÃO exausta (fica disponível). A flag é consumida aqui.
+	for i in 2:
+		if players[i].pending_prevent_exhaust:
+			players[i].pending_prevent_exhaust = false
+		else:
+			players[i].exhaust_active_hero()
+		players[i].active_hero = null
 	battle.current_phase = BattleManager.Phase.END
 	_end_submitted = [false, false]
 	_emit_sync()
@@ -2003,6 +2114,83 @@ func finish_end_battle(player_idx: int, arsenal_hand_index: int) -> bool:
 		battle.current_player_index = (active_idx + 1) % 2
 		_begin_battle_for_active_player()
 	return true
+
+## Aplica os status persistentes de todos os heróis vivos no início de um turno:
+## escudo persistente (re-aplica/expira) e Queimadura (dano no início do turno).
+## Chamado por _begin_battle_for_active_player antes da fase DRAW.
+## Escudo persistente: re-aplica a cada herói vivo no INÍCIO do turno, expira ao zerar.
+## (A Queimadura tica no FIM do turno — ver _tick_burn.)
+func _tick_persistent_shields() -> void:
+	for p in players:
+		for h in p.heroes:
+			if h.state == Hero.State.DEFEATED:
+				continue
+			if h.shield_turns > 0:
+				h.shield_turns -= 1
+				if h.shield_turns <= 0:
+					h.shield_per_turn = 0
+					h.damage_shield = 0
+				else:
+					h.damage_shield = maxi(h.damage_shield, h.shield_per_turn)
+
+## Queimadura: no FIM de cada turno, todo herói vivo (ativo OU retaguarda exausto) com
+## queimadura perde burn_amount de vida (ignora escudo — não é ataque) e decrementa 1 turno.
+func _tick_burn() -> void:
+	for p in players:
+		for h in p.heroes:
+			if h.state == Hero.State.DEFEATED:
+				continue
+			if h.burn_turns > 0 and h.burn_amount > 0:
+				var burn := h.burn_amount
+				h.burn_turns -= 1
+				if h.burn_turns <= 0:
+					h.burn_amount = 0
+					h.burn_is_dark = false
+				var ctx := TurnContext.new()
+				ctx.defender = h
+				h.take_damage(burn, ctx)
+				GameBus.hero_damaged.emit(h, burn)
+				print("[TCG] Queimadura: %s (J%d) perde %d (HP %d)" % [h.hero_name, p.player_index, burn, h.current_hp])
+
+## Fonte da Vida: no FIM de cada turno, cada jogador com regeneração ativa cura o time
+## inteiro (heróis vivos) em team_regen_amount e decrementa 1 turno. Espelha _tick_burn.
+func _tick_team_regen() -> void:
+	for i in 2:
+		var p: Player = players[i]
+		if p.team_regen_turns <= 0 or p.team_regen_amount <= 0:
+			continue
+		var amount := p.team_regen_amount
+		p.team_regen_turns -= 1
+		if p.team_regen_turns <= 0:
+			p.team_regen_amount = 0
+		for h in p.heroes:
+			if h.is_alive():
+				h.heal(amount)
+		_notify_effect_vfx(i, "heal_all")
+		print("[TCG] Regeneração: time J%d cura %d" % [i, amount])
+
+## Decaimento (1 turno) dos status negativos de duração de Ecos, no fim do turno. O dano do
+## Sangramento é aplicado no combate (CombatResolver); a Queimadura, em _tick_burn. Aqui só
+## encolhe as durações. Roda em todo herói vivo (ativo ou retaguarda).
+func _tick_status_decay() -> void:
+	for p in players:
+		for h in p.heroes:
+			if h.state == Hero.State.DEFEATED:
+				continue
+			if h.poison_turns > 0:
+				h.poison_turns -= 1
+			if h.bleed_turns > 0:
+				h.bleed_turns -= 1
+				if h.bleed_turns <= 0:
+					h.bleed_amount = 0
+			if h.mark_turns > 0:
+				h.mark_turns -= 1
+				if h.mark_turns <= 0:
+					h.mark_bonus = 0
+			if h.wound_turns > 0:
+				h.wound_turns -= 1
+			if h.silence_turns > 0:
+				h.silence_turns -= 1
 
 func _evaluate_winner() -> int:
 	for i in 2:
@@ -2082,6 +2270,9 @@ static func _hero_from_name(hero_name: String) -> Hero:
 		"Nox":                return HeroNox.new()
 		"Relicar":            return HeroRelicar.new()
 		"Slime":              return HeroSlime.new()
+		"Lai'can":            return HeroLaican.new()
+		"Darian":             return HeroDarian.new()
+		"Lilith":             return HeroLilith.new()
 	push_warning("GameState: herói desconhecido '%s'" % hero_name)
 	return null
 
@@ -2403,16 +2594,22 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 			real_indices.reverse()   # maior primeiro para não deslocar índices
 			# Bônus de ataque por carta descartada do símbolo alvo (Incinerar Tudo → Fogo).
 			var discard_bonus := 0
+			var bonus_symbol_count := 0
 			for source_idx in real_indices:
 				if source_idx < p.hand.size():
 					var disc: Card = p.hand[source_idx]
 					if _pending_pick_bonus_symbol != "" and _pending_pick_bonus_symbol in disc.symbols:
 						discard_bonus += _pending_pick_bonus_attack
+						bonus_symbol_count += 1
 					p.hand.remove_at(source_idx)
 					p.send_to_discard(disc)
 					_notify_card_move(player_idx, disc.art_key, "discard")
 			if discard_bonus != 0:
 				p.pending_bonus_attack += discard_bonus
+			# Fúria Incandescente: nº de cartas de Fogo descartadas → duração da Queimadura
+			# on-hit (lida pelo efeito burn_on_hit_per_fire após o combate).
+			if _pending_pick_bonus_symbol == GameSymbols.FOGO:
+				p.pending_fire_discarded = bonus_symbol_count
 			# Compra as cartas prometidas após o descarte
 			if _pending_pick_draw_after > 0:
 				p.draw_cards(_pending_pick_draw_after)
@@ -2743,6 +2940,22 @@ func _rpc_notify_missiles_fired(caster_player_idx: int, targets: Array) -> void:
 	GameBus.missiles_fired.emit(caster_player_idx, targets)
 
 @rpc("authority", "call_remote", "reliable")
+func _rpc_notify_roses_fired(caster_player_idx: int, source_hero_idx: int, targets: Array) -> void:
+	GameBus.roses_fired.emit(caster_player_idx, source_hero_idx, targets)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_roses_detonated(caster_player_idx: int, targets: Array) -> void:
+	GameBus.roses_detonated.emit(caster_player_idx, targets)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_seal_applied(caster_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	GameBus.seal_applied.emit(caster_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_notify_abyss_curse(caster_player_idx: int, opponent_player_idx: int, banished_art_keys: Array) -> void:
+	GameBus.abyss_curse.emit(caster_player_idx, opponent_player_idx, banished_art_keys)
+
+@rpc("authority", "call_remote", "reliable")
 func _rpc_notify_fragment_used(player_idx: int, effect_id: String, cost: int) -> void:
 	GameBus.fragment_used.emit(player_idx, effect_id, cost)
 
@@ -2756,7 +2969,7 @@ func _build_snapshot() -> Dictionary:
 	for p in players:
 		var heroes_data: Array = []
 		for h in p.heroes:
-			heroes_data.append({ "hp": h.current_hp, "state": int(h.state), "backline_revealed": h.is_backline_revealed, "damage_shield": h.damage_shield, "wall_active": h.wall_active })
+			heroes_data.append({ "hp": h.current_hp, "state": int(h.state), "backline_revealed": h.is_backline_revealed, "damage_shield": h.damage_shield, "wall_active": h.wall_active, "taunt_active": h.taunt_active, "black_roses": h.black_roses, "sealed_ruin": h.sealed_ruin, "burn_amount": h.burn_amount, "burn_turns": h.burn_turns, "burn_is_dark": h.burn_is_dark, "shield_per_turn": h.shield_per_turn, "shield_turns": h.shield_turns, "poison_turns": h.poison_turns, "bleed_amount": h.bleed_amount, "bleed_turns": h.bleed_turns, "mark_bonus": h.mark_bonus, "mark_turns": h.mark_turns, "wound_turns": h.wound_turns, "silence_turns": h.silence_turns })
 		snap["players"].append({
 			"hand":                 _serialize_cards(p.hand),
 			"arsenal":              _serialize_cards(p.arsenal),
@@ -2767,6 +2980,7 @@ func _build_snapshot() -> Dictionary:
 			"sleeve_key":           p.sleeve_key,
 			"playmat_key":          p.playmat_key,
 			"discard_pile":         _serialize_cards(p.discard_pile),
+			"banish_zone":          _serialize_cards(p.banish_zone),
 			"tokens":               _serialize_tokens(p.tokens),
 			"pending_bonus_attack":            p.pending_bonus_attack,
 			"pending_bonus_defense":           p.pending_bonus_defense,
@@ -2776,6 +2990,9 @@ func _build_snapshot() -> Dictionary:
 			"battle_attack_penalty":          p.battle_attack_penalty,
 			"next_turn_bonus_attack":         p.next_turn_bonus_attack,
 			"extra_actions":                  p.extra_actions,
+			"team_regen_amount":              p.team_regen_amount,
+			"team_regen_turns":               p.team_regen_turns,
+			"missile_overcharge":             p.missile_overcharge,
 		})
 	# estado do mulligan de abertura
 	snap["opening_mulligan_done"] = [_opening_mulligan_done[0], _opening_mulligan_done[1]]
@@ -2907,9 +3124,13 @@ func _apply_snapshot(snap: Dictionary) -> void:
 		p.battle_attack_penalty           = pd.get("battle_attack_penalty",           0)
 		p.next_turn_bonus_attack          = pd.get("next_turn_bonus_attack",          0)
 		p.extra_actions                   = pd.get("extra_actions",                   0)
+		p.team_regen_amount               = pd.get("team_regen_amount",               0)
+		p.team_regen_turns                = pd.get("team_regen_turns",                0)
+		p.missile_overcharge              = pd.get("missile_overcharge",              false)
 		if not multiplayer.is_server():
 			var dp: Array = pd.get("discard_pile", [])
 			p.discard_pile = _deserialize_cards(dp)
+			p.banish_zone = _deserialize_cards(pd.get("banish_zone", []))
 			p.tokens = _deserialize_tokens(pd.get("tokens", []))
 		var hlist: Array = pd.get("heroes", [])
 		for j in min(hlist.size(), p.heroes.size()):
@@ -2918,6 +3139,21 @@ func _apply_snapshot(snap: Dictionary) -> void:
 			p.heroes[j].is_backline_revealed = hlist[j].get("backline_revealed", false)
 			p.heroes[j].damage_shield        = hlist[j].get("damage_shield",     0)
 			p.heroes[j].wall_active          = hlist[j].get("wall_active",        false)
+			p.heroes[j].taunt_active         = hlist[j].get("taunt_active",       false)
+			p.heroes[j].black_roses          = hlist[j].get("black_roses",        0)
+			p.heroes[j].sealed_ruin          = hlist[j].get("sealed_ruin",        false)
+			p.heroes[j].burn_amount          = hlist[j].get("burn_amount",        0)
+			p.heroes[j].burn_turns           = hlist[j].get("burn_turns",         0)
+			p.heroes[j].burn_is_dark         = hlist[j].get("burn_is_dark",       false)
+			p.heroes[j].shield_per_turn      = hlist[j].get("shield_per_turn",    0)
+			p.heroes[j].shield_turns         = hlist[j].get("shield_turns",       0)
+			p.heroes[j].poison_turns         = hlist[j].get("poison_turns",       0)
+			p.heroes[j].bleed_amount         = hlist[j].get("bleed_amount",       0)
+			p.heroes[j].bleed_turns          = hlist[j].get("bleed_turns",        0)
+			p.heroes[j].mark_bonus           = hlist[j].get("mark_bonus",         0)
+			p.heroes[j].mark_turns           = hlist[j].get("mark_turns",         0)
+			p.heroes[j].wound_turns          = hlist[j].get("wound_turns",        0)
+			p.heroes[j].silence_turns        = hlist[j].get("silence_turns",      0)
 		var active_idx: int = pd.get("active_hero_idx", -1)
 		p.active_hero  = p.heroes[active_idx] if active_idx >= 0 else null
 		p.sleeve_key   = pd.get("sleeve_key",  p.sleeve_key)
@@ -3153,7 +3389,7 @@ func _rpc_notify_effect_vfx(player_idx: int, vfx_key: String, target_hero_idx: i
 	GameBus.effect_vfx.emit(player_idx, vfx_key, target_hero_idx)
 
 ## Movimento animado de carta específica → clientes (e local). Server-only.
-## kind: "discard" | "to_deck".
+## kind: "discard" | "to_deck" | "banish".
 func _notify_card_move(player_idx: int, art_key: String, kind: String) -> void:
 	GameBus.card_move_anim.emit(player_idx, art_key, kind)
 	var t := _match_targets()
@@ -3207,6 +3443,71 @@ func _notify_missiles_fired(caster_player_idx: int, targets: Array) -> void:
 	else:
 		for peer in t:
 			rpc_id(peer, "_rpc_notify_missiles_fired", caster_player_idx, targets)
+
+## Anuncia o VFX das Rosas Negras (Darian) aos dois clientes da partida. Chamado
+## pelo próprio herói dentro de activate_ability (server-side) após sortear os alvos.
+func announce_roses_fired(caster_player_idx: int, source_hero_idx: int, targets: Array) -> void:
+	if not multiplayer.is_server():
+		return
+	GameBus.roses_fired.emit(caster_player_idx, source_hero_idx, targets)
+	_notify_roses_fired(caster_player_idx, source_hero_idx, targets)
+
+func _notify_roses_fired(caster_player_idx: int, source_hero_idx: int, targets: Array) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_roses_fired", caster_player_idx, source_hero_idx, targets)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_roses_fired", caster_player_idx, source_hero_idx, targets)
+
+## Anuncia o VFX da especial do Darian (Jardim de Espinhos) aos dois clientes. Chamado
+## por HeroDarian.on_skill_activated (server-side) com os heróis que tinham rosas.
+func announce_roses_detonated(caster_player_idx: int, targets: Array) -> void:
+	if not multiplayer.is_server():
+		return
+	GameBus.roses_detonated.emit(caster_player_idx, targets)
+	_notify_roses_detonated(caster_player_idx, targets)
+
+func _notify_roses_detonated(caster_player_idx: int, targets: Array) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_roses_detonated", caster_player_idx, targets)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_roses_detonated", caster_player_idx, targets)
+
+## Anuncia o VFX do Selo da Ruína (Lilith) aos dois clientes da partida. Chamado
+## pelo próprio herói dentro de activate_ability (server-side) após marcar o alvo.
+func announce_seal_applied(caster_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	if not multiplayer.is_server():
+		return
+	GameBus.seal_applied.emit(caster_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+	_notify_seal_applied(caster_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
+func _notify_seal_applied(caster_player_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_seal_applied", caster_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_seal_applied", caster_player_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
+## Anuncia o VFX da especial "Maldição do Abismo" (Lilith) aos dois clientes. Chamado por
+## HeroLilith.on_skill_activated (server-side) com os art_keys das cartas banidas do topo
+## do deck do oponente — o board encena símbolos → centro → névoa → deck e bane 1 a 1.
+func announce_abyss_curse(caster_player_idx: int, opponent_player_idx: int, banished_art_keys: Array) -> void:
+	if not multiplayer.is_server():
+		return
+	GameBus.abyss_curse.emit(caster_player_idx, opponent_player_idx, banished_art_keys)
+	_notify_abyss_curse(caster_player_idx, opponent_player_idx, banished_art_keys)
+
+func _notify_abyss_curse(caster_player_idx: int, opponent_player_idx: int, banished_art_keys: Array) -> void:
+	var t := _match_targets()
+	if t.is_empty():
+		rpc("_rpc_notify_abyss_curse", caster_player_idx, opponent_player_idx, banished_art_keys)
+	else:
+		for peer in t:
+			rpc_id(peer, "_rpc_notify_abyss_curse", caster_player_idx, opponent_player_idx, banished_art_keys)
 
 func _notify_fragment_used(player_idx: int, effect_id: String, cost: int) -> void:
 	var t := _match_targets()
@@ -3282,7 +3583,74 @@ func _deal_direct_damage(target_player_idx: int, amount: int) -> void:
 	var w := _evaluate_winner()
 	if w >= 0:
 		_conclude_match(w)
-	
+
+## Saraivada (Ieldor) — causa `amount` de dano direto a `count` heróis inimigos vivos
+## aleatórios (distintos). Respeita o Muro de Aço (retaguarda protegida excluída dos
+## candidatos), o *Provocar* (redireciona ao provocador) e a redução de dano de área.
+func deal_direct_damage_random(target_player_idx: int, amount: int, count: int) -> void:
+	if not multiplayer.is_server() or amount <= 0 or count <= 0:
+		return
+	if target_player_idx < 0 or target_player_idx > 1:
+		return
+	var tp: Player = players[target_player_idx]
+	var candidates: Array[Hero] = []
+	for h in tp.heroes:
+		if h.is_alive() and not tp.is_targeting_protected(h):
+			candidates.append(h)
+	if candidates.is_empty():
+		return
+	candidates.shuffle()
+	var shots: int = mini(count, candidates.size())
+	for i in shots:
+		var target: Hero = tp.redirect_target(candidates[i])
+		if target == null or not target.is_alive():
+			continue
+		var ctx := TurnContext.new()
+		ctx.defender = target
+		ctx.defender_player = tp
+		var dmg := amount
+		for ally in tp.heroes:
+			if ally != target:
+				dmg = maxi(0, dmg - ally.get_aoe_damage_reduction(ctx))
+		if dmg <= 0:
+			continue
+		var dealt := target.take_direct_damage(dmg, ctx)  # respeita o escudo
+		if dealt > 0:
+			GameBus.hero_damaged.emit(target, dealt)
+	var w := _evaluate_winner()
+	if w >= 0:
+		_conclude_match(w)
+
+## Bane `count` cartas do TOPO do deck do jogador para a zona de banimento (exílio).
+## Server-only. Retorna os art_keys das cartas banidas (o deck pode esvaziar antes).
+## `notify_moves`: se true (padrão), anima cada carta na hora (deck → pilha de banimento) —
+## usado pelo Selo da Ruína. A especial da Lilith passa false e encena os banimentos ela
+## mesma (após a névoa chegar ao deck), via o evento abyss_curse com esta lista.
+func banish_from_deck_top(player_idx: int, count: int, notify_moves: bool = true) -> Array:
+	var art_keys: Array = []
+	if not multiplayer.is_server() or count <= 0 or player_idx < 0 or player_idx >= players.size():
+		return art_keys
+	var p: Player = players[player_idx]
+	for i in count:
+		if p.deck.is_empty():
+			break
+		var card: Card = p.deck.pop_front()
+		p.send_to_banish(card)
+		if notify_moves:
+			_notify_card_move(player_idx, card.art_key, "banish")
+		art_keys.append(card.art_key)
+	return art_keys
+
+## Chamado por Hero.take_damage quando um herói com Selo da Ruína (Lilith) sofre dano.
+## Bane floor(amount/2) (mín 1) do topo do deck do DONO do herói marcado. Server-only.
+func on_sealed_hero_damaged(hero: Hero, amount: int) -> void:
+	if not multiplayer.is_server() or amount <= 0:
+		return
+	for i in players.size():
+		if players[i].heroes.has(hero):
+			banish_from_deck_top(i, maxi(1, amount / 2))
+			return
+
 static func _debug_force_card_to_hand(p: Player, card_name: String) -> void:
 	for i in p.deck.size():
 		if p.deck[i].card_name == card_name:

@@ -222,6 +222,11 @@ func _load_collections() -> void:
 		_collections = []
 		push_warning("[BoosterShop] Falha ao carregar coleções: %s" % res.error)
 
+	# Ordena da mais antiga para a mais nova. Não há timestamp na API, mas os ids das
+	# coleções são sequenciais/hardcoded (…0001 = Origins, …0002 = Ecos), então o id
+	# ascendente reflete a ordem de lançamento.
+	_collections.sort_custom(_coll_sort)
+
 	_selected = {}
 	for c: Dictionary in _collections:
 		if bool(c.get("active", false)):
@@ -241,6 +246,11 @@ func _art_path_for(art_key: String) -> String:
 		return ""
 	var path := "res://assets/collections/%s.png" % art_key
 	return path if ResourceLoader.exists(path) else ""
+
+
+# Mais antiga → mais nova (id ascendente; ver nota em _load_collections).
+func _coll_sort(a: Dictionary, b: Dictionary) -> bool:
+	return str(a.get("id", "")) < str(b.get("id", ""))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -277,15 +287,9 @@ func _build_collection_list() -> void:
 		return
 
 	for c: Dictionary in _collections:
-		var active := bool(c.get("active", false))
-		_collections_list.add_child(_build_coll_card(
-			str(c.get("name", "Coleção")),
-			_coll_eyebrow(c),
-			_coll_description(c),
-			_coll_total(c),
-			int(c.get("boosterPrice", PACK_PRICE)),
-			active,
-			_art_path_for(str(c.get("artKey", "")))))
+		var selected := not _selected.is_empty() \
+			and str(c.get("id", "")) == str(_selected.get("id", ""))
+		_collections_list.add_child(_build_coll_card(c, selected))
 
 
 func _coll_total(c: Dictionary) -> int:
@@ -333,13 +337,18 @@ func _build_shop_pack_visual() -> void:
 		var panel := _make_pack_panel(_sel_name, 200.0, 280.0)
 		wrap.add_child(panel)
 	_pack_display_wrap.add_child(wrap)
-	# Float animation
-	var tw := create_tween().set_loops()
+	# Float animation — tween ATRELADO ao wrap (wrap.create_tween), não ao shop.
+	# Cada select libera o wrap anterior; um tween em loop preso ao shop seguiria vivo
+	# mirando um nó liberado → duração 0 → loop infinito. Em DEBUG o Godot detecta e segue;
+	# em RELEASE a checagem some e TRAVA. Atrelado ao wrap, o tween morre junto com ele.
+	var tw := wrap.create_tween().set_loops()
 	tw.tween_property(wrap, "rotation_degrees", -4.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(wrap, "rotation_degrees",  4.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _fill_pack_info_row() -> void:
+	for c in _pack_info_row.get_children():
+		c.queue_free()
 	var cells: Array = [
 		["Cartas / Pacote", str(PACK_SIZE)],
 		["Preço Unitário",  str(_pack_price)],
@@ -1372,8 +1381,15 @@ func _sort_cards(a: Dictionary, b: Dictionary) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 # BUILDERS — dynamic content (collection cards, pack panel)
 # ─────────────────────────────────────────────────────────────────────────────
-func _build_coll_card(title: String, eyebrow: String, desc: String,
-		set_size: int, price: int, unlocked: bool, art_path: String = "") -> PanelContainer:
+func _build_coll_card(c: Dictionary, selected: bool) -> PanelContainer:
+	var unlocked := bool(c.get("active", false))
+	var title    := str(c.get("name", "Coleção"))
+	var eyebrow  := _coll_eyebrow(c)
+	var desc     := _coll_description(c)
+	var set_size := _coll_total(c)
+	var price    := int(c.get("boosterPrice", PACK_PRICE))
+	var art_path := _art_path_for(str(c.get("artKey", "")))
+
 	var card := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color     = Color(0.078, 0.098, 0.188, 1.0)
@@ -1382,6 +1398,12 @@ func _build_coll_card(title: String, eyebrow: String, desc: String,
 	if unlocked:
 		style.shadow_color = Color(C_GOLD, 0.12)
 		style.shadow_size  = 8
+	# Destaque da coleção selecionada (compra).
+	if selected:
+		style.border_color = C_GOLD
+		style.set_border_width_all(2)
+		style.shadow_color = Color(C_GOLD, 0.30)
+		style.shadow_size  = 12
 	card.add_theme_stylebox_override("panel", style)
 	if not unlocked:
 		card.modulate = Color(1, 1, 1, 0.42)
@@ -1457,7 +1479,44 @@ func _build_coll_card(title: String, eyebrow: String, desc: String,
 		lock.add_theme_font_size_override("font_size", 9)
 		lock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		hbox.add_child(lock)
+
+	# Coleções ativas são clicáveis para virar a seleção de compra. Os filhos ignoram
+	# o mouse para que o gui_input do card receba o clique em qualquer ponto.
+	if unlocked:
+		_propagate_ignore_mouse(card)
+		card.mouse_filter = Control.MOUSE_FILTER_STOP
+		card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		card.gui_input.connect(_on_collection_gui_input.bind(c))
 	return card
+
+
+func _propagate_ignore_mouse(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control:
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_propagate_ignore_mouse(child)
+
+
+func _on_collection_gui_input(event: InputEvent, c: Dictionary) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			_select_collection(c)
+
+
+# Troca a coleção em destaque (compra) e atualiza toda a UI dependente.
+func _select_collection(c: Dictionary) -> void:
+	if not _selected.is_empty() and str(c.get("id", "")) == str(_selected.get("id", "")):
+		return
+	_selected   = c
+	_sel_name   = str(c.get("name", _sel_name))
+	_art_path   = _art_path_for(str(c.get("artKey", "")))
+	_pack_price = int(c.get("boosterPrice", PACK_PRICE))
+	_qty        = 1
+	_build_collection_list()   # re-renderiza para mover o destaque
+	_build_shop_pack_visual()
+	_fill_pack_info_row()
+	_update_purchase_ui()
 
 
 func _build_split_pack(parent: Control, collection_name: String) -> void:

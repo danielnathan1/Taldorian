@@ -11,9 +11,10 @@ func _init() -> void:
 	current_hp       = 10
 	symbols_required.assign([GameSymbols.TERRA, GameSymbols.FOGO, GameSymbols.FOGO])
 	skill_name       = "Impacto Sísmico"
-	skill_desc       = "+3 de ataque"
+	skill_desc       = "*ataque* +3"
 	passive_name     = "Ataque Descuidado"
-	passive_desc     = "Enquanto Poppy não aumentar sua defesa, o ataque dela recebe +1"
+	passive_zone     = "frontline"
+	passive_desc     = "Enquanto Poppy não aumentar sua defesa, *ataque* +1"
 	base_attack      = 2
 	base_defense     = 0
 	skill_animation  = "battle_fury"
@@ -42,7 +43,7 @@ func on_before_attack(ctx: TurnContext) -> void:
 	if _passive_active:
 		ctx.bonus_damage += 1
 
-## Ativa: Terra, Terra, Fogo → +3 de ataque (disparada ao completar a cadeia)
+## Ativa: Terra, Fogo, Fogo → +3 de ataque (disparada ao completar a cadeia)
 func on_skill_activated(player: Player) -> void:
 	player.pending_bonus_attack += 3
 	_skill_activated_this_battle = true

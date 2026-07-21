@@ -1,0 +1,9 @@
+{
+  "id": "scan_irena_fail",
+  "speakers": {
+    "irena": { "name": "Irena", "portrait": "irena" }
+  },
+  "lines": [
+    { "speaker": "irena", "text": "A esfera escapou de você... Não se aflija. A serenidade vem com a prática. Tente novamente quando estiver pronto." }
+  ]
+}

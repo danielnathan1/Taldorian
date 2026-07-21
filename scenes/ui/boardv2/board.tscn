@@ -15,6 +15,18 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/boardv2/player_hand.tscn" id="player_hand_scene"]
 [ext_resource type="PackedScene" path="res://scenes/ui/boardv2/game_log/game_log.tscn" id="game_log_scene"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
+bg_color = Color(0.06, 0.03, 0.09, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.16, 0.55, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [node name="Board" type="Control" unique_id=197083175]
 layout_mode = 3
 anchors_preset = 15
@@ -274,3 +286,88 @@ layout_mode = 0
 offset_right = 320.0
 offset_bottom = 480.0
 mouse_filter = 2
+
+[node name="StatusPanel" type="PanelContainer" parent="PreviewLayer/CardPreview" unique_id=440011001]
+visible = false
+layout_mode = 0
+offset_left = -308.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 172.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_status")
+
+[node name="Margin" type="MarginContainer" parent="PreviewLayer/CardPreview/StatusPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="PreviewLayer/CardPreview/StatusPanel/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="Label" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.55, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "Efeitos negativos"
+
+[node name="SeloRuina" type="HBoxContainer" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/SeloRuina"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/SeloRuina"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/SeloRuina/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.82, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "Selo da Ruína"
+
+[node name="Desc" type="Label" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/SeloRuina/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.78, 0.86, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+
+[node name="Queimadura" type="HBoxContainer" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/Queimadura"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/Queimadura"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/Queimadura/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.82, 0.68, 1)
+theme_override_font_sizes/font_size = 14
+text = "Queimadura"
+
+[node name="Desc" type="Label" parent="PreviewLayer/CardPreview/StatusPanel/Margin/VBox/Queimadura/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.8, 0.76, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3

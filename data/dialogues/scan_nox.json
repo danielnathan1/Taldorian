@@ -1,0 +1,11 @@
+{
+  "id": "scan_nox",
+  "speakers": {
+    "nox": { "name": "???", "portrait": "nox" }
+  },
+  "lines": [
+    { "speaker": "nox", "text": "...! Você consegue me ver? Curioso. A maioria passa direto por mim." },
+    { "speaker": "nox", "name": "Nox", "text": "Eu deixo você me rastrear... mas não de graça. Um mago não se entrega a qualquer um, sabe." },
+    { "speaker": "nox", "name": "Nox", "text": "Vou traçar um caminho de pegadas. Memorize e repita na ordem certa, sem errar. Se conseguir, sou seu. Pronto?" }
+  ]
+}

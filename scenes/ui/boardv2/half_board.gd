@@ -17,12 +17,14 @@ const SLOT_COLORS = {
 }
 
 signal graveyard_clicked(side: String)
+signal banish_clicked(side: String)
 
 var _hero_slots:           Array = []
 var _active_hero_view:     Node  = null  # HeroSlot
 var _arsenal_texture_rect: TextureRect   = null
 var _arsenal_card_view:    CardView      = null   # usado quando face_up = true
 var _grave_card_view:      CardView      = null
+var _banish_card_view:     CardView      = null
 var _glow_tween: Tween
 
 @onready var _bg               := $PlaymatBackground
@@ -41,6 +43,7 @@ var _glow_tween: Tween
 @onready var _deck_count_badge := $HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot/CountBadge
 @onready var _deck_sleeve      := $HalfInner/MainRow/ColA_DeckGrave/DeckWrap/DeckSlot/DeckSleeve
 @onready var _grave_slot       := $HalfInner/MainRow/ColA_DeckGrave/GraveWrap/GraveSlot
+@onready var _banish_slot      := $HalfInner/MainRow/ColA_DeckGrave/BanishWrap/BanishSlot
 
 func set_playmat(tex: Texture2D) -> void:
 	_bg.texture = tex
@@ -94,6 +97,22 @@ func _setup_dynamic_nodes() -> void:
 	_grave_slot.gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and not event.double_click:
 			graveyard_clicked.emit(player_side)
+	)
+
+	# Zona de banimento — mesmo esquema do cemitério (CardView do topo + clique no slot).
+	_banish_card_view = CardViewScene.instantiate()
+	_banish_card_view.layout_mode = 1
+	_banish_card_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_banish_card_view.custom_minimum_size = Vector2(62, 87)
+	_banish_card_view.set_interactable(false, false)
+	_banish_card_view.visible = false
+	_banish_slot.add_child(_banish_card_view)
+	_banish_card_view.apply_scale(0.5)
+	_set_mouse_ignore_recursive(_banish_card_view)
+
+	_banish_slot.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and not event.double_click:
+			banish_clicked.emit(player_side)
 	)
 
 
@@ -215,6 +234,7 @@ const _ELEMENT_ICONS := {
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
 	"lightning": "res://assets/icons/elements/lightning.png",
+	"trevas": "res://assets/icons/elements/dark.png",
 }
 
 ## Adiciona apenas um ícone de símbolo à combat zone (ex.: símbolo escolhido via
@@ -276,6 +296,13 @@ func set_graveyard_card(card: Card) -> void:
 	_grave_card_view.bind(card)
 	_grave_card_view.visible = true
 
+func set_banish_card(card: Card) -> void:
+	if card == null:
+		_banish_card_view.visible = false
+		return
+	_banish_card_view.bind(card)
+	_banish_card_view.visible = true
+
 func set_deck_sleeve(texture: Texture2D) -> void:
 	_deck_sleeve.texture = texture
 
@@ -286,6 +313,9 @@ func get_deck_global_center() -> Vector2:
 
 func get_graveyard_global_center() -> Vector2:
 	return _grave_slot.get_global_rect().get_center() as Vector2
+
+func get_banish_global_center() -> Vector2:
+	return _banish_slot.get_global_rect().get_center() as Vector2
 
 func get_combat_cards_global_center() -> Vector2:
 	return _combat_cards.get_global_rect().get_center() as Vector2

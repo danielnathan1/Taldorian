@@ -10,7 +10,7 @@ const FONT_DECO  := preload("res://assets/fonts/CinzelDecorative-Bold.ttf")
 const FONT_BLACK := preload("res://assets/fonts/CinzelDecorative-Black.ttf")
 
 const DECK_BUILDER_SCENE := "res://scenes/ui/deck_builder/deck_builder.tscn"
-const LOBBY_SCENE        := "res://scenes/ui/lobby/lobby.tscn"
+const LOGIN_SCENE        := "res://scenes/ui/login/login.tscn"
 const WORLD_SCENE        := "res://scenes/world/world_root.tscn"
 const AB_H := 74.0
 
@@ -241,7 +241,7 @@ func _go_back() -> void:
 	if peer != null and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		get_tree().change_scene_to_file(WORLD_SCENE)
 	else:
-		get_tree().change_scene_to_file(LOBBY_SCENE)
+		get_tree().change_scene_to_file(LOGIN_SCENE)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

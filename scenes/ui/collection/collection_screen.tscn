@@ -1,0 +1,686 @@
+[gd_scene load_steps=20 format=3 uid="uid://collection_screen"]
+
+[ext_resource type="Script" path="res://scenes/ui/collection/collection_screen.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/ui/deck_builder/components/hero_preview_popup.gd" id="2_heropopup"]
+[ext_resource type="Script" path="res://scenes/ui/deck_builder/components/card_preview_popup.gd" id="3_cardpopup"]
+[ext_resource type="PackedScene" uid="uid://bl76o06r6asji" path="res://scenes/ui/card_view/card_view.tscn" id="4_cardview"]
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="5_heroslot"]
+[ext_resource type="PackedScene" uid="uid://collection_tab_plaque" path="res://scenes/ui/collection/components/tab_plaque.tscn" id="6_plaque"]
+[ext_resource type="Texture2D" path="res://assets/icons/elements/fire.png" id="7_el_fire"]
+[ext_resource type="Texture2D" path="res://assets/icons/elements/earth.png" id="8_el_earth"]
+[ext_resource type="Texture2D" path="res://assets/icons/elements/water.png" id="9_el_water"]
+[ext_resource type="Texture2D" path="res://assets/icons/elements/wind.png" id="10_el_wind"]
+[ext_resource type="Texture2D" path="res://assets/icons/elements/lightning.png" id="11_el_light"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/Barbarian.png" id="12_cls_barb"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/monk.png" id="13_cls_monk"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/Rogue.png" id="14_cls_rogue"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/Cleric.png" id="15_cls_cleric"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/Ranger.png" id="16_cls_ranger"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/Guardian.png" id="17_cls_guardian"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/wizard.png" id="18_cls_wizard"]
+[ext_resource type="Texture2D" path="res://assets/icons/class/sorcerer.png" id="19_cls_sorcerer"]
+
+[node name="CollectionScreen" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.039, 0.039, 0.094, 1)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+; ── Header: voltar à esquerda, título centralizado ─────────────────────────────
+
+[node name="Header" type="PanelContainer" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 64)
+
+[node name="HeaderHBox" type="HBoxContainer" parent="VBox/Header"]
+layout_mode = 2
+
+[node name="BackBtn" type="Button" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(96, 0)
+flat = true
+text = "← VOLTAR"
+
+[node name="LSpacer" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleBox" type="VBoxContainer" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="EyebrowLine" type="Label" parent="VBox/Header/HeaderHBox/TitleBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "TALDORIAN TCCG"
+
+[node name="EyebrowTitle" type="Label" parent="VBox/Header/HeaderHBox/TitleBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "COLEÇÃO"
+
+[node name="RSpacer" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightPad" type="Control" parent="VBox/Header/HeaderHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+
+; ── Placas de aba centralizadas (rótulo + contagem N/M) ────────────────────────
+
+[node name="TabsBar" type="PanelContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="TabsCenter" type="CenterContainer" parent="VBox/TabsBar"]
+layout_mode = 2
+
+[node name="TabsHBox" type="HBoxContainer" parent="VBox/TabsBar/TabsCenter"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="TabCards" parent="VBox/TabsBar/TabsCenter/TabsHBox" instance=ExtResource("6_plaque")]
+layout_mode = 2
+glyph = "✦"
+title = "CARTAS"
+
+[node name="TabHeroes" parent="VBox/TabsBar/TabsCenter/TabsHBox" instance=ExtResource("6_plaque")]
+layout_mode = 2
+glyph = ""
+title = "HERÓIS"
+
+[node name="TabCosmetics" parent="VBox/TabsBar/TabsCenter/TabsHBox" instance=ExtResource("6_plaque")]
+layout_mode = 2
+glyph = "◆"
+title = "COSMÉTICOS"
+
+; ── Aba Cartas ─────────────────────────────────────────────────────────────────
+
+[node name="CardsTab" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="FilterBar" type="PanelContainer" parent="VBox/CardsTab"]
+layout_mode = 2
+
+[node name="FilterVBox" type="VBoxContainer" parent="VBox/CardsTab/FilterBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SearchRow" type="HBoxContainer" parent="VBox/CardsTab/FilterBar/FilterVBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SearchInput" type="LineEdit" parent="VBox/CardsTab/FilterBar/FilterVBox/SearchRow"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(320, 0)
+placeholder_text = "🔍  Buscar carta pelo nome..."
+
+[node name="TimingSelect" type="OptionButton" parent="VBox/CardsTab/FilterBar/FilterVBox/SearchRow"]
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+
+[node name="RarityHBox" type="HBoxContainer" parent="VBox/CardsTab/FilterBar/FilterVBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="RarityLabel" type="Label" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(90, 0)
+text = "RARIDADE"
+
+[node name="RarityRow" type="HBoxContainer" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="ChipRarAll" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox/RarityRow"]
+layout_mode = 2
+focus_mode = 0
+text = "Todas"
+
+[node name="ChipRarCommon" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox/RarityRow"]
+layout_mode = 2
+focus_mode = 0
+text = "⬜ Comum"
+
+[node name="ChipRarRare" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox/RarityRow"]
+layout_mode = 2
+focus_mode = 0
+text = "🔵 Rara"
+
+[node name="ChipRarLegendary" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox/RarityRow"]
+layout_mode = 2
+focus_mode = 0
+text = "🟡 Lendária"
+
+[node name="ChipRarMystic" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/RarityHBox/RarityRow"]
+layout_mode = 2
+focus_mode = 0
+text = "🟣 Mística"
+
+[node name="ElementHBox" type="HBoxContainer" parent="VBox/CardsTab/FilterBar/FilterVBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ElementLabel" type="Label" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(90, 0)
+text = "ELEMENTO"
+
+[node name="SymRow" type="HBoxContainer" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="ChipSymAll" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+text = "Todos"
+
+[node name="ChipFogo" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("7_el_fire")
+theme_override_constants/icon_max_width = 20
+text = "Fogo"
+
+[node name="ChipTerra" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("8_el_earth")
+theme_override_constants/icon_max_width = 20
+text = "Terra"
+
+[node name="ChipAgua" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("9_el_water")
+theme_override_constants/icon_max_width = 20
+text = "Água"
+
+[node name="ChipAr" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("10_el_wind")
+theme_override_constants/icon_max_width = 20
+text = "Ar"
+
+[node name="ChipRaio" type="Button" parent="VBox/CardsTab/FilterBar/FilterVBox/ElementHBox/SymRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("11_el_light")
+theme_override_constants/icon_max_width = 20
+text = "Raio"
+
+[node name="GridMargin" type="MarginContainer" parent="VBox/CardsTab"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 14
+
+[node name="GridVBox" type="VBoxContainer" parent="VBox/CardsTab/GridMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CardScroll" type="ScrollContainer" parent="VBox/CardsTab/GridMargin/GridVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CardList" type="HFlowContainer" parent="VBox/CardsTab/GridMargin/GridVBox/CardScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="CardsEmptyLabel" type="Label" parent="VBox/CardsTab/GridMargin/GridVBox"]
+visible = false
+layout_mode = 2
+horizontal_alignment = 1
+text = "Nenhuma carta encontrada"
+
+; ── Aba Heróis ─────────────────────────────────────────────────────────────────
+
+[node name="HeroesTab" type="VBoxContainer" parent="VBox"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="HeroFilterBar" type="PanelContainer" parent="VBox/HeroesTab"]
+layout_mode = 2
+
+[node name="HeroFilterVBox" type="VBoxContainer" parent="VBox/HeroesTab/HeroFilterBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeroSearchRow" type="HBoxContainer" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox"]
+layout_mode = 2
+
+[node name="HeroSearchInput" type="LineEdit" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/HeroSearchRow"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(320, 0)
+placeholder_text = "🔍  Buscar herói pelo nome..."
+
+[node name="ClassHBox" type="HBoxContainer" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ClassLabel" type="Label" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(90, 0)
+text = "CLASSE"
+
+[node name="ClassRow" type="HBoxContainer" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="ChipClsAll" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+text = "Todos"
+
+[node name="ChipClsBarbarian" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("12_cls_barb")
+theme_override_constants/icon_max_width = 20
+text = "Bárbaro"
+
+[node name="ChipClsWarrior" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+text = "Guerreiro"
+
+[node name="ChipClsMonk" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("13_cls_monk")
+theme_override_constants/icon_max_width = 20
+text = "Monge"
+
+[node name="ChipClsRogue" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("14_cls_rogue")
+theme_override_constants/icon_max_width = 20
+text = "Ladino"
+
+[node name="ChipClsCleric" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("15_cls_cleric")
+theme_override_constants/icon_max_width = 20
+text = "Clérigo"
+
+[node name="ChipClsRanger" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("16_cls_ranger")
+theme_override_constants/icon_max_width = 20
+text = "Patrulheiro"
+
+[node name="ChipClsGuardian" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("17_cls_guardian")
+theme_override_constants/icon_max_width = 20
+text = "Guardião"
+
+[node name="ChipClsWizard" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("18_cls_wizard")
+theme_override_constants/icon_max_width = 20
+text = "Mago"
+
+[node name="ChipClsSorcerer" type="Button" parent="VBox/HeroesTab/HeroFilterBar/HeroFilterVBox/ClassHBox/ClassRow"]
+layout_mode = 2
+focus_mode = 0
+icon = ExtResource("19_cls_sorcerer")
+theme_override_constants/icon_max_width = 20
+text = "Feiticeiro"
+
+[node name="HeroGridMargin" type="MarginContainer" parent="VBox/HeroesTab"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 14
+
+[node name="HeroGridVBox" type="VBoxContainer" parent="VBox/HeroesTab/HeroGridMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HeroScroll" type="ScrollContainer" parent="VBox/HeroesTab/HeroGridMargin/HeroGridVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="HeroList" type="HFlowContainer" parent="VBox/HeroesTab/HeroGridMargin/HeroGridVBox/HeroScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="HeroesEmptyLabel" type="Label" parent="VBox/HeroesTab/HeroGridMargin/HeroGridVBox"]
+visible = false
+layout_mode = 2
+horizontal_alignment = 1
+text = "Nenhum herói encontrado"
+
+; ── Aba Cosméticos ─────────────────────────────────────────────────────────────
+
+[node name="CosmeticsTab" type="MarginContainer" parent="VBox"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 14
+
+[node name="CosScroll" type="ScrollContainer" parent="VBox/CosmeticsTab"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="CosVBox" type="VBoxContainer" parent="VBox/CosmeticsTab/CosScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="SleevesTitle" type="Label" parent="VBox/CosmeticsTab/CosScroll/CosVBox"]
+layout_mode = 2
+text = "SLEEVES"
+
+[node name="SleeveFlow" type="HFlowContainer" parent="VBox/CosmeticsTab/CosScroll/CosVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="CosSep" type="HSeparator" parent="VBox/CosmeticsTab/CosScroll/CosVBox"]
+layout_mode = 2
+
+[node name="PlaymatsTitle" type="Label" parent="VBox/CosmeticsTab/CosScroll/CosVBox"]
+layout_mode = 2
+text = "PLAYMATS"
+
+[node name="PlaymatFlow" type="HFlowContainer" parent="VBox/CosmeticsTab/CosScroll/CosVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+; ── Preview de herói (subtree espelhada do deck_builder) ───────────────────────
+
+[node name="HeroPreviewPopup" type="CanvasLayer" parent="."]
+layer = 15
+script = ExtResource("2_heropopup")
+visible = false
+
+[node name="DimBG" type="ColorRect" parent="HeroPreviewPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+mouse_filter = 0
+
+[node name="Panel" type="PanelContainer" parent="HeroPreviewPopup/DimBG"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -455.0
+offset_top = -312.0
+offset_right = 455.0
+offset_bottom = 312.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="HBox" type="HBoxContainer" parent="HeroPreviewPopup/DimBG/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="HeroWrapper" type="AspectRatioContainer" parent="HeroPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 3
+ratio = 0.6667
+stretch_mode = 2
+clip_contents = true
+
+[node name="HeroSlot" parent="HeroPreviewPopup/DimBG/Panel/HBox/HeroWrapper" instance=ExtResource("5_heroslot")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+custom_minimum_size = Vector2(0, 0)
+
+[node name="InfoPad" type="MarginContainer" parent="HeroPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="InfoCol" type="VBoxContainer" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CloseBtnRow" type="HBoxContainer" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseBtn" type="Button" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+text = "✕"
+
+[node name="NameLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Nome"
+
+[node name="ClassLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Classe"
+
+[node name="StatsLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "⚔ 2  🛡 1  ♥ 20"
+
+[node name="SymbolsLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="HSep1" type="HSeparator" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="SkillNameLabel" type="Label" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Habilidade Ativa"
+
+[node name="SkillDescLabel" type="RichTextLabel" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 3
+text = ""
+
+[node name="HSep2" type="HSeparator" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="PassiveNameLabel" type="RichTextLabel" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
+text = "[u]Passiva[/u]"
+
+[node name="PassiveDescLabel" type="RichTextLabel" parent="HeroPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 3
+text = ""
+
+; ── Preview de carta (subtree espelhada do deck_builder) ───────────────────────
+
+[node name="CardPreviewPopup" type="CanvasLayer" parent="."]
+layer = 16
+script = ExtResource("3_cardpopup")
+visible = false
+
+[node name="DimBG" type="ColorRect" parent="CardPreviewPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+mouse_filter = 0
+
+[node name="Panel" type="PanelContainer" parent="CardPreviewPopup/DimBG"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -455.0
+offset_top = -312.0
+offset_right = 455.0
+offset_bottom = 312.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="HBox" type="HBoxContainer" parent="CardPreviewPopup/DimBG/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="CardWrapper" type="AspectRatioContainer" parent="CardPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(280, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 3
+ratio = 0.6667
+stretch_mode = 2
+clip_contents = true
+
+[node name="CardView" parent="CardPreviewPopup/DimBG/Panel/HBox/CardWrapper" instance=ExtResource("4_cardview")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="InfoPad" type="MarginContainer" parent="CardPreviewPopup/DimBG/Panel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="InfoCol" type="VBoxContainer" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CloseBtnRow" type="HBoxContainer" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseBtn" type="Button" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol/CloseBtnRow"]
+layout_mode = 2
+text = "✕"
+
+[node name="NameLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Nome da Carta"
+
+[node name="TimingLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "Ação"
+
+[node name="SymbolsLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="StatsLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="HSep1" type="HSeparator" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="RarityLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="CopiesLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = ""
+
+[node name="StealthLabel" type="Label" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+text = "👁 Carta Furtiva"
+visible = false
+
+[node name="HSep2" type="HSeparator" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+
+[node name="DescLabel" type="RichTextLabel" parent="CardPreviewPopup/DimBG/Panel/HBox/InfoPad/InfoCol"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+autowrap_mode = 3
+theme_override_font_sizes/normal_font_size = 13
+theme_override_font_sizes/bold_font_size = 13

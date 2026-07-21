@@ -1,0 +1,9 @@
+{
+  "id": "scan_nox_fail",
+  "speakers": {
+    "nox": { "name": "Nox", "portrait": "nox" }
+  },
+  "lines": [
+    { "speaker": "nox", "text": "Hmm... você perdeu o fio do caminho. Não foi dessa vez. Respire e tente de novo quando quiser." }
+  ]
+}

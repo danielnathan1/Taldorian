@@ -1,0 +1,46 @@
+{
+  "id": "onboarding_encerramento",
+  "speakers": {
+    "encapuzado": {
+      "name": "Encapuzado",
+      "portrait": "encapuzado"
+    },
+    "jogador": {
+      "name": "Você"
+    }
+  },
+  "lines": [
+    {
+      "speaker": "encapuzado",
+      "text": "Magnífico... O Olho Arcano o aceitou sem hesitar. Poucos conseguem estabelecer esse vínculo logo na primeira tentativa."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Mas isso foi apenas o primeiro passo."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Taldorian é um mundo vasto. Florestas esquecidas, ruínas ancestrais, criaturas lendárias, heróis, relíquias e segredos aguardam aqueles que têm coragem de procurá-los."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Nem tudo poderá ser rastreado com facilidade. Alguns desafios exigirão inteligência. Outros... coragem. E há aqueles que cobrarão um preço."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Siga até a taverna de Taldoria. Todo grande aventureiro passa por lá antes de escrever sua própria história."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Tenho certeza de que nossos caminhos voltarão a se cruzar."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Até breve, {player_name}."
+    },
+    {
+      "speaker": "jogador",
+      "text": "Espere... eu não me lembro de ter dito meu nome."
+    }
+  ]
+}

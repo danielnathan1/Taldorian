@@ -14,6 +14,7 @@ const ELEMENTS := [
 	{ "key": GameSymbols.AGUA, "glyph": "", "name": "Água", "icon": "res://assets/icons/elements/water.png" },
 	{ "key": GameSymbols.AR, "glyph": "", "name": "Ar", "icon": "res://assets/icons/elements/wind.png" },
 	{ "key": GameSymbols.RAIO, "glyph": "", "name": "Raio", "icon": "res://assets/icons/elements/lightning.png" },
+	{ "key": GameSymbols.TREVAS, "glyph": "", "name": "Trevas", "icon": "res://assets/icons/elements/dark.png" },
 ]
 
 const RARITIES := [

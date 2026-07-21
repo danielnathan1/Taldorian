@@ -250,6 +250,15 @@ theme_override_fonts/font = ExtResource("4_body")
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
+[node name="SuccessLabel" type="Label" parent="Center/Col/Panel/Forms/LoginForm" unique_id=314159265]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.357, 0.737, 0.376, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+
 [node name="Gap3" type="Control" parent="Center/Col/Panel/Forms/LoginForm" unique_id=247797184]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2

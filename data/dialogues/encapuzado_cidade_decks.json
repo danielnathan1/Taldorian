@@ -1,0 +1,10 @@
+{
+  "id": "encapuzado_cidade_decks",
+  "speakers": {
+    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+  },
+  "lines": [
+    { "speaker": "encapuzado", "text": "Quando tiver cartas em mãos, use o ícone de decks para montar e ajustar os seus baralhos." },
+    { "speaker": "encapuzado", "text": "Um bom aventureiro é feito de boas escolhas — e um bom deck é a primeira delas." }
+  ]
+}

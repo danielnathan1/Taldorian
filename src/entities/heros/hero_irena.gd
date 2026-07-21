@@ -11,9 +11,9 @@ func _init() -> void:
 	current_hp       = 9
 	symbols_required.assign([GameSymbols.AGUA, GameSymbols.AGUA, GameSymbols.TERRA])
 	skill_name       = "Toque Revigorante"
-	skill_desc       = "Enquanto estiver ativa, todas as curas de Irena aumentam em +1"
+	skill_desc       = "Todas as curas de Irena aumentam em +1 até fim do combate"
 	passive_name     = "Crescimento Natural"
-	passive_desc     = "No final da batalha, Irena cura a si mesma e todos aliados em 1"
+	passive_desc     = "No final de cada batalha, Irena *cura* a si mesma e todos os aliados em 1"
 	base_attack      = 0
 	base_defense     = 2
 	passive_animation = "holy_heal"

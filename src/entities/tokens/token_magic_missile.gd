@@ -55,6 +55,9 @@ func _fire_missiles(player: Player, opponent: Player, targets: Array) -> String:
 		var target: Hero = targets[i]
 		if target == null or not target.is_alive():
 			continue
+		# Provocar (Provocação da Valkar): dano direcionado ao time inimigo é puxado para o provocador.
+		if target in opponent.heroes:
+			target = opponent.redirect_target(target)
 		var ctx := TurnContext.new()
 		ctx.attacker_player = player
 		ctx.defender_player = opponent if target in opponent.heroes else player
@@ -67,6 +70,11 @@ func _fire_missiles(player: Player, opponent: Player, targets: Array) -> String:
 		var dealt := target.take_direct_damage(damage, ctx)  # respeita o escudo (Fluxo Reativo)
 		if dealt > 0:
 			GameBus.hero_damaged.emit(target, dealt)
+			# Sobrecarga Arcana (Nox): míssil aplica *Marca* on-hit e recria 1 míssil.
+			if player.missile_overcharge:
+				player.marked_target = target
+				player.marked_bonus = maxi(player.marked_bonus, 1)
+				player.tokens.append(TokenMagicMissile.new())
 	_consume(player, shots)
 	return ""
 

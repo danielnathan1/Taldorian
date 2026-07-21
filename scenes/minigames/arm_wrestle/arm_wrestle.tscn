@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3 uid="uid://cnarmwrestle01"]
+
+[ext_resource type="Script" path="res://scenes/minigames/arm_wrestle/arm_wrestle.gd" id="1_aw"]
+
+[node name="ArmWrestle" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_aw")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.16
+anchor_right = 1.0
+anchor_bottom = 0.16
+offset_bottom = 40.0
+grow_horizontal = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+text = "Clique bem rápido para vencer a queda de braço!"
+
+[node name="Status" type="Label" parent="."]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.76
+anchor_right = 1.0
+anchor_bottom = 0.76
+offset_bottom = 36.0
+grow_horizontal = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+text = ""

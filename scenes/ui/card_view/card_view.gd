@@ -3,10 +3,12 @@ extends Control
 
 const SLEEVE_DEFAULT := preload("res://assets/sleve/default.png")
 const FOIL_SHADER    := preload("res://scenes/ui/card_view/foil.gdshader")
+const GRAYSCALE_SHADER := preload("res://scenes/ui/card_view/grayscale.gdshader")
 
 @onready var card_content    := $CardContent
 @onready var back_rect       := $Back
 @onready var _art            := $CardContent/Art
+@onready var _card_base      := $CardContent/CardLayoutBase
 @onready var _title_lbl      := $CardContent/TitleLabel
 @onready var _element_sym    := $CardContent/ElementSymbol
 @onready var _desc_lbl       := $CardContent/DescLabel
@@ -32,6 +34,10 @@ var _base_rotation_deg: float
 var _base_z: int
 var _hover_tween: Tween
 var _foil_overlay: ColorRect = null
+var _grayscale_mat: ShaderMaterial = null
+## Tamanho "ideal" da fonte da descrição (design × escala). O auto-fit encolhe a partir
+## daqui; guardado para o resized recompor sem partir de um valor já reduzido.
+var _desc_base_px: int = 8
 
 const _ELEMENT_ICONS := {
 	"fogo":  "res://assets/icons/elements/fire.png",
@@ -39,6 +45,7 @@ const _ELEMENT_ICONS := {
 	"agua":  "res://assets/icons/elements/water.png",
 	"wind":  "res://assets/icons/elements/wind.png",
 	"lightning": "res://assets/icons/elements/lightning.png",
+	"trevas": "res://assets/icons/elements/dark.png",
 }
 
 func _ready() -> void:
@@ -46,6 +53,9 @@ func _ready() -> void:
 	_build_foil_overlay()
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	# Reajusta a descrição quando a caixa ganha/muda de tamanho (bind pode ocorrer antes
+	# do primeiro layout, sem altura válida para medir o overflow).
+	_desc_lbl.resized.connect(_refit_desc)
 
 # Overlay cromático no topo do CardContent. Aditivo (ver foil.gdshader): só as
 # bandas acendem, o resto da carta aparece normal. Inicia oculto.
@@ -69,7 +79,7 @@ func bind(p_card: Card) -> void:
 	card = p_card
 	_art.texture         = card.get_texture()
 	_title_lbl.text      = card.card_name
-	_desc_lbl.text       = _format_description(card)
+	_render_desc(_desc_base_px)
 	_atk_lbl.text        = _fmt_signed(card.attack_value)
 	_def_lbl.text        = str(card.defense_value)
 	_rarity_lbl.text     = _rarity_letter(card.rarity)
@@ -79,10 +89,28 @@ func bind(p_card: Card) -> void:
 	_element_sym.visible = _element_sym.texture != null
 	_update_foil()
 
-# Cartas sem efeito têm a descrição (flavor text) exibida entre aspas.
+## Monta a descrição em BBCode (keywords em negrito, símbolos {X} em ícone), centraliza e
+## encolhe a fonte SÓ se estourar a caixa. [base_px] é o tamanho "ideal" (design/escala),
+## nunca o já reduzido — guardado em _desc_base_px para o resized recompor corretamente.
+func _render_desc(base_px: int) -> void:
+	if card == null:
+		return
+	_desc_base_px = base_px
+	var min_px := maxi(4, base_px * 5 / 8)
+	TextMarkup.fit_rich_label(_desc_lbl, base_px, min_px, _compose_desc)
+
+## Descrição em BBCode centralizada para a fonte [px] (ícones acompanham a fonte).
+func _compose_desc(px: int) -> String:
+	return "[center]%s[/center]" % TextMarkup.to_bbcode(_format_description(card), maxi(1, px))
+
+## Refaz o ajuste quando a caixa muda de tamanho, mantendo o tamanho-base pretendido.
+func _refit_desc() -> void:
+	_render_desc(_desc_base_px)
+
+# Cartas sem efeito têm a descrição (flavor text) exibida entre aspas e em itálico.
 func _format_description(p_card: Card) -> String:
 	if p_card.effects.is_empty() and p_card.description != "":
-		return '"%s"' % p_card.description
+		return '[i]"%s"[/i]' % p_card.description
 	return p_card.description
 
 func bind_dict(d: Dictionary) -> void:
@@ -128,6 +156,21 @@ func set_foil(value: bool) -> void:
 		card.is_foil = value
 	_update_foil()
 
+## Deixa a carta inteira em preto-e-branco — usado no fichário do Catálogo para cartas
+## que o jogador nunca teve. Aplica o shader de dessaturação em TODOS os elementos
+## coloridos (arte, moldura, símbolo de elemento, ícones de atk/def) e apaga a cor do
+## selo de raridade; false restaura a cor.
+func set_grayscale(value: bool) -> void:
+	if value and _grayscale_mat == null:
+		_grayscale_mat = ShaderMaterial.new()
+		_grayscale_mat.shader = GRAYSCALE_SHADER
+		_grayscale_mat.set_shader_parameter("amount", 1.0)
+	var mat: ShaderMaterial = _grayscale_mat if value else null
+	for n: CanvasItem in [_art, _card_base, _element_sym, _atk_icon, _def_icon]:
+		n.material = mat
+	# O selo de raridade é um Panel (cor via stylebox) — dessatura via modulate.
+	_rarity_bg.modulate = Color(0.6, 0.6, 0.6) if value else Color.WHITE
+
 func set_interactable(value: bool, dim_when_blocked: bool = true) -> void:
 	_interactable = value
 	modulate.a = 1.0 if (value or not dim_when_blocked) else 0.45
@@ -146,7 +189,8 @@ func setup_fan(base_pos: Vector2, rot_deg: float, pivot: Vector2, z: int) -> voi
 
 func apply_scale(factor: float) -> void:
 	_title_lbl.add_theme_font_size_override("font_size", int(9 * factor))
-	_desc_lbl.add_theme_font_size_override("font_size", int(8 * factor))
+	# Descrição: base = 8×fator; o auto-fit define as font-size overrides e encolhe se estourar.
+	_render_desc(int(8 * factor))
 	_atk_lbl.add_theme_font_size_override("font_size", int(8 * factor))
 	_def_lbl.add_theme_font_size_override("font_size", int(8 * factor))
 	_rarity_lbl.add_theme_font_size_override("font_size", int(4 * factor))

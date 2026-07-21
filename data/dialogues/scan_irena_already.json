@@ -1,0 +1,9 @@
+{
+  "id": "scan_irena_already",
+  "speakers": {
+    "irena": { "name": "Irena", "portrait": "irena" }
+  },
+  "lines": [
+    { "speaker": "irena", "text": "Já caminhamos essa estrada juntos. Guarde sua paciência para outro rastreio." }
+  ]
+}

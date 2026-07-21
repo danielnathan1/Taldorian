@@ -1,6 +1,9 @@
 extends Control
 class_name CardVisual
 
+## Tamanho "ideal" (design) da fonte da descrição; o auto-fit encolhe a partir daqui.
+var _desc_base_px: int = 22
+
 # ── Textures ─────────────────────────────────────────────────────────────────
 @export var frame_texture: Texture2D:
 	set(value):
@@ -28,7 +31,7 @@ class_name CardVisual
 @export_multiline var description: String = "":
 	set(value):
 		description = value
-		if is_inside_tree(): %DescLabel.text = value
+		if is_inside_tree(): _render_desc()
 
 @export var card_type: String = "":
 	set(value):
@@ -58,13 +61,31 @@ func _ready() -> void:
 	%ArtTexture.texture    = art_texture
 	%ElementSymbol.texture = element_texture
 	%TitleLabel.text       = title       if title       != "" else %TitleLabel.text
-	%DescLabel.text        = description if description != "" else %DescLabel.text
+	# Captura o tamanho-base da fonte (design) antes de qualquer encolhimento e reajusta
+	# a descrição quando a caixa muda de tamanho.
+	_desc_base_px = maxi(1, %DescLabel.get_theme_font_size("normal_font_size"))
+	%DescLabel.resized.connect(_render_desc)
+	_render_desc()
 	%TypeTopLabel.text     = card_type   if card_type   != "" else %TypeTopLabel.text
 	%TypeBottomLabel.text  = card_type   if card_type   != "" else %TypeBottomLabel.text
 	%RarityLabel.text      = rarity
 	%AtkValueLabel.text    = _format_signed(attack)
 	%DefValueLabel.text    = str(defense)
 	_update_art_visibility()
+
+
+## Renderiza a descrição no DescLabel (RichTextLabel): keywords (*palavra*) em negrito,
+## símbolos {X} em ícone, bloco centralizado, e a fonte encolhe SÓ se estourar a caixa.
+## Descrição vazia mantém o placeholder do editor.
+func _render_desc() -> void:
+	if not is_inside_tree() or description == "":
+		return
+	var min_px := maxi(6, _desc_base_px * 5 / 8)
+	TextMarkup.fit_rich_label(%DescLabel, _desc_base_px, min_px, _compose_desc)
+
+## Descrição em BBCode centralizada para a fonte [px] (ícones acompanham a fonte).
+func _compose_desc(px: int) -> String:
+	return "[center]%s[/center]" % TextMarkup.to_bbcode(description, px)
 
 
 func _update_art_visibility() -> void:

@@ -1,0 +1,12 @@
+{
+  "id": "blauber_pos_tutorial",
+  "speakers": {
+    "blauber": { "name": "Blauber", "portrait": "blauber" },
+    "jogador": { "name": "Você" }
+  },
+  "lines": [
+    { "speaker": "blauber", "text": "Ei... você aprende muito rápido!" },
+    { "speaker": "blauber", "text": "As arenas de duelo de Taldorian vão receber um grande jogador em breve. Anota o que eu disse." },
+    { "speaker": "blauber", "text": "Descansa um pouco, aventureiro. Sua jornada está só começando." }
+  ]
+}

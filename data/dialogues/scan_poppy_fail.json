@@ -1,0 +1,11 @@
+{
+  "id": "scan_poppy_fail",
+  "speakers": {
+    "poppy": { "name": "Poppy", "portrait": "poppy" }
+  },
+  "lines": [
+    { "speaker": "poppy", "text": "Hah! Seu braço bateu na mesa antes do meu nem doer. Mas relaxa..." },
+    { "speaker": "poppy", "text": "Gostei da sua garra. Continuou clicando até o fim, sem desistir. Isso vale mais que músculo pra mim." },
+    { "speaker": "poppy", "text": "Pode me escanear mesmo assim. Você mereceu." }
+  ]
+}

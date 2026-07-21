@@ -34,7 +34,8 @@ func show_card(card_dict: Dictionary) -> void:
 	var stealth: bool = card_dict.get("stealth", false)
 	_get_stealth_label().visible = stealth
 
-	_get_desc_label().text = card_dict.get("description", "")
+	var icon_px := maxi(1, _get_desc_label().get_theme_font_size("normal_font_size"))
+	_get_desc_label().text = TextMarkup.to_bbcode(card_dict.get("description", ""), icon_px)
 
 	visible = true
 
@@ -76,4 +77,4 @@ func _get_stats_label()   -> Label:          return $DimBG/Panel/HBox/InfoPad/In
 func _get_rarity_label()  -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/RarityLabel
 func _get_copies_label()  -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/CopiesLabel
 func _get_stealth_label() -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/StealthLabel
-func _get_desc_label()    -> Label:          return $DimBG/Panel/HBox/InfoPad/InfoCol/DescLabel
+func _get_desc_label()    -> RichTextLabel:  return $DimBG/Panel/HBox/InfoPad/InfoCol/DescLabel

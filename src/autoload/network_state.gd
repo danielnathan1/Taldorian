@@ -23,6 +23,20 @@ var role: String = "PLAYER"
 ## Define se, ao terminar, o jogador volta ao mundo (true) ou ao lobby (false).
 var match_origin_world: bool = false
 
+## true quando a partida atual é o TUTORIAL local/offline (contra bot fantasma), lançado
+## a partir da taverna do onboarding. O board roda como autoridade local (OfflineMultiplayerPeer)
+## e exibe as instruções passo-a-passo. Ver taverna.gd → board.gd.
+var tutorial_mode: bool = false
+
+## true quando o board acabou de concluir o TUTORIAL e está voltando para a taverna. A taverna
+## lê isso no _ready para rodar o encerramento pós-tutorial (Blauber) em vez da cutscene de scan.
+var tutorial_return: bool = false
+
+## true quando a cidade deve rodar o TRECHO FINAL do onboarding OFFLINE (encapuzado parabeniza +
+## dicas piscando os ícones). Setado pela taverna ao pegar a recompensa; ao terminar, o world_root
+## reconecta ao multiplayer e limpa o flag. Ver world_root._run_city_onboarding.
+var onboarding_city: bool = false
+
 ## true logo após criar o personagem (primeira vez). O world_root usa isso para
 ## exibir o modal de boas-vindas UMA vez ao entrar no mundo e em seguida limpa o flag.
 var just_created_character: bool = false

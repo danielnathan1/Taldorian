@@ -11,8 +11,10 @@ const AGUA := "agua"
 const AR := "wind"
 ## Quinto elemento (raio/relâmpago) — id local alinhado à arte: "lightning".
 const RAIO := "lightning"
+## Sexto elemento (trevas/dark) — id local alinhado ao backend: "DARK".
+const TREVAS := "trevas"
 
-const ALL: Array[String] = [FOGO, TERRA, AGUA, AR, RAIO]
+const ALL: Array[String] = [FOGO, TERRA, AGUA, AR, RAIO, TREVAS]
 
 const DISPLAY: Dictionary = {
 	FOGO: "Fogo",
@@ -20,7 +22,24 @@ const DISPLAY: Dictionary = {
 	AGUA: "Água",
 	AR: "Ar",
 	RAIO: "Raio",
+	TREVAS: "Trevas",
 }
+
+## Ícone de cada elemento (fonte de verdade — usado em qualquer UI que mostre símbolos:
+## HeroSlot, TextMarkup para {FIRE}/{DARK}/... inline no texto, etc.).
+const ICON: Dictionary = {
+	FOGO:  "res://assets/icons/elements/fire.png",
+	TERRA: "res://assets/icons/elements/earth.png",
+	AGUA:  "res://assets/icons/elements/water.png",
+	AR:    "res://assets/icons/elements/wind.png",
+	RAIO:  "res://assets/icons/elements/lightning.png",
+	TREVAS: "res://assets/icons/elements/dark.png",
+}
+
+
+## Caminho do ícone de um id local ("fogo" → fire.png). "" se não houver.
+static func icon_path(id: String) -> String:
+	return str(ICON.get(id, ""))
 
 ## De-para com o backend (taldorian-service), que usa nomes em inglês.
 ## fogo→FIRE · agua→WATER · terra→EARTH · ar→WIND · raio→LIGHTNING
@@ -31,6 +50,7 @@ const TO_API: Dictionary = {
 	TERRA: "EARTH",
 	AR: "WIND",
 	RAIO: "LIGHTNING",
+	TREVAS: "DARK",
 }
 
 const FROM_API: Dictionary = {
@@ -39,6 +59,7 @@ const FROM_API: Dictionary = {
 	"EARTH": TERRA,
 	"WIND": AR,
 	"LIGHTNING": RAIO,
+	"DARK": TREVAS,
 }
 
 

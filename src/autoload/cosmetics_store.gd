@@ -44,6 +44,15 @@ func get_available_playmats() -> Array[Dictionary]:
 	return result
 
 
+## Totais do catálogo (independem de posse) — usados na contagem "N/M" da Coleção.
+func get_catalog_sleeve_count() -> int:
+	return (_catalog.get("sleeves", []) as Array).size()
+
+
+func get_catalog_playmat_count() -> int:
+	return (_catalog.get("playmats", []) as Array).size()
+
+
 # UUID do backend (master data) gravado no catálogo local — análogo ao card_id das
 # cartas. id local → UUID (para salvar o deck). "" se o cosmético não tem backend_id
 # (ex: "default", que significa "sem cosmético").

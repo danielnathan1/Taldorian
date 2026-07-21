@@ -11,4 +11,9 @@ static func make_team() -> Array[Hero]:
 		HeroValkar.new(),
 		HeroNox.new(),
 		HeroRelicar.new(),
+		HeroSlime.new(),   # colecionável (obtido por scan) — só aparece no builder se POSSUÍDO
+		# Coleção "Ecos do Abismo"
+		HeroLaican.new(),
+		HeroDarian.new(),
+		HeroLilith.new(),
 	]

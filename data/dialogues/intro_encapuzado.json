@@ -1,13 +1,71 @@
 {
   "id": "intro_encapuzado",
   "speakers": {
-    "encapuzado": { "name": "Encapuzado", "portrait": "encapuzado" }
+    "encapuzado": {
+      "name": "Encapuzado",
+      "portrait": "encapuzado"
+    },
+    "jogador": {
+      "name": "Você"
+    }
   },
   "lines": [
-    { "speaker": "encapuzado", "name": "???", "text": "Ei... você aí. Não se assuste. Eu vinha justamente à sua procura." },
-    { "speaker": "encapuzado", "text": "Os magos da capital criaram um jogo que tomou o continente de assalto. Dizem que qualquer um pode aprender — basta ter o instrumento certo." },
-    { "speaker": "encapuzado", "text": "Com ele, você rastreia o que existe pelo mundo — criaturas, lugares, objetos, até mesmo heróis — e cria uma versão em carta de tudo o que tocar." },
-    { "speaker": "encapuzado", "text": "Essas cartas são jogadas nos duelos que tanto fascinam as tavernas. E você... você tem potencial. Eu percebo essas coisas." },
-    { "speaker": "encapuzado", "text": "Tome. Este é um Olho Arcano — um rastreador. Deixe-me lhe mostrar como usá-lo." }
+    {
+      "speaker": "encapuzado",
+      "name": "???",
+      "text": "Finalmente... Você acordou."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Eu o encontrei desacordado nesta floresta. Não havia sinais de batalha... nem de como chegou aqui."
+    },
+    {
+      "speaker": "jogador",
+      "text": "Onde... onde eu estou?"
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Este mundo é chamado Taldorian. Um lugar onde a magia corre por cada rio, floresta e montanha."
+    },
+    {
+      "speaker": "jogador",
+      "text": "Taldorian... Nunca ouvi esse nome."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Curioso... Ainda assim, sua energia mágica é diferente de qualquer outra que já senti."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Quando me aproximei, pude sentir esse poder mesmo antes de vê-lo. É como se a própria mana fosse atraída por você."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Talvez seja apenas minha intuição... ou talvez o destino tenha planos maiores."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "De qualquer forma, isso pertence mais a você do que a mim."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Este artefato é conhecido como Olho Arcano."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Com ele, é possível rastrear criaturas, heróis, relíquias e até lugares marcados por magia. Tudo o que descobrir poderá ser transformado em Cartas Arcanas."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Essas cartas são usadas nos duelos que moldam o destino de Taldorian. Alguns lutam por glória. Outros, por poder."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Eu carrego alguns Olhos Arcanos sobressalentes. Considere este um presente... ou talvez um investimento."
+    },
+    {
+      "speaker": "encapuzado",
+      "text": "Venha. Vou lhe ensinar os primeiros passos. Depois disso... seu caminho será apenas seu."
+    }
   ]
 }

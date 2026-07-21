@@ -1,7 +1,6 @@
 extends Control
 
 const S := preload("res://scenes/ui/deck_builder/db_styles.gd")
-const LOBBY_SCENE := "res://scenes/ui/lobby/lobby.tscn"
 const WORLD_SCENE := "res://scenes/world/world_root.tscn"
 const DECK_LIST_SCENE := "res://scenes/ui/deck_list/deck_list.tscn"
 

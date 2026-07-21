@@ -5,11 +5,13 @@
 [ext_resource type="PackedScene" uid="uid://worldhud_main" path="res://scenes/ui/worldhud/WorldHUD.tscn"     id="3_hud"]
 
 [node name="WorldRoot" type="Node2D" unique_id=1248736718]
+y_sort_enabled = true
 script = ExtResource("1_wr")
 
 [node name="MapContainer" type="Node2D" parent="." unique_id=91007818]
 
 [node name="PlayersContainer" type="Node2D" parent="." unique_id=903286369]
+y_sort_enabled = true
 
 [node name="PlayerCharacter" parent="." unique_id=198676935 instance=ExtResource("2_pc")]
 

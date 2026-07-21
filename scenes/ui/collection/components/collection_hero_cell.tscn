@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://collection_hero_cell"]
+
+[ext_resource type="Script" path="res://scenes/ui/collection/components/collection_hero_cell.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://bakir3fssl1ip" path="res://scenes/ui/hero_slot/hero_slot.tscn" id="2_heroslot"]
+
+[node name="CollectionHeroCell" type="PanelContainer"]
+custom_minimum_size = Vector2(280, 0)
+script = ExtResource("1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeroWrapper" type="AspectRatioContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 402)
+ratio = 0.6667
+stretch_mode = 0
+
+[node name="HeroSlot" parent="MarginContainer/VBox/HeroWrapper" instance=ExtResource("2_heroslot")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 0

@@ -1,0 +1,9 @@
+{
+  "id": "scan_ieldor_fail",
+  "speakers": {
+    "ieldor": { "name": "Ieldor", "portrait": "ieldor" }
+  },
+  "lines": [
+    { "speaker": "ieldor", "text": "Mira instável. Volte quando tiver mais prática — não entrego meu retrato a qualquer um." }
+  ]
+}

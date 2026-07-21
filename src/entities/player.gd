@@ -12,6 +12,10 @@ var hand: Array[Card] = []
 var arsenal: Array[Card] = []
 var arsenal_face_up: bool = false   # true apenas quando um efeito explicitamente define face-up
 var discard_pile: Array[Card] = []
+## Zona de banimento (exílio) — comporta-se como o cemitério, mas separada. Cartas aqui
+## saem do jogo (não voltam ao deck/mão). Populada por efeitos de banir (ex.: Selo da Ruína
+## e a especial da Lilith banem do topo do deck). Ver GameState.banish_from_deck_top.
+var banish_zone: Array[Card] = []
 var active_hero: Hero = null
 
 ## Tokens que o jogador controla (ex.: Mísseis Mágicos do Nox). Criados em jogo, fora
@@ -80,6 +84,28 @@ var marked_target: Hero = null
 var marked_bonus: int = 0
 # Ataque travado neste combate (Acúmulo Telúrico) — bônus positivos de ataque são ignorados.
 var pending_attack_locked: bool = false
+# Perfuração (Corrente): o ataque DESTE jogador ignora até N de defesa + escudo do alvo.
+# Consumido pelo CombatResolver; zerado em reset_turn_modifiers.
+var pending_pierce: int = 0
+# Esquiva (Desvio Rápido): previne N de dano que ESTE jogador sofreria neste turno.
+# Consumido pelo CombatResolver; zerado em reset_turn_modifiers.
+var pending_damage_prevention: int = 0
+# Fúria Incandescente: nº de cartas de Fogo descartadas neste turno (definido ao resolver
+# o descarte). Lido pelo efeito burn_on_hit_per_fire (AFTER_TURN) para a Queimadura on-hit
+# durar esse número de turnos. NÃO zerar em reset_turn_modifiers (precisa sobreviver ao
+# reset interno do CombatResolver até o dreno pós-combate); zerado em clear_combat_cards.
+var pending_fire_discarded: int = 0
+# Iluminação (Nissin): se true, o herói ativo NÃO exausta ao fim do turno. Consumido no
+# ponto de exaustão (GameState._run_combat_and_enter_end); não vive em reset_turn_modifiers.
+var pending_prevent_exhaust: bool = false
+# Fonte da Vida (Irena): regeneração de área. No FIM de cada turno cura o time inteiro em
+# team_regen_amount, por team_regen_turns turnos. Cross-turn (tipo Queimadura ao contrário)
+# — decrementado em GameState._tick_team_regen; NÃO zerar em reset/clear de combate.
+var team_regen_amount: int = 0
+var team_regen_turns: int = 0
+# Sobrecarga Arcana (Nox): enquanto true, cada Míssil Mágico que causa dano aplica *Marca*
+# e recria 1 míssil. Dura até o fim do combate; zerado em clear_combat_cards.
+var missile_overcharge: bool = false
 
 const HAND_CAP_START := 6
 const HAND_SIZE_REFILL_DRAW := 4
@@ -91,6 +117,31 @@ func is_targeting_protected(target_hero: Hero) -> bool:
 	if active_hero == null or target_hero == active_hero:
 		return false
 	return active_hero.is_alive() and active_hero.protects_backline_from_targeting()
+
+## Herói vivo deste time com *Provocar* ativo (Provocação da Valkar), ou null. Inverso do
+## Muro de Aço: puxa o dano DIRECIONADO (mísseis, flecha de retaguarda, alvo aleatório) para si.
+func get_taunt_hero() -> Hero:
+	for h in heroes:
+		if h.is_alive() and h.taunt_active:
+			return h
+	return null
+
+## Redireciona um alvo direcionado deste time para o herói que está *Provocando* (se houver
+## e o alvo não for ele mesmo). Chamado nos pontos de dano direcionado antes de aplicar.
+func redirect_target(target_hero: Hero) -> Hero:
+	if target_hero == null:
+		return target_hero
+	var taunt := get_taunt_hero()
+	if taunt != null and taunt != target_hero and target_hero in heroes:
+		return taunt
+	return target_hero
+
+## Fonte da Vida — concede regeneração de área: cura o time por `turns` fins de turno.
+func grant_team_regen(amount: int, turns: int) -> void:
+	if amount <= 0 or turns <= 0:
+		return
+	team_regen_amount = maxi(team_regen_amount, amount)
+	team_regen_turns = maxi(team_regen_turns, turns)
 
 func get_available_heroes() -> Array[Hero]:
 	return heroes.filter(func(h): return h.state == Hero.State.ACTIVE)
@@ -118,6 +169,11 @@ func draw_cards(amount: int) -> void:
 func send_to_discard(card: Card) -> void:
 	discard_pile.append(card)
 	GameBus.card_discarded.emit(player_index, card)
+
+## Move uma carta (já removida de onde estava pelo chamador) à zona de banimento.
+## Diferente do cemitério: sem sinal de descarte (banir não é "descarte pelo jogador").
+func send_to_banish(card: Card) -> void:
+	banish_zone.append(card)
 
 ## Descarta `amount` cartas aleatórias da mão e devolve as cartas descartadas
 ## (para o chamador animar/notificar o descarte de cada uma).
@@ -159,6 +215,8 @@ func reset_turn_modifiers() -> void:
 	pending_defense_scales_attack = false
 	pending_skill_draw = false
 	pending_attack_locked = false
+	pending_pierce = 0
+	pending_damage_prevention = 0
 	# pending_return_card NÃO é zerado aqui — assim como pending_heal_return_card,
 	# precisa persistir através das rodadas até a fase END processar o retorno
 	# (Onda Reversa → fundo do deck). reset_turn_modifiers roda a cada combate de
@@ -179,6 +237,9 @@ func clear_combat_cards() -> void:
 	extra_actions = 0
 	marked_target = null
 	marked_bonus = 0
+	# Fúria Incandescente / Sobrecarga Arcana — flags de escopo de combate.
+	pending_fire_discarded = 0
+	missile_overcharge = false
 
 ## Ataque "atual" projetado deste jogador para o combate da rodada: base do herói
 ## ativo + ataque das cartas da rodada + bônus pendentes (a menos que travado),
@@ -210,8 +271,17 @@ func add_chain_symbol(sym: String) -> void:
 ## Ponto único consumido pelo GameState (validação/timing) e pelo board (ícones).
 func get_active_abilities(opponent: Player) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	if active_hero != null:
+	# Silêncio (Ecos): o herói ativo silenciado não expõe habilidades ativadas.
+	if active_hero != null and not active_hero.is_silenced():
 		out.append_array(active_hero.get_active_abilities(self, opponent))
+	# Habilidades de retaguarda ativáveis pelo jogador ativo como AÇÃO BÔNUS (ex.: Darian).
+	# Só heróis vivos que NÃO são o ativo (estão na retaguarda) as expõem.
+	for h in heroes:
+		if h == active_hero or not h.is_alive():
+			continue
+		var ba := h.get_backline_bonus_ability(self, opponent)
+		if not ba.is_empty():
+			out.append(ba)
 	var seen := {}
 	for t in tokens:
 		if seen.has(t.token_id):
@@ -229,6 +299,13 @@ func activate_ability(ability_id: String, opponent: Player, targets: Array) -> S
 		for a in active_hero.get_active_abilities(self, opponent):
 			if str(a.get("id", "")) == ability_id:
 				return active_hero.activate_ability(ability_id, self, opponent, targets)
+	# Habilidade de retaguarda (ação bônus): despacha ao herói de retaguarda dono do id.
+	for h in heroes:
+		if h == active_hero or not h.is_alive():
+			continue
+		var ba := h.get_backline_bonus_ability(self, opponent)
+		if not ba.is_empty() and str(ba.get("id", "")) == ability_id:
+			return h.activate_ability(ability_id, self, opponent, targets)
 	var seen := {}
 	for t in tokens:
 		if seen.has(t.token_id):

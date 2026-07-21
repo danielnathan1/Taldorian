@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://donb0ard1scn2"]
+[gd_scene load_steps=4 format=3 uid="uid://donb0ard1scn2"]
 
 [ext_resource type="Script" path="res://scenes/world/quests/onboarding/onboarding.gd" id="1_onb"]
 [ext_resource type="PackedScene" uid="uid://cmob0w0rld1x2" path="res://scenes/world/mob/mob.tscn" id="2_slime"]
+[ext_resource type="Texture2D" path="res://assets/items/olho_arcano.png" id="3_eye"]
 
 [node name="Onboarding" type="Node2D"]
 script = ExtResource("1_onb")
@@ -28,6 +29,32 @@ wander_enabled = false
 
 [node name="UILayer" type="CanvasLayer" parent="."]
 
+[node name="Fade" type="ColorRect" parent="UILayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="ItemImage" type="TextureRect" parent="UILayer"]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -330.0
+offset_right = 150.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_eye")
+expand_mode = 1
+stretch_mode = 5
+
 [node name="ItemReveal" type="Label" parent="UILayer"]
 anchors_preset = 15
 anchor_right = 1.0
@@ -50,4 +77,17 @@ grow_horizontal = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 20
+text = ""
+
+[node name="Hint" type="Label" parent="UILayer"]
+visible = false
+anchor_left = 0.0
+anchor_top = 0.1
+anchor_right = 1.0
+anchor_bottom = 0.1
+offset_bottom = 40.0
+grow_horizontal = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 22
 text = ""

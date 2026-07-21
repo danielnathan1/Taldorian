@@ -1,0 +1,15 @@
+{
+  "id": "scan_hakai_fail",
+  "speakers": {
+    "hakai": {
+      "name": "Hakai",
+      "portrait": "hakai"
+    }
+  },
+  "lines": [
+    {
+      "speaker": "hakai",
+      "text": "Sem ouro? Que pena. Eu ia usar esse dinheiro para... financiar minha saída definitiva dessa vida de assassinatos."
+    }
+  ]
+}

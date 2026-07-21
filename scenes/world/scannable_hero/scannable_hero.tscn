@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://cscanhero01x2"]
+
+[ext_resource type="Script" path="res://scenes/world/scannable_hero/scannable_hero.gd" id="1_sh"]
+[ext_resource type="PackedScene" uid="uid://c3npcw0rld7x2" path="res://scenes/world/npc/npc.tscn" id="2_npc"]
+
+[node name="ScannableHero" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_sh")
+
+[node name="Npc" parent="." instance=ExtResource("2_npc")]

@@ -1,0 +1,55 @@
+{
+  "id": "scan_poppy",
+  "speakers": {
+    "poppy": {
+      "name": "???",
+      "portrait": "poppy"
+    },
+    "jogador": {
+      "name": "Você"
+    }
+  },
+  "lines": [
+    {
+      "speaker": "poppy",
+      "text": "Ei! Uma anã merece ao menos um cumprimento antes de apontarem um Olho Arcano na cara dela."
+    },
+    {
+      "speaker": "poppy",
+      "name": "Poppy",
+      "text": "Meu nome é Poppy. Mineradora, ferreira e a anã mais forte de Torum!"
+    },
+    {
+      "speaker": "jogador",
+      "text": "Mas... você é uma goblin."
+    },
+    {
+      "speaker": "poppy",
+      "text": "Goblin? Que goblin, rapaz?"
+    },
+    {
+      "speaker": "poppy",
+      "text": "Você não tá enxergando direito? Eu sou uma anã."
+    },
+    {
+      "speaker": "poppy",
+      "text": "Uma anã verde. Acontece. Nem todo mundo nasce com a mesma cor de pedra."
+    },
+    {
+      "speaker": "poppy",
+      "text": "Fui criada nas montanhas de Torum. Sei minerar, trabalhar na forja e esvaziar um barril de hidromel antes do café da manhã."
+    },
+    {
+      "speaker": "poppy",
+      "text": "Agora, se quer me transformar em carta, vai ter que conquistar esse direito do jeito anão."
+    },
+    {
+      "speaker": "poppy",
+      "text": "Queda de braço!"
+    },
+    {
+      "speaker": "poppy",
+      "text": "Se vencer, deixo você me rastrear. Se perder... bem, pelo menos vai aprender a respeitar uma anã de verdade."
+    }
+  ]
+}

@@ -11,8 +11,8 @@ class_name ServerConfig
 extends RefCounted
 
 ## IP/host público da VM de produção (Elastic IP).
-const PROD_HOST     := "54.233.75.204"
-const PROD_API_BASE := "http://54.233.75.204:8080"
+const PROD_HOST     := "54.207.210.33"
+const PROD_API_BASE := "http://54.207.210.33:8080"
 const LOCAL_API_BASE := "http://127.0.0.1:8080"
 
 ## true quando este processo é o servidor dedicado (lançado com --world-server).

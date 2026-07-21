@@ -11,7 +11,6 @@ extends Control
 
 const HeroSlotScene  := preload("res://scenes/ui/hero_slot/hero_slot.tscn")
 const CardViewScene  := preload("res://scenes/ui/card_view/card_view.tscn")
-const CardPopupScene := preload("res://scenes/ui/card_popup/card_popup.tscn")
 const HeroPopupScene := preload("res://scenes/ui/hero_popup/hero_popup.tscn")
 const PickCardScene       := preload("res://scenes/ui/boardv2/pick_card/PickCard.tscn")
 const DiscartCardScene    := preload("res://scenes/ui/boardv2/discart_card/DiscartCard.tscn")
@@ -36,6 +35,10 @@ const StealthSmokeScene       := preload("res://scenes/vfx/stealth_smoke/Stealth
 const GuardianAegisScene      := preload("res://scenes/vfx/guardian_aegis/GuardianAegis.tscn")
 const AssassinAttackScene     := preload("res://scenes/vfx/assassin_attack/AssassinAttack.tscn")
 const MagicMissilesScene      := preload("res://scenes/vfx/magic_missiles/MagicMissiles.tscn")
+const RosasNegrasScene        := preload("res://scenes/vfx/rosas_negras/RosasNegras.tscn")
+const SeloRuinaScene          := preload("res://scenes/vfx/selo_ruina/SeloRuina.tscn")
+const AbyssCurseScene         := preload("res://scenes/vfx/abyss_curse/AbyssCurse.tscn")
+const FloracaoMortalScene     := preload("res://scenes/vfx/floracao_mortal/FloracaoMortal.tscn")
 const ArcaneFragmentsScene    := preload("res://scenes/vfx/arcane_fragments/ArcaneFragments.tscn")
 const GraveyardViewerScene    := preload("res://scenes/ui/boardv2/graveyard_viewer/graveyard_viewer.tscn")
 const PickAllyScene           := preload("res://scenes/ui/boardv2/pick_ally/PickAlly.tscn")
@@ -54,7 +57,6 @@ var _opponent_active_hero: Node = null  # HeroSlot
 
 var _local_sleeve:    Texture2D
 var _opponent_sleeve: Texture2D
-var _card_popup:      CanvasLayer = null
 var _hero_popup:      CanvasLayer = null
 var _pick_card:       Node = null
 var _discard_card:    Node = null
@@ -67,6 +69,12 @@ var _combat_vfx:      CombatResolution = null  # VFX one-shot da resolução (em
 # VFX de efeitos AFTER_TURN que chegam DURANTE a resolução de combate são adiados aqui
 # e tocados quando a animação de combate termina (evita sobreposição). Ver _on_effect_vfx.
 var _deferred_post_combat_vfx: Array[Callable] = []
+# Sequenciamento de animações (skill → combate → pós-combate):
+# _pending_combat_preview: combate que ESPERA uma skill de herói terminar de encenar.
+# _post_combat_active: janela (combate encenando + respiro) em que os VFX pós-combate ficam
+#   adiados; some só depois que o combate fecha e "volta ao board". Ver _should_defer_post_combat.
+var _pending_combat_preview: Dictionary = {}
+var _post_combat_active: bool = false
 var _game_over_shown: bool = false
 var _pending_transition_type: String = ""
 # Callable guardado quando uma tela precisa abrir mas o popup de habilidade ainda está rodando.
@@ -118,6 +126,10 @@ var _pick_hero_modal_shown:   bool = false
 # herói ativo (ex.: Criar Míssil do Nox), não à retaguarda. Guarda o ability_id a
 # disparar caso o jogador confirme quebrar a furtividade.
 var _pending_confirm_ability: String = ""
+# Se a habilidade pendente do StealthConfirm precisa de alvo (ex.: Selo da Ruína da
+# Lilith): ao confirmar, abre o pick de herói em vez de disparar direto.
+var _pending_confirm_needs_target: bool = false
+var _pending_confirm_label: String = ""
 # Guarda se o StealthConfirm da passiva de descarte furtiva (Relicar) já está na tela.
 var _stealth_passive_modal_shown: bool = false
 var _frontline_modal_shown: bool = false
@@ -126,6 +138,9 @@ var _missile_fire_active: bool = false
 var _missile_targets:     Array = []   # [[player_idx, hero_idx], ...]
 var _missile_total:       int = 0
 var _missile_fire_id:     String = ""
+# Seleção de alvo de uma habilidade ACTION/BONUS com needs_target (ex.: Selo da Ruína da
+# Lilith). Reusa o overlay _pick_hero; não-vazio = aguardando o jogador escolher o alvo.
+var _ability_target_id:   String = ""
 # true enquanto uma animação de habilidade (ex: ArrowRain) está rodando
 var _skill_vfx_busy: bool = false
 
@@ -164,12 +179,9 @@ func _ready() -> void:
 	_player_hand.card_clicked.connect(_on_card_clicked)
 	_connect_arsenal_events()
 
-	_card_popup = CardPopupScene.instantiate()
-	add_child(_card_popup)
 	_hero_popup = HeroPopupScene.instantiate()
 	add_child(_hero_popup)
-	# Notificação permanente: qualquer popup ao terminar tenta avançar a transição pendente
-	_card_popup.popup_finished.connect(_on_blocker_released)
+	# Notificação permanente: o popup de habilidade ao terminar tenta avançar a transição pendente
 	_hero_popup.connect("popup_finished", _on_blocker_released)
 
 	_pick_card = PickCardScene.instantiate()
@@ -256,6 +268,8 @@ func _ready() -> void:
 
 	_player_half.graveyard_clicked.connect(_on_graveyard_clicked)
 	_opponent_half.graveyard_clicked.connect(_on_graveyard_clicked)
+	_player_half.banish_clicked.connect(_on_banish_clicked)
+	_opponent_half.banish_clicked.connect(_on_banish_clicked)
 
 	_pause_menu = PauseMenuScene.instantiate()
 	add_child(_pause_menu)
@@ -273,7 +287,18 @@ func _ready() -> void:
 # Resolve o deck do jogador e o submete ao servidor (gating em rpc_submit_deck).
 # Se a Match Room escolheu um deck (DeckStore.match_deck_id), busca as cartas na API
 # e converte para o formato local; senão cai no deck local (ex.: fila rápida).
+const TutorialDirectorScript := preload("res://scenes/ui/boardv2/tutorial/tutorial_director.gd")
+var _tutorial: Node = null   # diretor da partida-tutorial (só em NetworkState.tutorial_mode)
+
 func _submit_match_deck() -> void:
+	# Tutorial local/offline: o TutorialDirector monta a partida determinística (decks/mãos/dados),
+	# dirige o bot e faz o coaching. is_server() é true (OfflineMultiplayerPeer setado na taverna).
+	if NetworkState.tutorial_mode:
+		_tutorial = TutorialDirectorScript.new()
+		add_child(_tutorial)
+		_tutorial.setup(self)
+		_tutorial.begin()
+		return
 	var deck_dict := await _resolve_match_deck()
 	DeckStore.match_deck_id = ""   # consome a escolha
 	if multiplayer.is_server():
@@ -327,6 +352,10 @@ func _connect_bus() -> void:
 	GameBus.deck_shuffled.connect(_on_deck_shuffled)
 	GameBus.backline_arrow_fired.connect(_on_backline_arrow_fired)
 	GameBus.missiles_fired.connect(_on_missiles_fired)
+	GameBus.roses_fired.connect(_on_roses_fired)
+	GameBus.roses_detonated.connect(_on_roses_detonated)
+	GameBus.seal_applied.connect(_on_seal_applied)
+	GameBus.abyss_curse.connect(_on_abyss_curse)
 	GameBus.fragment_used.connect(_on_fragment_used)
 	GameBus.fragment_symbol_added.connect(_on_fragment_symbol_added)
 
@@ -404,7 +433,8 @@ func _on_phase_changed(phase: String) -> void:
 		)
 	else:
 		$PhaseOverlay/ArsenalScreen.visible = false
-	_player_hand.visible = phase not in ["OPENING_MULLIGAN", "OPENING_ROLL"]
+	_player_hand.visible = phase not in ["OPENING_MULLIGAN", "OPENING_ROLL"] \
+		and not (_tutorial != null and phase == "END")   # tutorial: esconde a mão no arsenal (evita clicar na cópia)
 	_center_bar.set_phase(_phase_display_name(phase))
 	_refresh_pass_button(phase)
 	_refresh_hand_interactivity()
@@ -563,7 +593,7 @@ func _play_empower_beam_vfx(player_idx: int, atk: int, def: int, color_key: Stri
 func _on_empower_anim(player_idx: int, atk: int, def: int, symbols: Array) -> void:
 	if not _board_initialized:
 		return
-	if _combat_vfx_playing():
+	if _should_defer_post_combat():
 		_deferred_post_combat_vfx.append(_on_empower_anim.bind(player_idx, atk, def, symbols))
 		return
 	_play_empower_beam_vfx(player_idx, atk, def, EmpowerBeam.color_key_for_symbols(symbols))
@@ -601,7 +631,7 @@ func _on_effect_vfx(player_idx: int, vfx_key: String, target_hero_idx: int = -1)
 	if not _board_initialized:
 		return
 	# Efeito resolvendo durante a animação de combate (AFTER_TURN) → adia até ela terminar.
-	if _combat_vfx_playing():
+	if _should_defer_post_combat():
 		_deferred_post_combat_vfx.append(_on_effect_vfx.bind(player_idx, vfx_key, target_hero_idx))
 		return
 	var handler: Callable = _vfx_registry().get(vfx_key, Callable())
@@ -681,10 +711,11 @@ func _on_card_move_anim(player_idx: int, art_key: String, kind: String) -> void:
 	if not _board_initialized or _animator == null:
 		return
 	# Descarte/movimento de um efeito AFTER_TURN durante a animação de combate → adia.
-	if _combat_vfx_playing():
+	if _should_defer_post_combat():
 		_deferred_post_combat_vfx.append(_on_card_move_anim.bind(player_idx, art_key, kind))
 		return
 	var tex := _card_tex_from_art_key(art_key)
+	var dict := _card_dict_from_art_key(art_key)
 	var is_local := player_idx == NetworkState.local_player_index
 	var half = _player_half if is_local else _opponent_half
 	var from_pos: Vector2 = _player_hand.get_global_rect().get_center() if is_local \
@@ -692,15 +723,30 @@ func _on_card_move_anim(player_idx: int, art_key: String, kind: String) -> void:
 	match kind:
 		"discard":
 			var center: Vector2 = get_viewport_rect().size * 0.5
-			_animator.fly_discard_to_graveyard(from_pos, center, half.get_graveyard_global_center(), tex)
+			_animator.fly_discard_to_graveyard(from_pos, center, half.get_graveyard_global_center(), tex, Callable(), dict)
 		"to_deck":
-			_animator.fly_card_to_deck(from_pos, half.get_deck_global_center(), tex)
+			_animator.fly_card_to_deck(from_pos, half.get_deck_global_center(), tex, Callable(), dict)
+		"banish":
+			# Banir = deck → pilha de banimento. Reusa a animação de descarte com destino
+			# na pilha de banimento (mesma coreografia: sai da origem, corte no centro, cai).
+			var bcenter: Vector2 = get_viewport_rect().size * 0.5
+			_animator.fly_discard_to_graveyard(half.get_deck_global_center(), bcenter, half.get_banish_global_center(), tex, Callable(), dict)
 
 func _card_tex_from_art_key(art_key: String) -> Texture2D:
 	var path := "res://assets/card/%s.png" % art_key
 	if art_key != "" and ResourceLoader.exists(path):
 		return load(path)
 	return null
+
+## Dict do catálogo (Collection.all_card_dicts) da carta com este art_key, para renderizar a
+## CardView completa nas animações de voo. {} se não achar (aí a animação cai no ghost só-arte).
+func _card_dict_from_art_key(art_key: String) -> Dictionary:
+	if art_key == "":
+		return {}
+	for d in Collection.all_card_dicts:
+		if str(d.get("art_key", "")) == art_key:
+			return d
+	return {}
 
 ## VFX de furtividade: bombinha sai das cartas de combate do dono, arremessa até o
 ## herói ativo e explode em fumaça (o herói ficou furtivo). Cosmético / não-bloqueante.
@@ -746,6 +792,14 @@ func _on_combat_preview_ready(data: Dictionary) -> void:
 	if h0_idx < 0 or h1_idx < 0:
 		return
 
+	# Sequência: se uma skill de herói ainda está encenando (ex.: a última carta do turno
+	# ativou a habilidade), o combate ESPERA. Guarda o preview; _on_skill_vfx_finished o
+	# dispara quando a skill terminar (com um respiro INTER_VFX_GAP).
+	if _skill_vfx_busy:
+		_pending_combat_preview = data
+		return
+	_pending_combat_preview = {}
+
 	var local_idx := NetworkState.local_player_index
 	var enemy_idx := 1 - local_idx
 	var ally_hero:  Hero = GameState.players[local_idx].heroes[data["hero_%d_idx" % local_idx]]
@@ -768,21 +822,48 @@ func _on_combat_preview_ready(data: Dictionary) -> void:
 	var fx: CombatResolution = CombatResolutionScene.instantiate()
 	add_child(fx)
 	_combat_vfx = fx
+	_post_combat_active = true   # abre a janela de adiamento dos VFX pós-combate
 	fx.finished.connect(_on_combat_vfx_finished, CONNECT_ONE_SHOT)
 	fx.play(cfg)
 
 func _on_combat_vfx_finished() -> void:
 	_combat_vfx = null
+	# Respiro antes de "voltar ao board": o combate fecha e SÓ ENTÃO os efeitos on-hit
+	# (AFTER_TURN) rodam — nunca por cima da resolução de combate.
+	await get_tree().create_timer(INTER_VFX_GAP).timeout
+	if not is_instance_valid(self):
+		return
+	# Se outro combate começou nesse meio-tempo (rodadas em sequência), mantém a janela.
+	if _combat_vfx_playing():
+		return
+	_post_combat_active = false
 	# Solta os VFX de efeitos AFTER_TURN que ficaram esperando a resolução de combate.
 	var queued := _deferred_post_combat_vfx
 	_deferred_post_combat_vfx = []
 	for cb in queued:
 		cb.call()
 
-## True enquanto a animação de resolução de combate está no ar — usado para adiar os
-## VFX de efeitos AFTER_TURN até ela terminar.
+## True enquanto a animação de resolução de combate está literalmente no ar.
 func _combat_vfx_playing() -> bool:
 	return _combat_vfx != null and is_instance_valid(_combat_vfx)
+
+## True enquanto uma sequência de combate está "em curso" para fins de adiamento dos VFX
+## pós-combate: combate adiado esperando skill, combate encenando, ou o respiro logo após.
+## Os efeitos on-hit/pós-combate aguardam isto ficar false para então rodar.
+func _should_defer_post_combat() -> bool:
+	return _combat_vfx_playing() or _post_combat_active or not _pending_combat_preview.is_empty()
+
+## Tempo do "tell" de conjuração antes da animação do herói rodar (a carta se mexe e
+## brilha; ver HeroSlot.play_cast_tell). Também serve de bloqueador de transição no
+## lugar do antigo hero_popup.
+const CAST_LEAD_IN := 0.42
+
+## Respiro entre passos animados sequenciados (skill → combate → pós-combate): um beat
+## curto pra separar as animações e dar tempo de entender cada uma.
+const INTER_VFX_GAP := 0.25
+
+## Intervalo entre cada carta banida pela Maldição do Abismo (Lilith) — banimento 1 a 1.
+const ABYSS_BANISH_STAGGER := 0.35
 
 func _on_skill_activated(hero: Hero, skill_name: String) -> void:
 	var local_idx := NetworkState.local_player_index
@@ -793,16 +874,45 @@ func _on_skill_activated(hero: Hero, skill_name: String) -> void:
 		anim_key = hero.skill_animation
 	elif skill_name == hero.passive_desc:
 		anim_key = hero.passive_animation
+
+	# A Maldição do Abismo (Lilith) é encenada pelo evento dedicado abyss_curse (que carrega
+	# as cartas banidas e dispara ANTES deste sinal). Aqui só ignoramos — o game_log ainda
+	# registra normalmente via seu próprio handler de skill_activated.
+	if anim_key == "abyss_curse":
+		return
+
+	# Buildup: a carta do conjurador se mexe e brilha ANTES de rodar a animação. Segura o
+	# gate de transição de fase (via _skill_vfx_busy) durante o lead-in — substitui o
+	# antigo popup "Herói X ativou habilidade", que foi removido.
+	_skill_vfx_busy = true
+	# Espera o popup "Você jogou X carta" fechar antes de começar (evita sobreposição).
+	await _await_card_play_sequence()
+	if not is_instance_valid(self):
+		return
+	var caster_slot := _find_slot_for_hero(hero)
+	if caster_slot != null:
+		(caster_slot as HeroSlot).play_cast_tell()
+	_spawn_skill_label(skill_name, is_local)
+
+	await get_tree().create_timer(CAST_LEAD_IN).timeout
+	if not is_instance_valid(self):
+		return
+
 	if anim_key == "battle_fury":
 		# Aura de fogo persistente: liga o flag e o HeroSlot renderiza (slot + preview
-		# + resolução de combate). Some no combat_resolved. O "+N ATQ" vem do label abaixo.
+		# + resolução de combate). Some no combat_resolved. O "+N ATQ" vem do label acima.
 		hero.skill_fire_active = true
-		var slot := _find_slot_for_hero(hero)
-		if slot != null:
-			(slot as HeroSlot).refresh()
+		if caster_slot != null:
+			(caster_slot as HeroSlot).refresh()
+		_on_skill_vfx_finished()
+	elif anim_key == "arrow_rain" or anim_key == "holy_heal" or anim_key == "assassin_attack":
+		_play_vfx(anim_key, is_local)   # re-seta _skill_vfx_busy e libera no _on_skill_vfx_finished
 	else:
-		_play_vfx(anim_key, is_local)
+		# Habilidade sem VFX dedicado — o tell + label já deram o feedback; libera o gate.
+		_on_skill_vfx_finished()
 
+## Label flutuante "⚡ skill!" — confirmação textual leve (não bloqueia a transição).
+func _spawn_skill_label(skill_name: String, is_local: bool) -> void:
 	var base_y := 600.0 if is_local else 200.0
 	var lbl := Label.new()
 	lbl.text = "⚡ %s!" % skill_name
@@ -811,10 +921,79 @@ func _on_skill_activated(hero: Hero, skill_name: String) -> void:
 	lbl.position = Vector2(860.0, base_y)
 	$UI.add_child(lbl)
 	var tween := create_tween()
-	tween.tween_property(lbl, "position:y", base_y - 120.0, 1.2).set_ease(Tween.EASE_OUT)
-	tween.tween_property(lbl, "modulate:a", 0.0, 0.5)
+	tween.tween_property(lbl, "position:y", base_y - 120.0, 1.6).set_ease(Tween.EASE_OUT)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.6)
 	tween.tween_callback(lbl.queue_free)
-	_hero_popup.show_skill(hero, skill_name)
+
+## Espera o fly da carta (indo para o board) terminar antes de a animação de herói começar,
+## pra ela não rodar com a carta ainda no ar.
+## IMPORTANTE: o servidor dispara a skill ao ADICIONAR a carta (_on_card_added_to_play) e só
+## DEPOIS notifica card_played — então este handler roda ANTES de o fly existir. Por isso a
+## espera tem 2 fases: (1) aguarda o fly COMEÇAR (card_played chega em ~1-2 frames e seta
+## _fly_anim_busy); (2) aguarda ele TERMINAR. Caps de segurança evitam travar de vez (se a
+## skill não veio de uma carta, a fase 1 só expira e segue).
+func _await_card_play_sequence() -> void:
+	var guard := 0
+	while not _fly_anim_busy and guard < 20:
+		await get_tree().process_frame
+		guard += 1
+	guard = 0
+	while _fly_anim_busy and guard < 600:
+		await get_tree().process_frame
+		guard += 1
+
+## Especial "Maldição do Abismo" (Lilith) — evento dedicado (chega ANTES do skill_activated).
+## Encena símbolos de Trevas → centro → névoa até o deck do oponente; quando a névoa chega,
+## bane as cartas 1 a 1 (deck → banimento). Participa da fila (via _skill_vfx_busy), então o
+## combate/pós-combate esperam esta animação terminar.
+func _on_abyss_curse(caster_idx: int, opponent_idx: int, banished_art_keys: Array) -> void:
+	if not _board_initialized or _animator == null:
+		return
+	var players: Array = GameState.players
+	if caster_idx < 0 or caster_idx >= players.size() or opponent_idx < 0 or opponent_idx >= players.size():
+		return
+	var local_idx := NetworkState.local_player_index
+	_skill_vfx_busy = true
+	# Espera o popup "Você jogou X carta" fechar antes de começar (evita sobreposição).
+	await _await_card_play_sequence()
+	if not is_instance_valid(self):
+		return
+
+	# Tell + label na Lilith (conjuradora = herói ativo cuja cadeia disparou).
+	var caster_hero: Hero = players[caster_idx].active_hero
+	var caster_slot := _find_slot_for_hero(caster_hero) if caster_hero != null else null
+	if caster_slot != null:
+		(caster_slot as HeroSlot).play_cast_tell()
+	_spawn_skill_label("Maldição do Abismo", caster_idx == local_idx)
+
+	var center: Vector2 = get_viewport_rect().size * 0.5
+	var caster_pos: Vector2 = _slot_center(caster_slot) if caster_slot != null else center
+	# Deck/banimento da VÍTIMA (oponente da Lilith).
+	var victim_half: Control = _player_half if opponent_idx == local_idx else _opponent_half
+	var deck_pos: Vector2   = victim_half.get_deck_global_center()
+	var banish_pos: Vector2 = victim_half.get_banish_global_center()
+
+	var fx: AbyssCurse = AbyssCurseScene.instantiate()
+	add_child(fx)
+	fx.mist_arrived.connect(
+		func() -> void: _run_abyss_banishes(banished_art_keys, deck_pos, center, banish_pos),
+		CONNECT_ONE_SHOT
+	)
+	fx.play(caster_pos, center, deck_pos)
+
+## Bane as cartas da Maldição do Abismo 1 a 1 (deck → centro → pilha de banimento), com um
+## intervalo entre cada. Ao terminar, libera o gate da fila de animação (_on_skill_vfx_finished).
+func _run_abyss_banishes(art_keys: Array, deck_pos: Vector2, center: Vector2, banish_pos: Vector2) -> void:
+	for i in art_keys.size():
+		if not is_instance_valid(self) or _animator == null:
+			return
+		var tex := _card_tex_from_art_key(art_keys[i])
+		var dict := _card_dict_from_art_key(art_keys[i])
+		_animator.fly_discard_to_graveyard(deck_pos, center, banish_pos, tex, Callable(), dict)
+		await get_tree().create_timer(ABYSS_BANISH_STAGGER).timeout
+	await get_tree().create_timer(INTER_VFX_GAP).timeout
+	if is_instance_valid(self):
+		_on_skill_vfx_finished()
 
 func _play_vfx(anim_key: String, is_local: bool) -> void:
 	match anim_key:
@@ -880,6 +1059,14 @@ func _on_skill_vfx_finished() -> void:
 			and _hero_popup.call("is_busy")
 		if not hero_busy:
 			_open_pending_screen()
+	# Se um combate ficou esperando esta skill terminar de encenar, dispara agora (com o
+	# respiro). NÃO limpa _pending_combat_preview aqui — manter não-vazio segura o gate de
+	# adiamento dos efeitos on-hit no intervalo; _on_combat_preview_ready limpa ao começar.
+	if not _pending_combat_preview.is_empty():
+		var data: Dictionary = _pending_combat_preview
+		await get_tree().create_timer(INTER_VFX_GAP).timeout
+		if is_instance_valid(self):
+			_on_combat_preview_ready(data)
 
 # ── mão do jogador ───────────────────────────────────────────────────────────
 func _rebuild_hand() -> void:
@@ -891,7 +1078,30 @@ func _rebuild_hand() -> void:
 # ── interações do jogador ────────────────────────────────────────────────────
 func _on_hero_slot_clicked(hero: Hero) -> void:
 	var local_idx := NetworkState.local_player_index
-	var slot_idx  := GameState.players[local_idx].heroes.find(hero)
+	# Ação bônus de retaguarda (ex.: Rosas Negras do Darian) — se disponível agora,
+	# ativar clicando no próprio herói de retaguarda.
+	var ba := _local_backline_ability(hero)
+	if not ba.is_empty():
+		var ability_id := str(ba.get("id", ""))
+		var needs_target := bool(ba.get("needs_target", false))
+		# Se a habilidade quebra a furtividade do PRÓPRIO herói de retaguarda (Darian/Lilith)
+		# e ele ainda está oculto, confirma antes (mesma modal do Ieldor/Nox), mostrando o
+		# herói clicado. Ao confirmar: se precisa de alvo, abre o pick; senão dispara direto.
+		if bool(ba.get("reveals_self", false)) and not hero.is_backline_revealed:
+			_pending_confirm_ability      = ability_id
+			_pending_confirm_needs_target = needs_target
+			_pending_confirm_label        = str(ba.get("label", ""))
+			_stealth_confirm.setup(hero, str(ba.get("label", "")), hero.passive_desc)
+			return
+		# Já revelado (ou não revela): alvo → pick; senão dispara direto.
+		if needs_target:
+			_ability_target_id = ability_id
+			_open_pick_hero_for_ability(str(ba.get("label", "")))
+			return
+		GameState.rpc_id(1, "rpc_activate_ability", ability_id, [])
+		return
+	# Caso contrário (fase HERO_SELECTION): escolher este herói como ativo.
+	var slot_idx := GameState.players[local_idx].heroes.find(hero)
 	if slot_idx < 0:
 		return
 	GameState.rpc_id(1, "rpc_submit_hero", slot_idx)
@@ -938,6 +1148,8 @@ func _refresh_pass_button(phase: String) -> void:
 		_center_bar.set_pass_state(true, "Passar Segmento")
 	else:
 		_center_bar.set_pass_state(false)
+	if _tutorial != null:
+		_tutorial.gate_pass(_center_bar)   # no tutorial o jogador nunca passa (o diretor controla)
 
 func _refresh_hand_interactivity() -> void:
 	var local_idx    := NetworkState.local_player_index
@@ -960,6 +1172,8 @@ func _refresh_hand_interactivity() -> void:
 			Card.TimingType.REACTION:
 				playable = (reaction_for == local_idx)
 		view.set_interactable(playable, has_priority)
+	if _tutorial != null:
+		_tutorial.gate_hand(_player_hand.get_card_views())
 
 func _on_state_synced() -> void:
 	if GameState.players.size() < 2:
@@ -1013,6 +1227,9 @@ func _on_state_synced() -> void:
 	_rebuild_hand()
 	for slot in _player_hero_slots:
 		slot.refresh()
+		# Pisca o slot do herói de retaguarda quando sua ação bônus está disponível
+		# (ex.: Rosas Negras do Darian) — mesmo aviso visual do Nox/Lilith.
+		slot.set_activable(not _local_backline_ability(slot.hero).is_empty())
 	for slot in _opponent_hero_slots:
 		slot.refresh()
 	_refresh_team_face_down()
@@ -1020,11 +1237,13 @@ func _on_state_synced() -> void:
 	_refresh_combat_stats()
 	_refresh_arsenals()
 	_refresh_graveyard()
+	_refresh_banish()
 	_refresh_tokens()
 	_refresh_opponent_hand_badge()
 
 	var phase := GameState.battle.phase_to_string(GameState.battle.current_phase)
-	_player_hand.visible = phase not in ["OPENING_MULLIGAN", "OPENING_ROLL"]
+	_player_hand.visible = phase not in ["OPENING_MULLIGAN", "OPENING_ROLL"] \
+		and not (_tutorial != null and phase == "END")   # tutorial: esconde a mão no arsenal (evita clicar na cópia)
 	_refresh_pass_button(phase)
 	_refresh_hand_interactivity()
 	_refresh_dim_overlay()
@@ -1345,6 +1564,10 @@ func _local_action_ability() -> Dictionary:
 	var bonus_done  := GameState.get_segment_bonus_done(local_idx)
 	var can_action  := not action_done or GameState.get_extra_actions(local_idx) > 0
 	for a in pl.get_active_abilities(GameState.players[1 - local_idx]):
+		# Habilidades de RETAGUARDA (ex.: Darian) piscam/são ativadas no próprio slot
+		# do herói de retaguarda (_local_backline_ability), não no herói ativo.
+		if bool(a.get("from_backline", false)):
+			continue
 		var cost := str(a.get("cost", ""))
 		if cost == "ACTION" and can_action:
 			return a
@@ -1352,20 +1575,83 @@ func _local_action_ability() -> Dictionary:
 			return a
 	return {}
 
+## Retorna o descritor da AÇÃO BÔNUS de retaguarda que ESTE herói de retaguarda local
+## pode usar agora (seu segmento de ACTION, sem janela de reação, herói vivo e não
+## exausto — get_backline_bonus_ability já checa o estado ACTIVE), ou {}. Usado para
+## acender o "activable" no slot do Darian e para ativá-la ao clicar nele.
+func _local_backline_ability(hero: Hero) -> Dictionary:
+	if not _board_initialized or hero == null:
+		return {}
+	var local_idx := NetworkState.local_player_index
+	if GameState.battle.phase_to_string(GameState.battle.current_phase) != "ACTION":
+		return {}
+	if GameState.get_reaction_window_for() != -1:
+		return {}
+	if GameState.get_next_action_player_index() != local_idx:
+		return {}
+	var pl := GameState.players[local_idx]
+	if hero == pl.active_hero or not hero.is_alive():
+		return {}
+	var ba := hero.get_backline_bonus_ability(pl, GameState.players[1 - local_idx])
+	if ba.is_empty():
+		return {}
+	var cost := str(ba.get("cost", ""))
+	if cost == "BONUS" and GameState.get_segment_bonus_done(local_idx):
+		return {}
+	if cost == "ACTION":
+		var can_action := not GameState.get_segment_action_done(local_idx) \
+			or GameState.get_extra_actions(local_idx) > 0
+		if not can_action:
+			return {}
+	return ba
+
 func _on_active_hero_clicked(_hero: Hero) -> void:
 	var ability := _local_action_ability()
 	if ability.is_empty():
 		return
 	var ability_id := str(ability.get("id", ""))
-	# Ativar uma habilidade ACTION/BONUS revela o herói (server: _reveal_active_hero).
-	# Se ele ainda está furtivo, confirma antes — ativá-la quebra a furtividade.
+	var from_backline := bool(ability.get("from_backline", false))
+	var needs_target  := bool(ability.get("needs_target", false))
+	# Habilidade com alvo (ex.: Selo da Ruína): escolhe o herói-alvo antes de enviar.
+	# A ativação revela o herói ativo no servidor — dispensa a confirmação de furtividade.
+	if needs_target:
+		_ability_target_id = ability_id
+		_open_pick_hero_for_ability(str(ability.get("label", "")))
+		return
+	# Ativar uma habilidade ACTION/BONUS do próprio ativo revela o herói (server:
+	# _reveal_active_hero). Se ainda furtivo, confirma antes — ativá-la quebra a furtividade.
+	# Habilidades de RETAGUARDA (ex.: Darian) não revelam o ativo → pulam a confirmação.
 	var local_idx := NetworkState.local_player_index
-	if not GameState.get_hero_revealed(local_idx):
+	if not from_backline and not GameState.get_hero_revealed(local_idx):
 		_pending_confirm_ability = ability_id
 		var hero := GameState.players[local_idx].active_hero
 		_stealth_confirm.setup(hero, str(ability.get("label", "")), hero.passive_desc)
 		return
 	GameState.rpc_id(1, "rpc_activate_ability", ability_id, [])
+
+## Abre o overlay _pick_hero para escolher o alvo de uma habilidade com needs_target.
+func _open_pick_hero_for_ability(prompt: String) -> void:
+	var local_idx := NetworkState.local_player_index
+	var opp_idx   := 1 - local_idx
+	var ally_heroes := GameState.players[local_idx].heroes
+	var opp_heroes  := GameState.players[opp_idx].heroes
+	var opp_revealed: Array[bool] = []
+	for i in opp_heroes.size():
+		var h: Hero = opp_heroes[i]
+		if h == GameState.players[opp_idx].active_hero:
+			opp_revealed.append(GameState.get_hero_revealed(opp_idx))
+		else:
+			opp_revealed.append(h.is_backline_revealed or h.state == Hero.State.EXHAUSTED)
+	_pick_hero.open(
+		prompt,
+		ally_heroes,
+		_local_sleeve,
+		opp_heroes,
+		_opponent_sleeve,
+		opp_revealed,
+		GameState.players[local_idx].active_hero,
+		GameState.players[opp_idx].active_hero
+	)
 
 ## Retorna o descritor da habilidade FREE com alvo (ex.: disparar mísseis) que o
 ## herói ativo LOCAL pode usar agora (seu segmento, sem janela de reação), ou {}.
@@ -1569,6 +1855,8 @@ func _play_magic_missiles_vfx(caster_idx: int, target_refs: Array) -> void:
 	var caster_slot := _find_slot_for_hero(GameState.players[caster_idx].active_hero)
 	if caster_slot == null:
 		return
+	# A carta do conjurador reage (mexe + brilha) junto com a carga dos mísseis.
+	(caster_slot as HeroSlot).play_cast_tell()
 	var source_pos := _slot_center(caster_slot) + Vector2(0.0, -40.0)
 
 	var opp_idx := 1 - caster_idx
@@ -1615,6 +1903,126 @@ func _play_magic_missiles_vfx(caster_idx: int, target_refs: Array) -> void:
 	add_child(fx)
 	fx.play(source_pos, targets)
 
+## Servidor avisou que Darian lançou Rosas Negras — toca o VFX em ambos os clientes.
+func _on_roses_fired(caster_idx: int, source_hero_idx: int, targets: Array) -> void:
+	_play_rosas_negras_vfx(caster_idx, source_hero_idx, targets)
+
+## VFX das Rosas Negras: 3 rosas voando em arco do slot de Darian (retaguarda) até
+## os heróis sorteados (podem repetir alvo). Cosmético — não mostra dano: o throw só
+## marca (Hero.black_roses), e o marcador do slot exibe a contagem via sync.
+func _play_rosas_negras_vfx(caster_idx: int, source_hero_idx: int, target_refs: Array) -> void:
+	if not _board_initialized or target_refs.is_empty():
+		return
+	var players: Array = GameState.players
+	if caster_idx < 0 or caster_idx >= players.size():
+		return
+	var src_heroes: Array = players[caster_idx].heroes
+	if source_hero_idx < 0 or source_hero_idx >= src_heroes.size():
+		return
+	var caster_slot := _find_slot_for_hero(src_heroes[source_hero_idx])
+	if caster_slot == null:
+		return
+	# A carta de Darian reage (mexe + brilha) junto com a carga das rosas.
+	(caster_slot as HeroSlot).play_cast_tell()
+	var source_pos := _slot_center(caster_slot)
+
+	# Curvas modestas (mesmo motivo dos mísseis: caster num canto, alvo na diagonal).
+	const CURVES := [70.0, 95.0, 60.0]
+	const WAVES  := [1.8, 2.2, 1.6]
+	var targets: Dictionary = {}
+	var roses: Array = []
+	for i in target_refs.size():
+		var tp: int = target_refs[i][0]
+		var ti: int = target_refs[i][1]
+		var hero: Hero = players[tp].heroes[ti]
+		var key := "%d_%d" % [tp, ti]
+		if not targets.has(key):
+			var slot := _find_slot_for_hero(hero)
+			if slot == null:
+				continue
+			targets[key] = { "pos": _slot_center(slot) }
+		roses.append({
+			"id": i,
+			"target": key,
+			"side": 1.0 if i % 2 == 0 else -1.0,
+			"curve": CURVES[i % CURVES.size()],
+			"waves": WAVES[i % WAVES.size()],
+		})
+
+	if roses.is_empty():
+		return
+
+	var fx: RosasNegras = RosasNegrasScene.instantiate()
+	fx.roses = roses
+	add_child(fx)
+	fx.play(source_pos, targets)
+
+## Servidor avisou que a Lilith aplicou o Selo da Ruína — toca o VFX em ambos os clientes.
+func _on_seal_applied(caster_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	_play_selo_ruina_vfx(caster_idx, source_hero_idx, target_player_idx, target_hero_idx)
+
+## VFX do Selo da Ruína: névoa negra voa do slot da Lilith (source) até o herói-alvo.
+## Cosmético — a marca (Hero.sealed_ruin) e a emanação contínua chegam via sync; aqui é
+## só a névoa que voa e assenta no card.
+func _play_selo_ruina_vfx(caster_idx: int, source_hero_idx: int, target_player_idx: int, target_hero_idx: int) -> void:
+	if not _board_initialized:
+		return
+	var players: Array = GameState.players
+	if caster_idx < 0 or caster_idx >= players.size() or target_player_idx < 0 or target_player_idx >= players.size():
+		return
+	var src_heroes: Array = players[caster_idx].heroes
+	var tgt_heroes: Array = players[target_player_idx].heroes
+	if source_hero_idx < 0 or source_hero_idx >= src_heroes.size():
+		return
+	if target_hero_idx < 0 or target_hero_idx >= tgt_heroes.size():
+		return
+	var caster_slot := _find_slot_for_hero(src_heroes[source_hero_idx])
+	var target_slot := _find_slot_for_hero(tgt_heroes[target_hero_idx])
+	if caster_slot == null or target_slot == null:
+		return
+	# Buildup: a carta da Lilith se mexe e brilha; depois a névoa voa até o alvo.
+	(caster_slot as HeroSlot).play_cast_tell()
+	await get_tree().create_timer(CAST_LEAD_IN).timeout
+	if not is_instance_valid(self) or not _board_initialized:
+		return
+	if not is_instance_valid(caster_slot) or not is_instance_valid(target_slot):
+		return
+	var fx: SeloRuina = SeloRuinaScene.instantiate()
+	add_child(fx)
+	fx.play(_slot_center(caster_slot), _slot_center(target_slot))
+
+## Servidor avisou que Darian detonou as Rosas Negras (especial) — toca o VFX em ambos.
+func _on_roses_detonated(_caster_idx: int, targets: Array) -> void:
+	_play_floracao_mortal_vfx(targets)
+
+## VFX da especial (Jardim de Espinhos): rosas varrem o campo da esquerda p/ direita;
+## conforme passam por cada herói marcado, a rosa detona com respingo de sangue e o
+## popup de dano. Cosmético — dano/estado chegam via sync do servidor.
+func _play_floracao_mortal_vfx(target_refs: Array) -> void:
+	if not _board_initialized or target_refs.is_empty():
+		return
+	var targets: Array = []
+	for ref in target_refs:
+		var tp: int = ref[0]
+		var ti: int = ref[1]
+		var dmg: int = ref[2]
+		if tp < 0 or tp >= GameState.players.size():
+			continue
+		var heroes: Array = GameState.players[tp].heroes
+		if ti < 0 or ti >= heroes.size():
+			continue
+		var slot := _find_slot_for_hero(heroes[ti])
+		if slot == null:
+			continue
+		targets.append({ "pos": _slot_center(slot), "dmg": dmg })
+	if targets.is_empty():
+		return
+	# Ordena por X (esquerda → direita) — a varredura detona nessa ordem.
+	targets.sort_custom(func(a, b): return a["pos"].x < b["pos"].x)
+	var fx: FloracaoMortal = FloracaoMortalScene.instantiate()
+	add_child(fx)
+	fx.play(targets)
+
 # ── chain / combate cards ────────────────────────────────────────────────────
 func _on_card_played(player_index: int, card: Card) -> void:
 	var local_idx := NetworkState.local_player_index
@@ -1627,10 +2035,9 @@ func _on_card_played(player_index: int, card: Card) -> void:
 			_player_half.add_combat_card_view(card, sleeve, false)
 		else:
 			_opponent_half.add_combat_card_view(card, sleeve, true)
-		_card_popup.show_card(player_index, card)
 		_refresh_combat_stats()
 		_play_card_vfx(player_index, card)
-		# Fly terminou — tenta avançar a transição pendente (pode ainda aguardar card_popup/hero_popup/skill_vfx)
+		# Fly terminou — tenta avançar a transição pendente (pode ainda aguardar hero_popup/skill_vfx)
 		_on_blocker_released()
 
 	if _animator != null:
@@ -1639,12 +2046,12 @@ func _on_card_played(player_index: int, card: Card) -> void:
 			var from_pos: Vector2 = _last_played_source_pos if _last_played_source_pos != Vector2.ZERO \
 							else _player_hand.get_global_rect().get_center()
 			var to_pos: Vector2   = _player_half.get_combat_cards_global_center()
-			_animator.fly_discard(from_pos, to_pos, card.get_texture(), after_anim)
+			_animator.fly_discard(from_pos, to_pos, card.get_texture(), after_anim, Collection.get_card_dict(card.card_name))
 			_last_played_source_pos = Vector2.ZERO
 		else:
 			var from_pos: Vector2 = _opponent_half.get_global_rect().get_center()
 			var to_pos: Vector2   = _opponent_half.get_combat_cards_global_center()
-			_animator.fly_discard(from_pos, to_pos, card.get_texture(), after_anim)
+			_animator.fly_discard(from_pos, to_pos, card.get_texture(), after_anim, Collection.get_card_dict(card.card_name))
 	else:
 		after_anim.call()
 
@@ -1671,8 +2078,29 @@ func _on_graveyard_clicked(side: String) -> void:
 	var cards: Array = GameState.players[player_idx].discard_pile
 	_graveyard_viewer.open(cards, title)
 
-# ── sequenciamento fly → card_popup → turn_transition ────────────────────────
+func _refresh_banish() -> void:
+	if not _board_initialized:
+		return
+	var local_idx    := NetworkState.local_player_index
+	var opponent_idx := 1 - local_idx
+	var local_banish    := GameState.players[local_idx].banish_zone
+	var opponent_banish := GameState.players[opponent_idx].banish_zone
+	_player_half.set_banish_card(
+		local_banish.back() if not local_banish.is_empty() else null)
+	_opponent_half.set_banish_card(
+		opponent_banish.back() if not opponent_banish.is_empty() else null)
+
+func _on_banish_clicked(side: String) -> void:
+	var local_idx    := NetworkState.local_player_index
+	var player_idx   := local_idx if side == "player" else 1 - local_idx
+	var title        := "Banimento — Você" if side == "player" else "Banimento — Oponente"
+	var cards: Array = GameState.players[player_idx].banish_zone
+	_graveyard_viewer.open(cards, title)
+
+# ── sequenciamento fly → turn_transition ─────────────────────────────────────
 func _queue_turn_transition(type: String) -> void:
+	if _tutorial != null:
+		return   # no tutorial os banners de transição atrapalham/cobrem o coaching — suprime
 	_pending_transition_type = type
 	_try_play_pending_transition()
 
@@ -1682,7 +2110,7 @@ func _try_play_pending_transition() -> void:
 	if _pending_transition_type.is_empty():
 		return
 	var hero_busy: bool = _hero_popup != null and _hero_popup.is_busy()
-	if _fly_anim_busy or _card_popup._busy or hero_busy or _skill_vfx_busy:
+	if _fly_anim_busy or hero_busy or _skill_vfx_busy:
 		return  # ainda há bloqueadores — será chamado novamente quando eles terminarem
 	var t := _pending_transition_type
 	_pending_transition_type = ""
@@ -1870,11 +2298,21 @@ func _refresh_dice_roll() -> void:
 	_dice_roll.set_can_throw(
 		not GameState.get_dice_thrown(local_idx) and not GameState.get_dice_awaiting_choice())
 
+# is_server() true = autoridade local (tutorial offline ou host-as-player): chama direto, sem RPC.
 func _on_dice_thrown(dir: Vector2, force: float) -> void:
-	GameState.rpc_id(1, "rpc_submit_dice_throw", dir.x, dir.y, force)
+	if _tutorial != null:
+		_tutorial.on_player_dice_throw(dir.x, dir.y, force)   # tutorial força o resultado roteirado
+		return
+	if multiplayer.is_server():
+		GameState.rpc_submit_dice_throw(dir.x, dir.y, force)
+	else:
+		GameState.rpc_id(1, "rpc_submit_dice_throw", dir.x, dir.y, force)
 
 func _on_dice_first_player_chosen(idx: int) -> void:
-	GameState.rpc_id(1, "rpc_choose_first_player", idx)
+	if multiplayer.is_server():
+		GameState.rpc_choose_first_player(idx)
+	else:
+		GameState.rpc_id(1, "rpc_choose_first_player", idx)
 
 func _open_pick_hero_for_backline() -> void:
 	var local_idx := NetworkState.local_player_index
@@ -1916,8 +2354,18 @@ func _on_stealth_confirm_yes() -> void:
 		return
 	if _pending_confirm_ability != "":
 		var ability_id := _pending_confirm_ability
-		_pending_confirm_ability = ""
-		GameState.rpc_id(1, "rpc_activate_ability", ability_id, [])
+		var needs_target := _pending_confirm_needs_target
+		var label := _pending_confirm_label
+		_pending_confirm_ability      = ""
+		_pending_confirm_needs_target = false
+		_pending_confirm_label        = ""
+		# Habilidade com alvo (ex.: Selo da Ruína): agora que confirmou quebrar a
+		# furtividade, escolhe o herói-alvo antes de enviar.
+		if needs_target:
+			_ability_target_id = ability_id
+			_open_pick_hero_for_ability(label)
+		else:
+			GameState.rpc_id(1, "rpc_activate_ability", ability_id, [])
 		return
 	GameState.rpc_id(1, "rpc_respond_backline_ability", true)
 
@@ -1931,7 +2379,9 @@ func _on_stealth_confirm_no() -> void:
 		GameState.rpc_id(1, "rpc_respond_stealth_passive", false)
 		return
 	if _pending_confirm_ability != "":
-		_pending_confirm_ability = ""
+		_pending_confirm_ability      = ""
+		_pending_confirm_needs_target = false
+		_pending_confirm_label        = ""
 		return
 	GameState.rpc_id(1, "rpc_respond_backline_ability", false)
 
@@ -1972,6 +2422,21 @@ func _on_backline_hero_picked(hero: Hero) -> void:
 	# O mesmo modal (_pick_hero) serve ao disparo de mísseis — roteia se estiver firing.
 	if _missile_fire_active:
 		_on_missile_target_picked(hero)
+		return
+	# Alvo de habilidade ACTION/BONUS com needs_target (ex.: Selo da Ruína da Lilith).
+	if _ability_target_id != "":
+		var aid := _ability_target_id
+		_ability_target_id = ""
+		var tp := -1
+		var th := -1
+		for i in 2:
+			var idx := GameState.players[i].heroes.find(hero)
+			if idx >= 0:
+				tp = i
+				th = idx
+				break
+		if tp >= 0:
+			GameState.rpc_id(1, "rpc_activate_ability", aid, [[tp, th]])
 		return
 	var target_player := -1
 	var target_idx    := -1
@@ -2142,6 +2607,13 @@ func _on_match_rewards(data: Dictionary) -> void:
 		_game_result.apply_rewards(data)
 
 func _on_result_closed() -> void:
+	# Tutorial: volta pra taverna (encerramento do Blauber). Offline → derruba o peer local.
+	if NetworkState.tutorial_mode:
+		NetworkState.tutorial_mode = false
+		NetworkState.tutorial_return = true
+		multiplayer.multiplayer_peer = null
+		get_tree().change_scene_to_file("res://scenes/world/quests/onboarding/taverna.tscn")
+		return
 	if NetworkState.match_origin_world:
 		# Partida veio do mundo: mantém a conexão ENet com o servidor viva e
 		# devolve o jogador ao mundo aberto (Modelo A).
@@ -2149,4 +2621,4 @@ func _on_result_closed() -> void:
 		get_tree().change_scene_to_file("res://scenes/world/world_root.tscn")
 	else:
 		multiplayer.multiplayer_peer = null
-		get_tree().change_scene_to_file("res://scenes/ui/lobby/lobby.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/login/login.tscn")
