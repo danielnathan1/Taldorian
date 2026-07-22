@@ -32,10 +32,7 @@ func symbols_display() -> String:
 	return GameSymbols.display_chain(symbols)
 
 func get_texture() -> Texture2D:
-	var path := "res://assets/card/%s.png" % art_key
-	if art_key != "" and ResourceLoader.exists(path):
-		return load(path)
-	return null
+	return CardArt.texture_for(art_key)
 
 func execute_pre_window_effects(ctx: CardEffectContext) -> void:
 	for effect in effects:

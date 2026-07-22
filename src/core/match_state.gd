@@ -52,10 +52,13 @@ var _after_combat_dmg: Array[int] = [0, 0]
 # True enquanto o pós-combate está pausado esperando um pick aberto por efeito AFTER_TURN.
 var _post_combat_pending: bool = false
 
-# Pick de herói aliado pendente.
+# Pick de herói pendente (aliado OU inimigo). O overlay PickAlly renderiza o time indicado
+# por _side e habilita só os heróis que passam por _filter.
 var _pending_ally_pick_player: int  = -1
 var _pending_ally_pick_action: String = ""
 var _pending_ally_pick_amount: int  = 0
+var _pending_ally_pick_side: int  = 0        # 0 = próprio time · 1 = time inimigo
+var _pending_ally_pick_filter: String = ""   # "" (qualquer vivo) · "exhausted" · "backline"
 
 # Pick de símbolo pendente.
 var _pending_symbol_player: int            = -1

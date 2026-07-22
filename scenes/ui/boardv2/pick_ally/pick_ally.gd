@@ -9,6 +9,16 @@ const _FONT_REGULAR := preload("res://assets/fonts/CinzelDecorative-Regular.ttf"
 var _hero_cards: Array[Control] = []
 var _selected_idx: int = -1
 var _confirm_btn: Button = null
+var _title_lbl: Label = null
+
+## Títulos por ação do pick (fallback genérico se não mapeado).
+const _TITLES := {
+	"heal":          "Escolha um herói aliado para curar",
+	"cleanse_heal":  "Escolha um herói aliado para purificar e curar",
+	"exhaust":       "Escolha um herói inimigo da retaguarda para exaustar",
+	"unexhaust":     "Escolha um herói seu para tirar a exaustão",
+	"sacrifice_heal":"Escolha um aliado da retaguarda para sacrificar",
+}
 
 func _ready() -> void:
 	visible = false
@@ -43,13 +53,13 @@ func _build_ui() -> void:
 	margins.add_child(vbox)
 
 	# Título
-	var title := Label.new()
-	title.text = "Escolha um herói aliado para curar"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", _FONT_REGULAR)
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.40))
-	vbox.add_child(title)
+	_title_lbl = Label.new()
+	_title_lbl.text = "Escolha um herói aliado para curar"
+	_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_lbl.add_theme_font_override("font", _FONT_REGULAR)
+	_title_lbl.add_theme_font_size_override("font_size", 20)
+	_title_lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.40))
+	vbox.add_child(_title_lbl)
 
 	vbox.add_child(HSeparator.new())
 
@@ -141,17 +151,40 @@ func _make_hero_card(slot_idx: int) -> Control:
 
 	return card
 
-func _refresh() -> void:
+## Time-alvo do pick (próprio ou inimigo, conforme o side sincronizado).
+func _target_team() -> Player:
 	var local_idx := NetworkState.local_player_index
-	if GameState.players.size() <= local_idx:
+	var side := GameState.get_pending_ally_pick_side()
+	var team_idx := (1 - local_idx) if side == 1 else local_idx
+	if team_idx < 0 or team_idx >= GameState.players.size():
+		return null
+	return GameState.players[team_idx]
+
+## Regra de seleção (espelha GameState._hero_pick_selectable) para habilitar/desabilitar cards.
+func _selectable(hero: Hero, team: Player, filter: String) -> bool:
+	if hero == null:
+		return false
+	match filter:
+		"exhausted":
+			return hero.state == Hero.State.EXHAUSTED
+		"backline":
+			return hero.is_alive() and hero.state != Hero.State.EXHAUSTED and hero != team.active_hero
+		_:
+			return hero.is_alive()
+
+func _refresh() -> void:
+	var team := _target_team()
+	if team == null:
 		return
-	var p := GameState.players[local_idx]
+	var filter := GameState.get_pending_ally_pick_filter()
+	var action := GameState.get_pending_ally_pick_action()
+	_title_lbl.text = _TITLES.get(action, "Escolha um herói")
 	_selected_idx = -1
 	_confirm_btn.disabled = true
 
 	for i in _hero_cards.size():
 		var card  := _hero_cards[i]
-		var hero  := p.heroes[i] if i < p.heroes.size() else null
+		var hero  := team.heroes[i] if i < team.heroes.size() else null
 		var art   := card.get_meta("art_rect") as TextureRect
 		var name_lbl := card.get_meta("name_lbl") as Label
 		var hp_lbl   := card.get_meta("hp_lbl")   as Label
@@ -163,24 +196,17 @@ func _refresh() -> void:
 		art.texture  = hero.get_texture()
 		name_lbl.text = hero.hero_name
 		hp_lbl.text   = "♥ %d / %d" % [hero.current_hp, hero.max_hp]
-
-		if hero.state == Hero.State.DEFEATED:
-			card.modulate = Color(0.4, 0.4, 0.4, 0.35)
-		else:
-			card.modulate = Color.WHITE
-
+		# Habilitado só se passar pelo filtro; senão fica esmaecido e não-clicável.
+		card.modulate = Color.WHITE if _selectable(hero, team, filter) else Color(0.4, 0.4, 0.4, 0.35)
 		_style_hero_card(card, false)
 
 func _on_hero_clicked(slot_idx: int) -> void:
-	var local_idx := NetworkState.local_player_index
-	if GameState.players.size() <= local_idx:
+	var team := _target_team()
+	if team == null or slot_idx >= team.heroes.size():
 		return
-	var p := GameState.players[local_idx]
-	if slot_idx >= p.heroes.size():
-		return
-	var hero := p.heroes[slot_idx]
-	if hero.state == Hero.State.DEFEATED:
-		return  # não pode selecionar herói derrotado
+	var hero := team.heroes[slot_idx]
+	if not _selectable(hero, team, GameState.get_pending_ally_pick_filter()):
+		return  # fora do filtro (derrotado, ativo, não-exausto, etc.)
 
 	_selected_idx = slot_idx
 	for i in _hero_cards.size():

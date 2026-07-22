@@ -17,7 +17,7 @@ var _peer_to_match: Dictionary = {}  # peer_id:int -> match_id
 var _next_match_id: int = 1
 
 # Enum mantido no GameState: os corpos usam PickSource.X sem qualificar.
-enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD, HAND_ARSENAL, GRAVEYARD_ARSENAL, DECK_PEEK }
+enum PickSource { DECK, GRAVEYARD, HAND, HAND_DISCARD, HAND_ARSENAL, GRAVEYARD_ARSENAL, DECK_PEEK, GRAVEYARD_TO_TOP, GRAVEYARD_TO_HAND }
 
 var players: Array[Player]:
 	get:
@@ -133,6 +133,16 @@ var _pending_ally_pick_amount: int:
 		return _m._pending_ally_pick_amount
 	set(value):
 		_m._pending_ally_pick_amount = value
+var _pending_ally_pick_side: int:
+	get:
+		return _m._pending_ally_pick_side
+	set(value):
+		_m._pending_ally_pick_side = value
+var _pending_ally_pick_filter: String:
+	get:
+		return _m._pending_ally_pick_filter
+	set(value):
+		_m._pending_ally_pick_filter = value
 
 var _pending_symbol_player: int:
 	get:
@@ -1389,8 +1399,8 @@ func _process_after_combat_queue() -> void:
 		for e in ctx.requested_empower:
 			_notify_empower(pidx, e["atk"], e["def"], entry["card"].symbols)
 		_announce_chain_symbols_added(pidx, chain_before)
-		if _pending_pick_player >= 0:
-			return  # pausa: o pick aberto retoma o dreno ao ser resolvido
+		if _pending_pick_player >= 0 or _pending_ally_pick_player >= 0:
+			return  # pausa: o pick aberto (carta ou herói) retoma o dreno ao ser resolvido
 
 func _reset_action_phase_state() -> void:
 	for p in players:
@@ -1536,12 +1546,31 @@ func get_pending_pick_cards(player_idx: int) -> Array[Card]:
 ## Retorna o array-fonte correto (deck, graveyard ou mão) para o jogador dado.
 func _pick_source_array(player_idx: int) -> Array[Card]:
 	match _pending_pick_source:
-		PickSource.GRAVEYARD, PickSource.GRAVEYARD_ARSENAL:
+		PickSource.GRAVEYARD, PickSource.GRAVEYARD_ARSENAL, \
+		PickSource.GRAVEYARD_TO_TOP, PickSource.GRAVEYARD_TO_HAND:
 			return players[player_idx].discard_pile
 		PickSource.HAND, PickSource.HAND_DISCARD, PickSource.HAND_ARSENAL:
 			return players[player_idx].hand
 		_:
 			return players[player_idx].deck
+
+## Recordar — pick do cemitério: a carta escolhida vai ao TOPO do deck.
+func begin_graveyard_to_top_pick(player_idx: int, indices: Array[int], instruction: String = "") -> void:
+	_pending_pick_player      = player_idx
+	_pending_pick_source      = PickSource.GRAVEYARD_TO_TOP
+	_pending_pick_count       = 1
+	_pending_pick_indices     = indices
+	_pending_pick_instruction = instruction
+
+## Ressurgir — pick do cemitério: a carta escolhida vai para a MÃO. followup_player: se >=0,
+## abre o mesmo pick para esse jogador depois (cada jogador recupera 1).
+func begin_graveyard_to_hand_pick(player_idx: int, indices: Array[int], followup_player: int = -1, instruction: String = "") -> void:
+	_pending_pick_player           = player_idx
+	_pending_pick_source           = PickSource.GRAVEYARD_TO_HAND
+	_pending_pick_count            = 1
+	_pending_pick_indices          = indices
+	_pending_pick_instruction      = instruction
+	_pending_both_recycle_followup = followup_player
 
 ## Inicia um pick a partir do deck do jogador.
 func begin_card_pick(player_idx: int, indices: Array[int], instruction: String = "") -> void:
@@ -1621,18 +1650,50 @@ func begin_core_overload(player_idx: int) -> void:
 	_pending_overload_phase  = 1
 	_pending_overload_points = 0
 
-## Inicia um pick de herói aliado (ex.: Broto Vital — curar 1 aliado à escolha).
-## action: "heal" | amount: quantidade a aplicar.
-func begin_ally_pick(player_idx: int, action: String, amount: int) -> void:
+## Inicia um pick de herói (aliado OU inimigo). Ex.: Broto Vital (curar aliado), Exaurir
+## (exaustar inimigo da retaguarda), Reanimar (tirar exaustão de aliado).
+## action: "heal"|"cleanse_heal"|"exhaust"|"unexhaust"|"sacrifice_heal" · amount: valor do efeito.
+## side: 0 = próprio time · 1 = time inimigo. filter: "" (qualquer vivo) · "exhausted" · "backline".
+## Fizzle silencioso (nada acontece) se não houver alvo válido para o filtro/side.
+func begin_ally_pick(player_idx: int, action: String, amount: int, side: int = 0, filter: String = "") -> void:
+	if not _has_valid_hero_pick_target(player_idx, side, filter):
+		return
 	_pending_ally_pick_player = player_idx
 	_pending_ally_pick_action = action
 	_pending_ally_pick_amount = amount
+	_pending_ally_pick_side   = side
+	_pending_ally_pick_filter = filter
+
+## True se existe ao menos 1 herói válido para um pick com este side/filter.
+func _has_valid_hero_pick_target(player_idx: int, side: int, filter: String) -> bool:
+	var team_idx := (1 - player_idx) if side == 1 else player_idx
+	if team_idx < 0 or team_idx >= players.size():
+		return false
+	var team := players[team_idx]
+	for h in team.heroes:
+		if _hero_pick_selectable(h, team, filter):
+			return true
+	return false
+
+## Regra de seleção de um herói num pick, dado o filtro.
+func _hero_pick_selectable(h: Hero, team: Player, filter: String) -> bool:
+	match filter:
+		"exhausted":
+			return h.state == Hero.State.EXHAUSTED
+		"backline":
+			# Vivo, não-exausto e NÃO é o ativo (retaguarda disponível).
+			return h.is_alive() and h.state != Hero.State.EXHAUSTED and h != team.active_hero
+		_:
+			return h.is_alive()
 
 func get_pending_ally_pick_player() -> int: return _pending_ally_pick_player
 func get_pending_ally_pick_action()  -> String: return _pending_ally_pick_action
 func get_pending_ally_pick_amount()  -> int: return _pending_ally_pick_amount
+func get_pending_ally_pick_side()    -> int: return _pending_ally_pick_side
+func get_pending_ally_pick_filter()  -> String: return _pending_ally_pick_filter
 
-## O jogador escolheu qual herói aliado curar. hero_idx = índice em Player.heroes.
+## O jogador escolheu um herói. hero_idx = índice em players[team].heroes, onde team é o
+## próprio time ou o inimigo conforme _pending_ally_pick_side.
 @rpc("any_peer", "call_local", "reliable")
 func rpc_submit_ally_pick(hero_idx: int) -> void:
 	if not multiplayer.is_server():
@@ -1640,36 +1701,58 @@ func rpc_submit_ally_pick(hero_idx: int) -> void:
 	var player_idx := _peer_to_player_index(multiplayer.get_remote_sender_id())
 	if _pending_ally_pick_player != player_idx:
 		return
-	var p := players[player_idx]
-	if hero_idx < 0 or hero_idx >= p.heroes.size():
+	var team_idx := (1 - player_idx) if _pending_ally_pick_side == 1 else player_idx
+	var team := players[team_idx]
+	if hero_idx < 0 or hero_idx >= team.heroes.size():
 		return
-	var target_hero := p.heroes[hero_idx]
-	if target_hero.state == Hero.State.DEFEATED:
+	var target_hero := team.heroes[hero_idx]
+	# Valida contra o filtro para impedir escolhas ilegais vindas do cliente.
+	if not _hero_pick_selectable(target_hero, team, _pending_ally_pick_filter):
 		return
-	match _pending_ally_pick_action:
+	var action := _pending_ally_pick_action
+	var amount := _pending_ally_pick_amount
+	match action:
 		"heal":
 			var hp_before := target_hero.current_hp
-			target_hero.heal(_pending_ally_pick_amount)
+			target_hero.heal(amount)
 			# VFX de cura no aliado ESCOLHIDO (origem é a carta, alvo é este herói).
 			_notify_effect_vfx(player_idx, "heal", hero_idx)
 			var gained := target_hero.current_hp - hp_before
-			if gained > 0:
-				print("[TCG]   ♥ Ally Pick (J%d): curou %s em %d HP (HP: %d→%d)" % [
-					player_idx, target_hero.hero_name, gained, hp_before, target_hero.current_hp
-				])
-			else:
-				print("[TCG]   ♥ Ally Pick (J%d): cura aplicada em %s (HP cheio — sem ganho de HP)" % [
-					player_idx, target_hero.hero_name
-				])
+			print("[TCG]   ♥ Ally Pick (J%d): curou %s (+%d HP)" % [player_idx, target_hero.hero_name, gained])
 		"cleanse_heal":
 			# Toque Límpido — Purifica (remove Queimaduras) e cura o aliado escolhido.
 			target_hero.clear_burn()
-			target_hero.heal(_pending_ally_pick_amount)
+			target_hero.heal(amount)
 			_notify_effect_vfx(player_idx, "heal", hero_idx)
 			print("[TCG]   ✦ Ally Pick (J%d): purificou e curou %s" % [player_idx, target_hero.hero_name])
+		"exhaust":
+			# Exaurir / Peso da Alma — exausta um herói inimigo da retaguarda (nega a rotação).
+			target_hero.exhaust()
+			print("[TCG]   💤 Hero Pick (J%d): exaustou %s (J%d)" % [player_idx, target_hero.hero_name, team_idx])
+		"unexhaust":
+			# Reanimar / Despertar Sombrio — remove a exaustão (volta ao estado ACTIVE).
+			target_hero.refresh()
+			print("[TCG]   ⟳ Hero Pick (J%d): removeu exaustão de %s" % [player_idx, target_hero.hero_name])
+		"sacrifice_heal":
+			# Banquete de Sombras — sacrifica `amount` de HP do aliado escolhido; o ativo cura `amount`.
+			var tctx := TurnContext.new()
+			tctx.defender = target_hero
+			target_hero.take_damage(amount, tctx)
+			GameBus.hero_damaged.emit(target_hero, amount)
+			var active := players[player_idx].active_hero
+			if active != null:
+				active.heal(amount)
+				_notify_effect_vfx(player_idx, "heal")
+			print("[TCG]   🩸 Hero Pick (J%d): sacrificou %s → curou o ativo" % [player_idx, target_hero.hero_name])
 	_pending_ally_pick_player = -1
 	_pending_ally_pick_action = ""
 	_pending_ally_pick_amount = 0
+	_pending_ally_pick_side   = 0
+	_pending_ally_pick_filter = ""
+	# Pick aberto por efeito on-hit durante o dreno pós-combate (ex.: Exaurir) → retoma o dreno.
+	if _pending_pick_player < 0 and _m._post_combat_pending:
+		_continue_post_combat()
+		return
 	# Retoma o fluxo do segmento se possível
 	if _pending_pick_player < 0 and _pending_symbol_player < 0 \
 			and battle.current_phase == BattleManager.Phase.ACTION:
@@ -2637,7 +2720,24 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 				print("[TCG]   ↕ Dois Passos à Frente (J%d): carta movida ao fundo do deck" % player_idx)
 			else:
 				print("[TCG]   ↑ Dois Passos à Frente (J%d): carta mantida no topo do deck" % player_idx)
+		PickSource.GRAVEYARD_TO_TOP:
+			# Recordar — carta escolhida do cemitério vai ao TOPO do deck.
+			var source_idx: int = _pending_pick_indices[pick_indices[0]]
+			if source_idx < p.discard_pile.size():
+				var card := p.discard_pile[source_idx]
+				p.discard_pile.remove_at(source_idx)
+				p.deck.push_front(card)
+		PickSource.GRAVEYARD_TO_HAND:
+			# Ressurgir — carta escolhida do cemitério vai para a MÃO.
+			var source_idx: int = _pending_pick_indices[pick_indices[0]]
+			if source_idx < p.discard_pile.size():
+				var card := p.discard_pile[source_idx]
+				p.discard_pile.remove_at(source_idx)
+				p.hand.append(card)
+				GameBus.card_drawn.emit(player_idx)
+				_notify_effect_vfx(player_idx, "draw")
 	var followup    := _pending_both_recycle_followup
+	var resolved_source := _pending_pick_source        # preserva antes de limpar
 	var instruction := _pending_pick_instruction   # preserva antes de limpar
 	_pending_pick_player           = -1
 	_pending_pick_source           = PickSource.DECK
@@ -2649,12 +2749,16 @@ func rpc_submit_card_pick(pick_indices: Array) -> void:
 	_pending_pick_instruction      = ""
 	_pending_pick_indices.clear()
 	_pending_both_recycle_followup = -1
-	# Ecos do Passado: inicia o pick do segundo jogador (repassa a instrução)
+	# Followup do segundo jogador (repassa a instrução), no mesmo tipo do pick que resolveu:
+	# Ecos do Passado (cemitério→arsenal) ou Ressurgir (cemitério→mão).
 	if followup >= 0 and not players[followup].discard_pile.is_empty():
 		var idxs: Array[int] = []
 		for i in players[followup].discard_pile.size():
 			idxs.append(i)
-		begin_graveyard_arsenal_pick(followup, idxs, -1, instruction)
+		if resolved_source == PickSource.GRAVEYARD_TO_HAND:
+			begin_graveyard_to_hand_pick(followup, idxs, -1, instruction)
+		else:
+			begin_graveyard_arsenal_pick(followup, idxs, -1, instruction)
 	# Pick aberto por efeito AFTER_TURN durante o dreno pós-combate (ex.: Execução
 	# Silenciosa) → retoma o pós-combate, não o segmento da fase ACTION.
 	if _pending_pick_player < 0 and _m._post_combat_pending:
@@ -3028,6 +3132,8 @@ func _build_snapshot() -> Dictionary:
 	snap["pending_ally_pick_player"] = _pending_ally_pick_player
 	snap["pending_ally_pick_action"] = _pending_ally_pick_action
 	snap["pending_ally_pick_amount"] = _pending_ally_pick_amount
+	snap["pending_ally_pick_side"]   = _pending_ally_pick_side
+	snap["pending_ally_pick_filter"] = _pending_ally_pick_filter
 	# pick de símbolo pendente
 	snap["pending_symbol_player"] = _pending_symbol_player
 	snap["pending_symbol_count"]  = _pending_symbol_count
@@ -3201,6 +3307,8 @@ func _apply_snapshot(snap: Dictionary) -> void:
 	_pending_ally_pick_player = snap.get("pending_ally_pick_player", -1)
 	_pending_ally_pick_action = snap.get("pending_ally_pick_action", "")
 	_pending_ally_pick_amount = snap.get("pending_ally_pick_amount", 0)
+	_pending_ally_pick_side   = snap.get("pending_ally_pick_side", 0)
+	_pending_ally_pick_filter = snap.get("pending_ally_pick_filter", "")
 	_pending_symbol_player = snap.get("pending_symbol_player", -1)
 	_pending_symbol_count  = snap.get("pending_symbol_count",  0)
 	_pending_overload_player = snap.get("pending_overload_player", -1)
@@ -3638,6 +3746,22 @@ func banish_from_deck_top(player_idx: int, count: int, notify_moves: bool = true
 		p.send_to_banish(card)
 		if notify_moves:
 			_notify_card_move(player_idx, card.art_key, "banish")
+		art_keys.append(card.art_key)
+	return art_keys
+
+## Server-only. Mói (mill) `count` cartas do topo do deck do jogador para o CEMITÉRIO dele.
+## Diferente de banir (que exila): aqui as cartas ficam no cemitério (recuperáveis). Usado
+## por Ceifar. Retorna os art_keys movidos.
+func mill_from_deck_top(player_idx: int, count: int) -> Array:
+	var art_keys: Array = []
+	if not multiplayer.is_server() or count <= 0 or player_idx < 0 or player_idx >= players.size():
+		return art_keys
+	var p: Player = players[player_idx]
+	for i in count:
+		if p.deck.is_empty():
+			break
+		var card: Card = p.deck.pop_front()
+		p.discard_pile.append(card)
 		art_keys.append(card.art_key)
 	return art_keys
 

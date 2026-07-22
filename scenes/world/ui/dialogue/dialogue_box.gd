@@ -93,7 +93,9 @@ func _advance_line() -> void:
 func _start_typing(p_text: String) -> void:
 	_text.text = p_text
 	_text.visible_ratio = 0.0
-	_advance.visible = false
+	# Mantém a dica "[Espaço] para pular" visível durante a digitação — Espaço/clique
+	# primeiro completa a linha (pula o efeito máquina de escrever), depois avança.
+	_advance.visible = true
 	_typing = true
 	var duration := maxf(0.1, p_text.length() / TYPE_SPEED)
 	if _type_tween:

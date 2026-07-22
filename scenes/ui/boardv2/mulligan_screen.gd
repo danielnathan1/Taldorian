@@ -41,7 +41,13 @@ func _notification(what: int) -> void:
 func _rebuild_cards() -> void:
 	if GameState.players.is_empty():
 		return
+	# Remove IMEDIATAMENTE (não só queue_free, que é deferido): se um rebuild ocorre
+	# com wrappers antigos ainda pendentes de liberação, as cartas novas caem em índices
+	# deslocados e _apply_restriction erra o alvo — dimando TODAS (bug do tutorial ao
+	# pular o diálogo da preparação). remove_child destaca na hora; get_children() abaixo
+	# e no _apply_restriction passam a ver só as cartas novas.
 	for child in cards_row.get_children():
+		cards_row.remove_child(child)
 		child.queue_free()
 	_selected_indices.clear()
 	_refresh_confirm_button()

@@ -489,10 +489,7 @@ func _apply_fav(p_fav: Dictionary) -> void:
 		return
 	var tex: Texture2D = p_fav.get("art", null)
 	if tex == null:
-		var ak := str(p_fav.get("art_key", ""))
-		var path := "res://assets/card/%s.png" % ak
-		if ak != "" and ResourceLoader.exists(path):
-			tex = load(path)
+		tex = CardArt.texture_for(str(p_fav.get("art_key", "")))
 	_favcard.set_card({
 		"name": p_fav.get("name", ""),
 		"element": p_fav.get("element", ""),

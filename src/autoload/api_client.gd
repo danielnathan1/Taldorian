@@ -79,12 +79,16 @@ func _store_tokens(p_data: Dictionary) -> void:
 # ── Endpoints de autenticação ─────────────────────────────────────────────────
 
 ## POST /auth/register — cadastra um novo usuário.
-func register(p_username: String, p_email: String, p_password: String) -> Dictionary:
+## p_invite_key é a chave de convite do beta fechado; só é enviada se não-vazia. O backend
+## a exige apenas quando taldorian.invite.required=true (produção).
+func register(p_username: String, p_email: String, p_password: String, p_invite_key: String = "") -> Dictionary:
 	var body := {
 		"username": p_username,
 		"email":    p_email,
 		"password": p_password,
 	}
+	if p_invite_key != "":
+		body["inviteKey"] = p_invite_key
 	var res := await _post("/auth/register", body)
 	if res.ok:
 		_store_tokens(res.data)

@@ -733,10 +733,7 @@ func _on_card_move_anim(player_idx: int, art_key: String, kind: String) -> void:
 			_animator.fly_discard_to_graveyard(half.get_deck_global_center(), bcenter, half.get_banish_global_center(), tex, Callable(), dict)
 
 func _card_tex_from_art_key(art_key: String) -> Texture2D:
-	var path := "res://assets/card/%s.png" % art_key
-	if art_key != "" and ResourceLoader.exists(path):
-		return load(path)
-	return null
+	return CardArt.texture_for(art_key)
 
 ## Dict do catálogo (Collection.all_card_dicts) da carta com este art_key, para renderizar a
 ## CardView completa nas animações de voo. {} se não achar (aí a animação cai no ghost só-arte).

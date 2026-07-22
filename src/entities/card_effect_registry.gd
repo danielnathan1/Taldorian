@@ -165,6 +165,21 @@ const _MAP := {
 	"defense_per_dead_ally":         preload("res://src/entities/effects/effect_defense_per_dead_ally.gd"),
 	"discard_for_extra_action":      preload("res://src/entities/effects/effect_discard_for_extra_action.gd"),
 	"attack_per_dark_symbol":        preload("res://src/entities/effects/effect_attack_per_dark_symbol.gd"),
+	# ── Ecos do Abismo — lote 2: banir / mill / cemitério (sem UI nova) ────────────
+	"banish_top_on_hit":             preload("res://src/entities/effects/effect_banish_top_on_hit.gd"),
+	"mill_top_on_hit":               preload("res://src/entities/effects/effect_mill_top_on_hit.gd"),
+	"banish_top_and_arsenal_on_hit": preload("res://src/entities/effects/effect_banish_top_and_arsenal_on_hit.gd"),
+	"banish_graveyard_for_attack":   preload("res://src/entities/effects/effect_banish_graveyard_for_attack.gd"),
+	"banish_opponent_graveyard_action": preload("res://src/entities/effects/effect_banish_opponent_graveyard_action.gd"),
+	# ── Ecos do Abismo — lote 2: pick de herói (aliado/inimigo) ────────────────────
+	"exhaust_enemy_on_hit":          preload("res://src/entities/effects/effect_exhaust_enemy_on_hit.gd"),
+	"exhaust_enemy_pick":            preload("res://src/entities/effects/effect_exhaust_enemy_pick.gd"),
+	"unexhaust_ally_pick":           preload("res://src/entities/effects/effect_unexhaust_ally_pick.gd"),
+	"sacrifice_ally_heal":           preload("res://src/entities/effects/effect_sacrifice_ally_heal.gd"),
+	# ── Ecos do Abismo — lote 2: cemitério / mão (card pick) ───────────────────────
+	"recall_graveyard_to_top":       preload("res://src/entities/effects/effect_recall_graveyard_to_top.gd"),
+	"resurrect_graveyard":           preload("res://src/entities/effects/effect_resurrect_graveyard.gd"),
+	"sacrifice_element_banish":      preload("res://src/entities/effects/effect_sacrifice_element_banish.gd"),
 }
 
 static func create(id: String, params: Dictionary) -> CardEffect:

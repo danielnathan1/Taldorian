@@ -124,22 +124,28 @@ func _build_collection_list(collections: Array) -> void:
 		var tile := COLLECTION_TILE.instantiate()
 		_collection_list.add_child(tile)
 		var art_key := str(entry.get("artKey", ""))
-		tile.bind(str(entry.get("name", "Coleção")), "res://assets/collections/%s.png" % art_key)
-		tile.pressed.connect(func() -> void: _open_binder(str(entry.get("name", "Coleção"))))
+		var col_name := str(entry.get("name", "Coleção"))
+		tile.bind(col_name, "res://assets/collections/%s.png" % art_key)
+		tile.pressed.connect(func() -> void: _open_binder(col_name, art_key))
 
 
 # ── Fichário ───────────────────────────────────────────────────────────────────
 
 ## Coleção-padrão das cartas sem o campo "collection" (o set base histórico).
 const DEFAULT_COLLECTION := "Origens de Taldorian"
+## artKey do set base. As cartas base não têm o campo "collection"; o nome de exibição do
+## backend ("Taldorian Origin") não bate com DEFAULT_COLLECTION, então o set base é
+## identificado pela ausência do campo + este artKey, não pelo nome.
+const BASE_ART_KEY := "taldorian_origins"
 
-func _open_binder(p_name: String) -> void:
-	# Cartas da coleção aberta, ordenadas por id (ordem fixa). Cartas sem "collection"
-	# pertencem ao set base ("Origens de Taldorian").
+func _open_binder(p_name: String, p_art_key: String = "") -> void:
+	# Cartas da coleção aberta, ordenadas por id (ordem fixa). Expansões batem pelo nome
+	# de "collection" (autorado no JSON); o set base pega as cartas SEM o campo "collection".
+	var is_base := p_art_key == BASE_ART_KEY
 	_all_cards = []
 	for d in Collection.all_card_dicts:
-		var col := str(d.get("collection", DEFAULT_COLLECTION))
-		if col == p_name:
+		var matches := (str(d.get("collection", "")) == p_name) or (is_base and not d.has("collection"))
+		if matches:
 			_all_cards.append(d)
 	_all_cards.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("id", 0)) < int(b.get("id", 0)))

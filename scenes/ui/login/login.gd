@@ -29,9 +29,15 @@ const MIN_PASS_LEN  := 8
 @onready var _su_email:   LineEdit = %SuEmail
 @onready var _su_pass:    LineEdit = %SuPass
 @onready var _su_confirm: LineEdit = %SuConfirm
+@onready var _su_invite_row: VBoxContainer = %InviteRow
+@onready var _su_invite:  LineEdit = %SuInviteKey
 @onready var _su_error:   Label    = %SignupError
 @onready var _create_btn: Button   = %CreateButton
 @onready var _go_login:   Button   = %GoLogin
+
+## Beta fechado: pedir chave de convite só no build de produção (o cliente exportado fala com
+## o backend de prod, que exige a chave). No editor/dev o campo fica oculto e nada é enviado.
+@onready var _invite_required: bool = not OS.has_feature("editor")
 
 # Fechar jogo
 @onready var _quit_btn:   Button   = %QuitButton
@@ -63,7 +69,13 @@ func _ready() -> void:
 	_su_user.text_submitted.connect(func(_t: String) -> void: _su_email.grab_focus())
 	_su_email.text_submitted.connect(func(_t: String) -> void: _su_pass.grab_focus())
 	_su_pass.text_submitted.connect(func(_t: String) -> void: _su_confirm.grab_focus())
-	_su_confirm.text_submitted.connect(func(_t: String) -> void: _on_create())
+	_su_confirm.text_submitted.connect(func(_t: String) -> void:
+		if _invite_required:
+			_su_invite.grab_focus()
+		else:
+			_on_create())
+	_su_invite.text_submitted.connect(func(_t: String) -> void: _on_create())
+	_su_invite_row.visible = _invite_required
 
 	_go_signup.pressed.connect(_show_signup)
 	_go_login.pressed.connect(_show_login)
@@ -145,6 +157,7 @@ func _on_create() -> void:
 	var email := _su_email.text.strip_edges()
 	var pwd := _su_pass.text
 	var confirm := _su_confirm.text
+	var invite := _su_invite.text.strip_edges() if _invite_required else ""
 
 	if user.is_empty() or email.is_empty() or pwd.is_empty():
 		_show_signup_error("Preencha todos os campos.")
@@ -158,11 +171,14 @@ func _on_create() -> void:
 	if pwd != confirm:
 		_show_signup_error("As senhas não coincidem.")
 		return
+	if _invite_required and invite.is_empty():
+		_show_signup_error("Informe a chave de convite.")
+		return
 
 	# Chamada real ao backend — POST /auth/register (ver ApiClient.BASE_URL).
 	_su_error.visible = false
 	_set_creating(true)
-	var res := await ApiClient.register(user, email, pwd)
+	var res := await ApiClient.register(user, email, pwd, invite)
 	_set_creating(false)
 	if not res.ok:
 		_show_signup_error(res.error if res.error != "" else "Não foi possível criar a conta.")

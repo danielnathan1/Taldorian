@@ -96,8 +96,13 @@ static func _replace_symbols(text: String, icon_px: int) -> String:
 static func fit_rich_label(label: RichTextLabel, base_px: int, min_px: int, compose: Callable) -> void:
 	var px := maxi(min_px, base_px)
 	while true:
+		# Sobrescreve TODAS as variantes de fonte do RichTextLabel — incluindo a itálica,
+		# usada no flavor text de cartas sem efeito. Sem isso, o itálico ficava no tamanho
+		# default do tema (enorme) e o auto-fit não conseguia encolher a caixa.
 		label.add_theme_font_size_override("normal_font_size", px)
 		label.add_theme_font_size_override("bold_font_size", px)
+		label.add_theme_font_size_override("italics_font_size", px)
+		label.add_theme_font_size_override("bold_italics_font_size", px)
 		label.text = str(compose.call(px))
 		if px <= min_px or not _rich_overflows(label):
 			break

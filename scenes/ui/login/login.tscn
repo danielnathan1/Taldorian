@@ -402,6 +402,32 @@ theme_override_styles/focus = SubResource("sb_input_focus")
 placeholder_text = "••••••"
 secret = true
 
+[node name="InviteRow" type="VBoxContainer" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1000000101]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="InviteLabel" type="Label" parent="Center/Col/Panel/Forms/SignupForm/InviteRow" unique_id=1000000102]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.549, 0.431, 0.192, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 10
+text = "CHAVE DE CONVITE"
+
+[node name="SuInviteKey" type="LineEdit" parent="Center/Col/Panel/Forms/SignupForm/InviteRow" unique_id=1000000103]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929, 0.875, 0.784, 1)
+theme_override_colors/font_placeholder_color = Color(0.722, 0.659, 0.549, 0.45)
+theme_override_colors/caret_color = Color(0.788, 0.627, 0.298, 1)
+theme_override_fonts/font = ExtResource("4_body")
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("sb_input_normal")
+theme_override_styles/focus = SubResource("sb_input_focus")
+placeholder_text = "chave recebida do convite"
+
 [node name="SignupError" type="Label" parent="Center/Col/Panel/Forms/SignupForm" unique_id=1670130454]
 unique_name_in_owner = true
 visible = false
